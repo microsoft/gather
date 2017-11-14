@@ -29,6 +29,8 @@
     "@phosphor/disposable": "^1.1.2"
   },
   "devDependencies": {
+    "@types/node": "^8.0.51",
+    "jison": "^0.4.18",
     "rimraf": "^2.6.1",
     "typescript": "~2.4.0"
   }

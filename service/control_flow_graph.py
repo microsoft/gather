@@ -1,6 +1,3 @@
-"""
-Form control flow graphs from Python programs
-"""
 import ast
 
 
@@ -17,9 +14,6 @@ class _Block:
 
 
 class ControlFlowGraph:
-    """
-    A control flow graph for a list of Python statements
-    """
 
     def __init__(self, statements):
         self.global_id = 0

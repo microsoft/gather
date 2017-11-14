@@ -1,6 +1,6 @@
 {
   "compilerOptions": {
-    "declaration": true,
+  //  "declaration": true,
     "noImplicitAny": true,
     "noEmitOnError": true,
     "noUnusedLocals": true,
@@ -9,7 +9,8 @@
     "target": "ES5",
     "outDir": "./lib",
     "lib": ["ES5", "ES2015.Promise", "DOM"],
-    "types": []
-  },
-  "include": ["src/*"]
+    "allowJs": true,
+    "typeRoots": ["./node_modules/@types"]
+   },
+  "include": ["src"]
 }
