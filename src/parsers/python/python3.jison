@@ -19,695 +19,6 @@
         "pass", "for", "try", "def", "and", "del", "not", "is", "as", "if",
         "or", "in"
     ]
-
-    var includes = {};
-
-    var unique = function( list ) {
-        if ( !list ) return []
-        return list.filter(function( v, i, arr ) {
-            return arr.lastIndexOf( v ) == i
-        })
-    }
-
-    // create a code node
-    var code = function( s, type, opts ) {
-        opts || ( opts = {} )
-        var _code = { s: s, type: type }
-        for ( var p in opts )
-            _code[ p ] = opts[ p ]
-        return _code
-    }
-
-    var _alloc = {};
-    var allocate = function( prefix ) { // allocate a variable name
-        prefix = '__pys_' + prefix
-        _alloc[ prefix ] || ( _alloc[ prefix ] = 0 )
-        _alloc[ prefix ] += 1
-        return prefix + _alloc[ prefix ]
-    }
-
-    Array.prototype.code = function( type, delimiter, opts ) {
-        opts || ( opts = {} )
-        typeof delimiter == 'undefined' && ( delimiter = ';\n' )
-        var vars = []
-        this.s = this
-            .map(function( c ) {
-                if ( c.vars ) vars = vars.concat( c.vars )
-                return ( typeof c.s == 'undefined' ) ? c : c.s
-            })
-            .filter(function( s ) { return !!( s || '').trim() })
-            .join( delimiter )
-
-        if ( type ) this.type = type
-        this.vars = unique( vars )
-        for ( var p in opts ) {
-            this[ p ] = opts[ p ]
-        }
-        return this
-    }
-
-    String.prototype.replaceToken = function( token, replacement ) {
-        typeof replacement.s != 'undefined' && ( replacement = replacement.s )
-        // handle indentation
-        // compute leading spaces before the token
-        var i = this.indexOf( token )
-        var n = this.lastIndexOf( '\n', i )
-        var leading = this.substring( n + 1, i ) // if not found: -1 + 1 = 0
-
-        var _replacement = replacement.toString()
-        if (leading.trim().length == 0 ) { // all spaces
-            _replacement = _replacement.split( '\n' ).map(function(l, i){
-                return ( i == 0 ) ? l : leading + l;
-            }).join( '\n' )
-        }
-
-        // dumb replacement without using string match parameters used by .replace
-        
-        i = this.indexOf( token )
-        var s = String( this );
-        if ( i != -1 ) {
-            s = this.substring( 0, i ) + 
-                _replacement + 
-                this.substring( i + token.length )
-            //s = this.replace( token, _replacement )
-        }
-        
-
-        if ( s.indexOf( token ) != -1 ) {
-            return s.replaceToken( token, replacement )
-        } else {
-            return s
-        }
-
-        return ( s.indexOf( token ) != -1 ) 
-            ? s.replaceToken( token, replacement )
-            : s;
-    }
-
-    String.prototype.code = function( type, defaults, alloc ) {
-        defaults || ( defaults = {} )
-        alloc || ( alloc = {} )
-        var s = this
-        return function( opts ) {
-            opts || ( opts = {} )
-            var _s = s;
-            for ( var p in opts ) {
-                _s = _s.replaceToken( '{{' + p + '}}', opts[ p ] )
-            }
-            for ( var p in defaults ) {
-                ( opts[ p ] ) || ( opts[ p ] = defaults[ p ] )
-                _s = _s.replaceToken( '{{' + p + '}}', opts[ p ] )
-            }
-
-            for ( var p in alloc ) {
-                ( opts[ p ] ) || ( opts[ p ] = allocate( alloc[ p ] ) )
-                _s = _s.replaceToken( '{{' + p + '}}', opts[ p ] )
-            }
-
-            if ( _s.indexOf( '{{' ) != -1 ) {
-                throw new Error( "Missing params for code template: " + _s )
-            }
-            return code( _s, type, opts )
-        }
-    }
-
-    // code blocks
-    code._module = (
-        '{{vars}}\n' +
-        '{{code}};\n' +
-        '{{exports}}\n' 
-    ).code( 'module', { vars: '' } )
-
-    code._module.exports = (
-        'module.exports.{{var}}={{var}}'
-    ).code( 'module.export' )
-
-    code.module = function( opts ) {
-        if ( opts.code.vars.length ) {
-            opts.vars = 'var ' + opts.code.vars.join( ', ' ) + ';'
-        }
-        opts.exports = opts.code.vars.map(function(v) {
-            return code._module.exports({ var: v })
-        }).code()
-        return code._module( opts )
-    }
-
-    code._list = (
-        '[\n' +
-        '    {{items}}\n' +
-        ']'
-    ).code( 'list' )
-
-    code._list.item = (
-        '{{item}}'
-    ).code( 'list.item' )
-
-    code.list = function( opts ){
-        if ( !opts.items.length ) {
-            return code( '[]' )
-        }
-        opts.items = opts.items.map(function(i) {
-            return code._list.item({ item: i })
-        }).code( undefined, ',\n' )
-        return code._list( opts )
-    }
-
-    code._dict = (
-        '{\n' +
-        '    {{pairs}}\n' +
-        '}' 
-    ).code( 'dict' )
-
-    code._dict.pair = (
-        '{{k}}: {{v}}'
-    ).code( 'dict.entry' )
-
-    code._dictlong = (
-        '[{{pairs}}].reduce(function({{memo}},{{p}}){\n' +
-        '    {{memo}}[{{p}}[0]] = {{p}}[1];\n' +
-        '    return {{memo}}\n' +
-        '}, {})'
-    ).code( 'dict' )
-
-    code._dictlong.pair = (
-        '[{{k}},{{v}}]'
-    ).code( 'dict.entry' )
-
-    code.dict = function( opts ) {
-        var long = opts.pairs.some(function(pair) {
-            return (!pair.k || !pair.k.match( /['"\d]/) )
-        })
-
-        var dictfn = code._dict
-        if ( long ) {
-            dictfn = code._dictlong
-            opts.memo = allocate( 'memo' )
-            opts.p = allocate( 'pair' )
-        }
-
-        opts.pairs = opts.pairs.map( function( pair ) {
-            return dictfn.pair( pair )
-        }).code( undefined, ',\n' )
-        return dictfn( opts )
-    }
-
-    code._set = (
-        '[\n' +
-        '    {{items}}\n' +
-        '].filter(function({{item}},{{i}},{{arr}}){\n' +
-        '    return {{arr}}.lastIndexOf({{item}})=={{i}}\n' +
-        '})'
-    ).code( 'set' )
-
-    code.set = function( opts ) {
-        opts.items = opts.items.join( ',\n' )
-        opts.item = allocate( 'item' )
-        opts.i = allocate( 'i' )
-        opts.arr = allocate( 'arr' )
-        return code._set( opts )
-    }
-
-
-    code._setcomp = (
-        '(function({{results}}){\n' +
-        '    return {{set}}\n' +
-        '})([])'
-    ).code( 'set' )
-
-    code._setcomp.for = (
-        '{{source}}.forEach(function({{i}}){\n' +
-        '    {{code}}\n' +
-        '})'
-    ).code()
-
-    code._setcomp.if = (
-        'if ({{cond}}){\n' +
-        '    {{code}}\n' +
-        '}\n'
-    ).code()
-
-    code.setcomp = function( opts ) {
-        var current = opts.items[ 0 ]
-
-        if ( !current ) { // we're done, create a simple set
-            return code.set({
-                
-            })
-        }
-
-        if ( opts.target ) {
-            var target = current
-            var results = allocate( 'results' )
-
-        } else {
-
-        }
-    }
-
-
-    code.assert = (
-        'if (!({{cond}})) {\n' + 
-        '    throw new Error({{err}})\n' +
-        '}'
-    ).code( 'assert', { err: '"AssertionError"' } )
-
-    code._decorate = (
-        '{{func}}\n' + 
-        '{{decorators}}' 
-    ).code( 'decorated' )
-
-    code._decorate.decorator = (
-        '{{name}}={{decorator}}({{name}})'
-    ).code( 'decorated.dectorator' )
-
-    code.decorate = function( opts ) {
-        var name = opts.func.name
-        opts.decorators = opts.decorators.map(function(d) {
-            d.name = name
-            if ( d.args ) {
-                d.decorator += '(' + d.args.join( ',' ) + ')'
-            }
-            return code._decorate.decorator( d )
-        }).code()
-        return code._decorate( opts )
-    }
-
-    code._if = (
-        'if ({{cond}}){\n' +
-        '    {{code}}\n' +
-        '}{{elif}}{{else}}'
-    ).code( 'if', { else: '', elif: '' } )
-
-    code._if.else = (
-        'else{\n' +
-        '    {{code}}\n' +
-        '}'
-    ).code( 'if.else' )
-
-    code._if.elif = (
-        'else if({{cond}}){\n' +
-        '    {{code}}\n' +
-        '}'
-    ).code( 'if.elif' )
-
-    code.if = function( opts ) {
-        var vars = opts.code.vars
-        if ( opts.else ) {
-            vars = vars.concat( opts.else.vars )
-            opts.else = code._if.else({ code: opts.else })
-        }
-
-        if ( opts.elif ) {
-            opts.elif = opts.elif.map(function( e ) {
-                vars = vars.concat( e.code.vars )
-                return code._if.elif( e )
-            }).code( undefined, '' )
-        }
-
-        opts.vars = unique( vars )
-        return code._if( opts )
-    }
-
-    code._while = (
-        'while({{cond}}){\n' +
-        '    {{code}}\n' +
-        '}'
-    ).code( 'while' )
-
-    code._while.else = (
-        'while(true){\n' +
-        '    if(!({{cond}})){\n' +
-        '        {{else}};\n' +
-        '        break\n' +
-        '    }\n' +
-        '    {{code}}\n' +
-        '}'
-    ).code( 'while' )
-
-    code.while = function( opts ) {
-        opts.vars = opts.code.vars
-        if ( opts.else ) {
-            opts.vars = opts.vars.concat( opts.else.vars )
-        }
-        opts.vars = unique( opts.vars )
-        return ( opts.else ) ? code._while.else( opts ) : code._while( opts );
-    }
-
-    code._for = (
-        'var {{arr}}={{iter}};\n' +
-        'if(!Array.isArray({{arr}})) {{arr}} = Object.keys({{arr}});\n' +
-        'for(var {{i}}=0;{{i}}<{{arr}}.length;{{i}}+=1){\n' +
-        '    {{target}}={{arr}}[{{i}}];\n' +
-        '    {{code}}\n' +
-        '}'
-    ).code( 'for', {}, { 'arr': 'arr', 'i': 'i' } )
-
-    code._for.else = (
-        'var {{arr}}={{iter}};\n' +
-        'if(!Array.isArray({{arr}})) {{arr}} = Object.keys({{arr}});\n' +
-        'for(var {{i}}=0;{{i}}<{{arr}}.length;{{i}}+=1){\n' +
-        '    {{target}}={{arr}}[{{i}}];\n' +
-        '    {{code}};\n' +
-        '    if({{i}}=={{arr}}.length-1){\n' +
-        '        {{else}}\n' +
-        '    }\n' +
-        '}'
-    ).code( 'for' )
-
-    code.for = function( opts ) {
-        opts.vars = opts.code.vars.concat( [ opts.target ] )
-        if ( opts.else ) {
-            opts.vars = opts.vars.concat( opts.else.vars )
-        }
-        opts.vars = unique( opts.vars )
-        opts.arr = allocate( 'arr' )
-        opts.i = allocate( 'i' )
-        return ( opts.else ) ? code._for.else( opts ) : code._for( opts )
-    }
-
-    code._try = (
-        '{{collect_exc}}\n' +
-        'try{\n' +
-        '    {{code}}\n' +
-        '}{{excepts}}{{finally}}'
-    ).code( 'try', { finally: '', excepts: '', collect_exc: '' } )
-
-    code._try.excepts = (
-        'catch({{exc}}){\n' +
-        '    {{collect_exc}}\n' +
-        '    {{excepts}}\n' +
-        '}'
-    ).code( 'try.excepts', { collect_exc: '' } )
-
-    code._try.except = (
-        '{{else}}if({{exc}} instanceof {{cond}}){\n' +
-        '    {{code}}\n' +
-        '}'
-    ).code( 'try.except', { else: '', if: 'if' } )
-
-    code._try.else = (
-        'if(!({{else_exc}})){\n' +
-        '    {{code}}\n' +
-        '}'
-    ).code( 'try.else' )
-
-    code._try.finally = (
-        'finally{\n' +
-        '    {{code}}\n' +
-        '}'
-    ).code( 'try.finally' )
-
-    code.try = function( opts ) {
-        opts.exc = allocate( 'exc' )
-        var else_exc = allocate( 'exc' )
-        var collect_exc = ''
-        var vars = []
-        if ( opts.else ) {
-            vars = vars.concat( opts.else.vars )
-            collect_exc = else_exc + '=' + opts.exc + ';'
-            opts.collect_exc = 'var ' + else_exc + ';' 
-            opts.else = code._try.else({ code: opts.else, else_exc: else_exc })
-            opts.finally || ( opts.finally = [] )
-            opts.finally = [ opts.else ].concat( opts.finally ).code()
-        }
-        if ( opts.finally ) {
-            vars = vars.concat( opts.finally.vars )
-            opts.finally = code._try.finally({ code: opts.finally })
-        }
-        if ( opts.excepts ) {
-            // create the default except to propagate the exception
-            var has_default = opts.excepts.some(function( e ) {
-                return !e.cond
-            })
-            if ( !has_default ) {
-                var s = 'throw ' + opts.exc
-                var _throw = code( s, 'raise' )
-                opts.excepts.push({ code: [ _throw ].code() })
-            }
-
-            opts.excepts = code._try.excepts({
-                exc: opts.exc,
-                collect_exc: collect_exc,
-                excepts: opts.excepts.map(function(e, i) {
-                    e.exc = opts.exc
-                    vars = vars.concat( e.code.vars )
-                    if ( !e.cond ) {
-                        if ( i != opts.excepts.length - 1 ) {
-                            throw new Error( "default except clause is not last" )
-                        }
-
-                        if ( i == 0 ) return e.code
-                        return (
-                            'else{\n' + 
-                            '    {{code}}\n' +
-                            '}'
-                        ).code( 'try.except' )( e )
-                    }
-                    e.else = ( i != 0 ) ? 'else ' : ''
-                    return code._try.except(e)
-                }).code( null, '' )
-            })
-        }
-        opts.vars = unique( opts.code.vars.concat( vars ) )
-        return code._try( opts )
-    }
-
-    code.raise = (
-        'throw {{err}}'
-    ).code( 'raise', { err: '(___pys_exc||new Error("RuntimeError"))' } )
-
-    code.with = (
-        '(function({{as}}){\n' +
-        '    {{code}}\n' +
-        '})({{with}})'
-    ).code( 'with' )
-
-    code.lambda = (
-        'function({{args}}){return {{code}} }'
-    ).code( 'lambda' )
-
-    code._def = (
-        '{{name}} = function({{params}}){\n' +
-        '    {{inner_vars}}\n' +
-        '    {{args}}\n' +
-        '    {{defaults}}\n' +
-        '    {{code}}\n' +
-        '}\n' + 
-        '{{anno}}'
-    ).code( 'def', { defaults: '', anno: '', args: '', inner_vars: '' } )
-
-    code._def.default = (
-        '(typeof {{name}}=="undefined"&&({{name}}={{default}}))'
-    ).code( 'def.default' )
-
-    code._def.anno = (
-        '{{name}}.func_annotation={{anno}};'
-    ).code( 'def.anno' )
-
-    code.def = function( opts ) {
-        var vars = opts.code.vars
-        if ( vars.length ) {
-            opts.inner_vars = 'var ' + vars.join( ', ' ) + ';\n'
-        }
-        opts.vars = [ opts.name ]
-
-        opts.defaults = opts.params
-            .filter(function(p) { return !!p.default })
-            .map(function(p) {
-                return code._def.default({ name: p.name, default: p.default })
-            }).code()
-
-        opts.params = opts.params
-            .filter(function(p, i){ 
-                if ( p.args ) {
-                    opts.args = 'var ' + p.name + '=arguments.slice(' + i + ');\n'
-                } else return true
-            }).map(function(p) {
-                return p.name
-            }).join( ',' )
-
-        return code._def( opts )
-    }
-
-    code._class = (
-        '{{name}} = (function(){\n' + 
-        '    var {{initializing}}=false;\n' +
-        '    {{inner_vars}}\n' +
-        '    {{code}};\n' + 
-        '    var {{cls}}=function {{name}}(){\n' +
-        '       var {{instance}}=this;\n' +
-        '       if ( !( this instanceof arguments.callee )) {\n' +
-        '           {{initializing}}=true;\n' +
-        '           {{instance}}=new arguments.callee();\n' +
-        '           {{initializing}}=false;\n' +
-        '       }\n' +
-        '       if ( {{instance}}.__init__ && !{{initializing}} ) {\n' +
-        '           {{instance}}.__init__.apply({{instance}}, arguments)\n' +
-        '       }\n' +
-        '       return {{instance}}\n' +
-        '    }\n' +
-        '    {{proto}}\n' +
-        '    return {{cls}}\n' +
-        '})()'
-    ).code( 'class', { inner_vars: '' } )
-
-    code._class.proto = (
-        '{{cls}}.prototype.{{arg}}={{arg}}'
-    ).code( 'class.prototype' )
-
-    code._class.extend = (
-        '{{cls}}.prototype = Object.create({{extend}}.prototype)'
-    ).code( 'class.prototype' )
-
-    code.class = function( opts ) {
-        opts.initializing = allocate( "initializing" )
-        opts.instance = allocate( "instance" )
-        opts.cls = allocate( 'class' )
-        opts.vars = [ opts.name ]
-        if ( opts.code.vars.length ) {
-            opts.inner_vars = 'var ' + opts.code.vars.join( ',' ) + ';'
-        }
-
-        opts.proto = opts.code.vars.map(function(v) {
-            return code._class.proto({ arg: v, cls: opts.cls })
-        })
-
-        if ( opts.extends && opts.extends.length ) {
-            opts.proto.unshift( code._class.extend({ 
-                cls: opts.cls, 
-                extend: opts.extends[ 0 ]
-            }))
-        }
-
-        opts.proto.code()
-        return code._class( opts )
-    }
-
-    code.var = function( opts ) {
-        opts.op || ( opts.op = '=' )
-        var targets = opts.targets
-        var sources = opts.sources || []
-
-        // create the source string as a single value or a list of values
-        var _sources = ( sources.length == 1 )
-            ? sources[ 0 ].s || sources[ 0 ]
-            : '[' + sources.join( ',' ) + ']';
-
-        // generate the list of vars defined by the statement
-        var _vars = function( vars, op ) {
-            if ( opts.op != '=' ) return []
-            return vars.filter(function( v ) {
-                return  v.indexOf( '.' ) == -1 &&
-                        v.indexOf( '(' ) == -1 &&
-                        v.indexOf( '[' ) == -1
-            })
-        }
-
-        // always use a function to evaluate the operators
-        var _op = function( a, b ) {
-            var s = ( typeof opts.op == 'function' )
-                ? opts.op( a, b )
-                : a + opts.op + b;
-            return code( s, 'var', { vars: _vars( [ a ] ) } )
-        }
-
-        // no assignment: no sources, just targets
-        if ( !sources.length ) {
-            var _target = targets[ 0 ][ 0 ]
-            var vars = [ _target ]
-            if ( _target.s ) {
-                vars = []
-                _target = _target.s
-            }
-            return [ code( _target, 'var', { vars: [] } ) ].code()
-        } 
-
-        // simple assignment: x = y = z
-        if ( targets.every(function( t ) { return t.length == 1 } ) ) {
-            var _targets = targets.map( function( t ) { 
-                return t[ 0 ]
-            })
-
-            return [ _op( _targets.join( '=' ), _sources ) ].code()
-        }
-
-        // otherwise, we have multiple target variables so we'll need to unpack
-        // the values out of the source array
-        var s = [], vars = {}
-
-        // assign the last groups of targets, before the first ones
-        for ( var t = targets.length - 1 ; t >= 0 ; t -= 1 ) {
-            var _targets = targets[ t ]
-
-            // there's only one target - we can assign it to the original source
-            if ( _targets.length == 1 ) {
-                vars[ _targets[ 0 ] ] = 1
-                s.push( _op( _targets[ 0 ], _sources ) )
-                _sources = _targets[ 0 ] // the new sources is this variable
-                continue;
-            }
-
-            // otherwise, there's more than one target, unpack it after ensuring
-            // that it's not a function that will be evaluated more than once
-            if ( !unpack_var ) {
-                var unpack_var = allocate( 'unpack' )
-                s.push( 'var ' + unpack_var + '=' + _sources )
-                _sources = unpack_var
-            }
-
-            _targets.forEach(function(t, i) {
-                vars[ t ] = 1
-                s.push( _op( t, _sources + '[' + i + ']' ) )
-            })
-        }
-
-        return s.code()
-    };
-
-    code._import = (
-        '{{name}}=require("{{path}}")'
-    ).code( 'import' )
-
-    code.import = function( opts ) {
-        if ( !opts.imports ) {
-            opts.imports = Array.isArray( opts ) ? opts : [ opts ]
-        }
-        var vars = {}
-        return opts.imports.map(function( i ) {
-            var path = i.path.split( '.' )
-            var name = i.name
-            if ( !name ) {
-                var name = '', out;
-                name = path.map(function( n, i ) {
-                    name += n
-                    if ( i == path.length - 1 ) return ''
-                    out = '(' + name + '||(' + name + '={});\n'
-                    name += '.'
-                    return out
-                }).join( '' ) + name
-            }
-
-            vars[ name ] = 1
-            if ( opts.base ) {
-                var up = opts.base.match( /^\.*/ )[ 0 ]
-                path = opts.base.substr( up.length )
-                    .split( '.' )
-                    .concat( path )
-
-                var base = ( up.length % 2 ) ? [ '.' ] : []
-                for ( var i = Math.floor( up.length / 2 ) ; i > 0 ; i -- ) {
-                    base.push( '..' )
-                }
-                path = base.concat( path )
-            }
-            return code._import({ name: name, path: path.join( '/' ) })
-        }).code( undefined, undefined, { vars: Object.keys( vars ) } )
-    }
-
-    var log = function() {
-        console.log.apply( null, arguments )
-    }
-
 %}
 
 %lex
@@ -861,13 +172,13 @@ exponent                [e|E][\+|\-]({digit})+
 
 /** grammar **/
 expressions
-    : file_input        { console.log( $1 ) }
+    : file_input        { return $1 }
     ;
 
 // file_input: (NEWLINE | stmt)* ENDMARKER
 file_input
     : EOF
-    | file_input0 EOF    { $$ = code.module({ code: $1 }).s }
+    | file_input0 EOF    { $$ = { type: 'module', code: $1 } }
     ;
 
 file_input0
@@ -876,7 +187,7 @@ file_input0
     | NEWLINE file_input0
         { $$ = $2 }
     | stmt file_input0
-        { $$ = [ $1 ].concat( $2 ).code() }
+        { $$ = [ $1 ].concat( $2 ) }
     ;
 
 // decorator: '@' dotted_name [ '(' [arglist] ')' ] NEWLINE
@@ -901,13 +212,13 @@ decorators
 decorated
     : decorators classdef
     | decorators funcdef
-        { $$ = code.decorate({ decorators: $1, func: $2 }) }
+        { $$ = { type: 'decorate', decorators: $1, func: $2 } }
     ;
 
 // funcdef: 'def' NAME parameters ['->' test] ':' suite
 funcdef
     : 'def' NAME parameters ':' suite
-        { $$ = code.def({ name: $2, params: $3, code: $5 }) }
+        { $$ = { type: 'def', name: $2, params: $3, code: $5 } }
     | 'def' NAME parameters '->' test ':' suite
     ;
 
@@ -1010,7 +321,7 @@ simple_stmt
     : small_stmt NEWLINE
     | small_stmt ';' NEWLINE
     | small_stmt simple_stmt0 NEWLINE
-        { $$ = [ $1 ].concat( $2 ).code() }
+        { $$ = [ $1 ].concat( $2 ) }
     ;
 
 simple_stmt0
@@ -1031,17 +342,18 @@ small_stmt: expr_stmt | del_stmt | pass_stmt | flow_stmt | import_stmt |
 //  ('=' (yield_expr|testlist_star_expr))*)
 expr_stmt
     : testlist_star_expr
-        { $$ = code.var({ targets: [ $1 ] }) }
+        { $$ = { type: 'var', targets: $1 } }
     | testlist_star_expr expr_stmt0
         { 
-            $$ = code.var({ 
-                targets: [ $1 ].concat( $2.targets ), 
+            $$ = {
+                type: 'var', 
+                targets: ($1).concat( $2.targets ), 
                 sources: $2.sources 
-            }) 
+            }
         }
     | testlist_star_expr augassign yield_expr
     | testlist_star_expr augassign testlist
-        { $$ = code.var({ targets: [ $1 ], sources: $3, op: $2 }) }
+        { $$ = { type: 'var', targets: $1, sources: $3, op: $2 } }
     ;
 
 expr_stmt0
@@ -1052,7 +364,7 @@ expr_stmt0
     | '=' testlist_star_expr expr_stmt0
         { 
             $$ = { 
-                targets: [ $2 ].concat( $3.targets ), 
+                targets: ($2).concat( $3.targets ), 
                 sources: $3.sources 
             } 
         }
@@ -1119,13 +431,13 @@ augassign
 // del_stmt: 'del' exprlist
 del_stmt
     : 'del' NAME
-        { $$ = code( 'delete ' + $2, 'del', { name: $2 } ) }
+        { $$ = {type:'del', name: $1} }
     ;
 
 // pass_stmt: 'pass'
 pass_stmt
     : 'pass' 
-        { $$ = code( '', 'pass' ) }
+        { $$ = {type:'pass'} }
     ;
 
 // flow_stmt: break_stmt | continue_stmt | return_stmt | raise_stmt | yield_stmt
@@ -1134,21 +446,21 @@ flow_stmt: break_stmt | continue_stmt | return_stmt | raise_stmt | yield_stmt;
 // break_stmt: 'break'
 break_stmt
     : 'break' 
-        { $$ = code( 'break', 'break' ) }
+        { $$ = {type:'break'} }
     ;
 
 // continue_stmt: 'continue'
 continue_stmt
     : 'continue'
-        { $$ = code( 'continue', 'continue' ) }
+        { $$ = {type:'continue'} }
     ;
 
 // return_stmt: 'return' [testlist]
 return_stmt
     : 'return'
-        { $$ = code( $1, 'return' ) }
+        { $$ = {type:'return'} }
     | 'return' testlist
-        { $$ = code( $1 + ' ' + $2, 'return', { value: $2 } ) }
+        { $$ = {type:'return', value:$1} }
     ;
 
 // yield_stmt: yield_expr
@@ -1159,9 +471,9 @@ yield_stmt
 // raise_stmt: 'raise' [test ['from' test]]
 raise_stmt
     : 'raise'
-        { $$ = code.raise() }
+        { $$ = {type: 'raise'} }
     | 'raise' test
-        { $$ = code.raise({ err: $2 }) }
+        { $$ = {type: 'raise', err: $2 } }
     | 'raise' test 'from' test
         { 
             $2 =  '(function(){'
@@ -1169,7 +481,7 @@ raise_stmt
                 + '___pys_exc.__cause__=' + $4 + ';'
                 + 'return ___pys_exc'
                 + '})()'
-            $$ = code.raise({ err: $2 })
+            $$ = { type: 'raise',  err: $2  }
         }
     ;
 
@@ -1180,16 +492,16 @@ import_stmt
 // import_name: 'import' dotted_as_names
 import_name
     : 'import' dotted_as_names
-        { $$ = code.import( $2 ) }
+        { $$ = {type: 'import', names: $2 } }
     ;
 
 // import_from: ('from' (('.' | '...')* dotted_name | ('.' | '...')+)
 //  'import' ('*' | '(' import_as_names ')' | import_as_names))
 import_from
     : 'from' dotted_name 'import' import_from_tail
-        { $$ = code.import({ base: $2, imports: $4 }) }
+        { $$ = { type: 'import',  base: $2, imports: $4  } }
     | 'from' import_from0 dotted_name 'import' import_from_tail
-        { $$ = code.import({ base: $2 + $3, imports: $5 }) }
+        { $$ = { type: 'import',  base: $2 + $3, imports: $5  } }
     | 'from' import_from0 'import' import_from_tail
     ;
 
@@ -1301,9 +613,9 @@ nonlocal_stmt0
 // assert_stmt: 'assert' test [',' test]
 assert_stmt
     : 'assert' test
-        { $$ = code.assert({ cond: $2 }) }
+        { $$ = { type: 'assert',  cond: $2  } }
     | 'assert' test ',' test
-        { $$ = code.assert({ cond: $2, err: $4 }) }
+        { $$ = { type: 'assert',  cond: $2, err: $4  } }
     ;
 
 // compound_stmt: if_stmt | while_stmt | for_stmt | try_stmt | with_stmt |
@@ -1314,31 +626,31 @@ compound_stmt:  if_stmt | while_stmt | for_stmt | try_stmt | with_stmt |
 // if_stmt: 'if' test ':' suite ('elif' test ':' suite)* ['else' ':' suite]
 if_stmt
     : 'if' test ':' suite
-        { $$ = code.if({ cond: $2, code: $4 }) }
+        { $$ = { type: 'if',  cond: $2, code: $4  } }
     | 'if' test ':' suite 'else' ':' suite
         { 
-            $$ = code.if({ 
+            $$ = { type: 'if', 
                 cond: $2, 
                 code: $4, 
                 else: $7
-            })
+            }
         }
     | 'if' test ':' suite if_stmt0
         {
-            $$ = code.if({
+            $$ = { type: 'if',
                 cond: $2,
                 code: $4,
                 elif: $5
-            })
+            }
         }
     | 'if' test ':' suite if_stmt0 'else' ':' suite
         {
-            $$ = code.if({
+            $$ = { type: 'if',
                 cond: $2,
                 code: $4,
                 elif: $5,
                 else: $8
-            })
+            }
         }
     ;
 
@@ -1352,17 +664,17 @@ if_stmt0
 // while_stmt: 'while' test ':' suite ['else' ':' suite]
 while_stmt
     : 'while' test ':' suite
-        { $$ = code.while({ cond: $2, code: $4 }) }
+        { $$ = { type: 'while',  cond: $2, code: $4  } }
     | 'while' test ':' suite 'else' ':' suite
-        { $$ = code.while({ cond: $2, code: $4, else: $7 }) }
+        { $$ = { type: 'while',  cond: $2, code: $4, else: $7  } }
     ;
 
 // for_stmt: 'for' exprlist 'in' testlist ':' suite ['else' ':' suite]
 for_stmt
     : 'for' exprlist 'in' testlist ':' suite
-        { $$ = code.for({ target: $2, iter: $4, code: $6 }) }
+        { $$ = { type: 'for',  target: $2, iter: $4, code: $6  } }
     | 'for' exprlist 'in' testlist ':' suite 'else' ':' suite
-        { $$ = code.for({ target: $2, iter: $4, code: $6, else: $9 }) }
+        { $$ = { type: 'for',  target: $2, iter: $4, code: $6, else: $9  } }
     ;
 
 // try_stmt: ('try' ':' suite
@@ -1372,15 +684,15 @@ for_stmt
 //     'finally' ':' suite))
 try_stmt
     : 'try' ':' suite 'finally' ':' suite
-        { $$ = code.try({ code: $3, finally: $6 }) }
+        { $$ = { type: 'try',  code: $3, finally: $6  } }
     | 'try' ':' suite try_excepts
-        { $$ = code.try({ code: $3, excepts: $4 }) }
+        { $$ = { type: 'try',  code: $3, excepts: $4  } }
     | 'try' ':' suite try_excepts 'finally' ':' suite
-        { $$ = code.try({ code: $3, excepts: $4, finally: $7 }) }
+        { $$ = { type: 'try',  code: $3, excepts: $4, finally: $7  } }
     | 'try' ':' suite try_excepts 'else' ':' suite
-        { $$ = code.try({ code: $3, excepts: $4, else: $7 }) }
+        { $$ = { type: 'try',  code: $3, excepts: $4, else: $7  } }
     | 'try' ':' suite try_excepts 'else' ':' suite 'finally' ':' suite
-        { $$ = code.try({ code: $3, excepts: $4, else: $7, finally: $10 }) }
+        { $$ = { type: 'try',  code: $3, excepts: $4, else: $7, finally: $10  } }
     ;
 
 try_excepts
@@ -1404,15 +716,15 @@ except_clause
 // with_stmt: 'with' with_item (',' with_item)*  ':' suite
 with_stmt
     : 'with' with_item ':' suite
-        { $$ = code.with({ with: $2.with, as: $2.as, code: $4 }) }
+        { $$ = { type: 'with',  with: $2.with, as: $2.as, code: $4  } }
     | 'with' with_item with_stmt0 ':' suite
         { 
             $2 = [ $2 ].concat( $3 )
-            $$ = code.with({ 
+            $$ = { type: 'with', 
                 with: $2.map(function(w){ return w.with }).join( ',' ),
                 as: $2.map(function(w){ return w.as }).join( ',' ),
                 code: $5 
-            })
+            }
         }
     ;
 
@@ -1440,15 +752,16 @@ suite
 
 suite0
     : stmt
-        { $$ = [ $1 ].code() }
+        { $$ = [ $1 ] }
     | stmt suite0
-        { $$ = [ $1 ].concat( $2 ).code() }
+        { $$ = [ $1 ].concat( $2 ) }
     ;
 
 // test: or_test ['if' or_test 'else' test] | lambdef
 test
     : or_test
     | or_test 'if' or_test 'else' test
+        { $$ = {type:'ifexpr', test: $1, thenExpr:$3, elseExpr: $5} }
     | lambdef
     ;
 
@@ -1458,9 +771,9 @@ test_nocond: or_test | lambdef_nocond ;
 // lambdef: 'lambda' [varargslist] ':' test
 lambdef
     : 'lambda' ':' test
-        { $$ = code.lambda({ args: '', code: $3 }) }
+        { $$ = { type: 'lambda',  args: '', code: $3  } }
     | 'lambda' varargslist ':' test
-        { $$ = code.lambda({ args: $2, code: $3 }) }
+        { $$ = { type: 'lambda',  args: $2, code: $3  } }
     ;
 
 // lambdef_nocond: 'lambda' [varargslist] ':' test_nocond
@@ -1473,33 +786,34 @@ lambdef_nocond
 or_test
     : and_test
     | and_test or_test0
-        { $$ = $1 + $2 }
+        { $$ = $2($1) }
     ;
 
 or_test0
     : 'or' and_test
-        { $$ = '||' + $2 }
+        { $$ = function (left) { return { type: 'binop', op: $1, left: left, right: $2 }; } }
     | 'or' and_test or_test0
-        { $$ = '||' + $2 + $3 }
+        { $$ = function (left) { return $3({ type: 'binop', op: $1, left: left, right: $2 }); } }
     ;
 
 // and_test: not_test ('and' not_test)*
 and_test
     : not_test
     | not_test and_test0
-        { $$ = $1 + $2 }
+        { $$ = $2($1) }
     ;
 
 and_test0
     : 'and' not_test
-        { $$ = '&&' + $2 }
+        { $$ = function (left) { return { type: 'binop', op: $1, left: left, right: $2 }; } }
     | 'and' not_test and_test0
-        { $$ = '&&' + $2 + $3 }
+        { $$ = function (left) { return $3({ type: 'binop', op: $1, left: left, right: $2 }); } }
     ;
 
 // not_test: 'not' not_test | comparison
 not_test
     : 'not' not_test
+        { $$ = { type: 'unop', op: $1, operand: $2 } }
     | comparison
     ;
 
@@ -1507,175 +821,165 @@ not_test
 comparison
     : expr
     | expr comparison0
-        { $$ = $2( $1 ) }
+        { $$ = $2($1) }
     ;
 
 comparison0
     : comp_op expr
-        { 
-            $$ = function( a ) {
-                return ( typeof $1 == 'function' )
-                    ? $1( a, $2 )
-                    : a + $1 + $2
-                    ;
-            }
-        }
+        { $$ = function (left) { return { type: 'binop', op: $1, left: left, right: $2 }; } }
     | comp_op expr comparison0
-        {
-            $2 = $3( $2 )
-            $$ = function( a ) {
-                return ( typeof $1 == 'function' )
-                    ? $1( a, $2 )
-                    : a + $1 + $2
-                    ;
-            }
-        }
+        { $$ = function (left) { return $3({ type: 'binop', op: $1, left: left, right: $2 }); } }
     ;
 
 // comp_op: '<'|'>'|'=='|'>='|'<='|'<>'|'!='|'in'|'not' 'in'|'is'|'is' 'not'
 // NOTE: '<>' is removed because we don't need to support __future__
 comp_op: '<'|'>'|'=='|'>='|'<='|'!='
     |'in'
-        { $$ = function(a,b) { return '(' + b + '.indexOf(' + a + ')!=-1)' } }
     |'not' 'in'
-        { $$ = function(a,b) { return '(' + b + '.indexOf(' + a + ')==-1)' } }
+        { $$ = $1+$2 }
     |'is'
-        { $$ = '===' }
     |'is' 'not'
-        { $$ = '!==' }
+        { $$ = $1+$2 }
     ;
 
 // star_expr: '*' expr
-star_expr: '*' expr;
+star_expr
+    : '*' expr 
+        { $$ = { type:'starred', value: $1 } }
+    ;
 
 // expr: xor_expr ('|' xor_expr)*
 expr
     : xor_expr
     | xor_expr expr0
-        { $$ = $1 + $2 }
+        { $$ = $2($1) }
     ;
 
 expr0
     : '|' xor_expr
-        { $$ = $1 + $2 }
+        { $$ = function (left) { return {type:'binop', op:$1, left: left, right: $2}; } }
     | '|' xor_expr expr0
-        { $$ = $1 + $2 + $3 }
+        { $$ = function (left) { return $3({type:'binop', op:$1, left: left, right: $2 }); } }
     ;
 
 // xor_expr: and_expr ('^' and_expr)*
 xor_expr
     : and_expr
     | and_expr xor_expr0
-        { $$ = $1 + $2 }
+        { $$ = $2($1) }
     ;
 
 xor_expr0
     : '^' and_expr
-        { $$ = $1 + $2 }
+        { $$ = function (left) { return {type:'binop', op:$1, left: left, right: $2}; } }
     | '^' and_expr xor_expr0
-        { $$ = $1 + $2 + $3 }
+        { $$ = function (left) { return $3({type:'binop', op:$1, left: left, right: $2 }); } }
     ;
 
 // and_expr: shift_expr ('&' shift_expr)*
 and_expr
     : shift_expr
     | shift_expr and_expr0
-        { $$ = $1 + $2 }
+        { $$ = $2($1) }
     ;
 
 and_expr0
     : '&' shift_expr
-        { $$ = $1 + $2 }
+        { $$ = function (left) { return {type:'binop', op:$1, left: left, right: $2}; } }
     | '&' shift_expr and_expr0
-        { $$ = $1 + $2 + $3 }
+        { $$ = function (left) { return $3({type:'binop', op:$1, left: left, right: $2 }); } }
     ;
 
 // shift_expr: arith_expr (('<<'|'>>') arith_expr)*
 shift_expr
     : arith_expr
     | arith_expr shift_expr0
-        { $$ = $1 + $2 }
+        { $$ = $2($1) }
     ;
 
 shift_expr0
     : '<<' arith_expr
-        { $$ = $1 + $2 }
+        { $$ = function (left) { return {type:'binop', op:$1, left: left, right: $2}; } }
     | '<<' arith_expr shift_expr0
-        { $$ = $1 + $2 + $3 }
+        { $$ = function (left) { return $3({type:'binop', op:$1, left: left, right: $2 }); } }
     | '>>' arith_expr
-        { $$ = $1 + $2 }
+        { $$ = function (left) { return {type:'binop', op:$1, left: left, right: $2}; } }
     | '>>' arith_expr shift_expr0
-        { $$ = $1 + $2 + $3 }
+        { $$ = function (left) { return $3({type:'binop', op:$1, left: left, right: $2 }); } }
     ;
 
 // arith_expr: term (('+'|'-') term)*
 arith_expr
     : term
     | term arith_expr0
-        { $$ = $1 + $2 }
+        { $$ = $2($1) }
     ;
 
 arith_expr0
     : '+' term
-        { $$ = $1 + $2 }
+        { $$ = function (left) { return {type:'binop', op:$1, left: left, right: $2}; } }
     | '+' term arith_expr0
-        { $$ = $1 + $2 + $3 }
+        { $$ = function (left) { return $3({type:'binop', op:$1, left: left, right: $2 }); } }
     | '-' term
-        { $$ = $1 + $2 }
+        { $$ = function (left) { return {type:'binop', op:$1, left: left, right: $2}; } }
     | '-' term arith_expr0
-        { $$ = $1 + $2 + $3 }
+        { $$ = function (left) { return $3({type:'binop', op:$1, left: left, right: $2 }); } }
     ;
 
 // term: factor (('*'|'/'|'%'|'//') factor)*
 term
     : factor
     | factor term0
-        { $$ = $2( $1 ) }
+        { $$ = $2($1) }
     ;
 
 term0
     : '*' factor
-        { $$ = function(s){ return s + $1 + $2 } }
+        { $$ = function (left) { return {type:'binop', op:$1, left: left, right: $2}; } }
     | '*' factor term0
-        { $$ = function(s){ return s + $1 + $3( $2 ) } }
+        { $$ = function (left) { return $3({type:'binop', op:$1, left: left, right: $2 }); } }
     | '/' factor
-        { $$ = function(s){ return s + $1 + $2 } }
+        { $$ = function (left) { return {type:'binop', op:$1, left: left, right: $2}; } }
     | '/' factor term0
-        { $$ = function(s){ return s + $1 + $3( $2 ) } }
+        { $$ = function (left) { return $3({type:'binop', op:$1, left: left, right: $2 }); } }
     | '%' factor
-        { $$ = function(s){ return s + $1 + $2 } }
+        { $$ = function (left) { return {type:'binop', op:$1, left: left, right: $2}; } }
     | '%' factor term0
-        { $$ = function(s){ return s + $1 + $3( $2 ) } }
+        { $$ = function (left) { return $3({type:'binop', op:$1, left: left, right: $2 }); } }
     | '//' factor
-        { $$ = function(s){ return 'Math.floor(' + s + '/' + $2 + ')' } }
+        { $$ = function (left) { return {type:'binop', op:$1, left: left, right: $2}; } }
     | '//' factor term0
-        { $$ = function(s){ return 'Math.floor(' + s + '/' + $3( $2 ) + ')' } }
+        { $$ = function (left) { return $3({type:'binop', op:$1, left: left, right: $2 }); } }
     ;
 
 // factor: ('+'|'-'|'~') factor | power
 factor
     : '+' factor
-        { $$ = $1 + $2 }
+        { $$ = {type:'unop', op:$1, operand:$2} }
     | '-' factor
-        { $$ = $1 + $2 }
+        { $$ = {type:'unop', op:$1, operand:$2} }
     | '~' factor
-        { $$ = $1 + $2 }
+        { $$ = {type:'unop', op:$1, operand:$2} }
     | power
     ;
 
 // power: atom trailer* ['**' factor]
 power
-    : atom
-    | atom power0
-        { $$ = $1 + $2 }
-    | atom power0 '**' factor
-        { $$ = 'Math.pow(' + $1 + $2 + ',' + $4 + ')' }
+    : atom_expr
+    | atom_expr '**' factor
+        { $$ = {type: 'binop', op:$2, left: $1, right: $3} }
     ;
 
-power0
+trailer_list
     : trailer
-    | trailer power0
-        { $$ = $1 + $2 }
+    | trailer trailer_list
+        { $$ = function (left) { return $2($1(left)) } }
+    ;
+
+atom_expr
+    : atom
+    | atom trailer_list
+        { $$ = $2($1) }
     ;
 
 // atom: ('(' [yield_expr|testlist_comp] ')' |
@@ -1684,30 +988,36 @@ power0
 //        NAME | NUMBER | STRING+ | '...' | 'None' | 'True' | 'False')
 atom
     : '(' ')'
+        { $$ = { type: 'tuple', value: [] } }
     | '(' yield_expr ')'
+        { $$ = $2 }
     | '(' testlist_comp ')'
+        { $$ = $2 }
     | '[' ']'
-        { $$ = code.list({ items: [] }) }
+        { $$ = { type: 'list', items: [] } }
     | '[' testlist_comp ']'
-        { $$ = code.list({ items: $2 }) }
+        { $$ = { type: 'list',  items: $2  } }
     | '{' '}'
-        { $$ = code.dict({ pairs: [] }) }
+        { $$ = { type: 'dict',  pairs: []  } }
     | '{' dictorsetmaker '}'
         {
             $$ = ( $2[ 0 ].k )
-                ? code.dict({ pairs: $2 })
-                : code.set({ items: $2 });
+                ? { type: 'dict',  pairs: $2  }
+                : { type: 'set',  items: $2  };
         }
     | NAME
+        { $$ = { type: 'name', id: $1 } }
     | NUMBER
+        { $$ = { type: 'literal', value: $1 * 1 } } // convert to number
     | STRING
+        { $$ = { type: 'literal', value: $1 } }
     | '...'
     | 'None'
-        { $$ = 'null' }
+        { $$ = { type: 'literal', value: 'None' } }
     | 'True'
-        { $$ = 'true' }
+        { $$ = { type: 'literal', value: 'True'} }
     | 'False'
-        { $$ = 'false' }
+        { $$ = { type: 'literal', value: 'False'} }
     ;
 
 // testlist_comp: (test|star_expr) ( comp_for | (',' (test|star_expr))* [','] )
@@ -1749,15 +1059,15 @@ testlist_comp_tail0
 // trailer: '(' [arglist] ')' | '[' subscriptlist ']' | '.' NAME
 trailer
     : '(' ')'
-        { $$ = $1 + $2 }
+        { $$ = function (left) { return {type: 'call', func: left, args: []}; } }
     | '(' arglist ')'
-        { $$ = $1 + $2 + $3 }
+        { $$ = function (left) { return {type: 'call', func: left, args: $2}; } }
     | '[' ']'
-        { $$ = $1 + $2 }
+        { $$ = function (left) { return {type: 'index', value: left, args: []}; } }
     | '[' subscriptlist ']'
-        { $$ = $1 + $2 + $3 }
+        { $$ = function (left) { return {type: 'index', value: left, args: $2}; } }
     | '.' NAME
-        { $$ = $1 + $2 }
+        { $$ = function (left) { return {type: 'dot', value: left, name: $2}; } }
     ;
 
 // subscriptlist: subscript (',' subscript)* [',']
@@ -1797,28 +1107,32 @@ sliceop: ':' | ':' test;
 // exprlist: (expr|star_expr) (',' (expr|star_expr))* [',']
 exprlist
     : expr
+        { $$ = [$1] }
     | expr ','
+        { $$ = [$1] }
     | expr exprlist0
-        { $$ = $1 + $2 }
+        { $$ = $1.concast($2) }
     | star_expr
+        { $$ = [$1] }
     | star_expr ','
+        { $$ = [$1] }
     | star_expr exprlist0
-        { $$ = $1 + $2 }
+        { $$ = $1.concat($2) }
     ;
 
 exprlist0
     : ',' expr
-        { $$ = $2 }
+        { $$ = [$2] }
     | ',' expr ','
-        { $$ = $2 }
+        { $$ = [$2] }
     | ',' expr exprlist0
-        { $$ = $2 + $3 }
+        { $$ = $2.concast($3) }
     | ',' star_expr
-        { $$ = $2 }
+        { $$ = [$2] }
     | ',' star_expr ','
-        { $$ = $2 }
+        { $$ = [$2] }
     | ',' star_expr exprlist0
-        { $$ = $2 + $3 }
+        { $$ = $2.concat($3) }
     ;
 
 // testlist: test (',' test)* [',']
@@ -1882,11 +1196,11 @@ setmaker
 // classdef: 'class' NAME ['(' [arglist] ')'] ':' suite
 classdef
     : 'class' NAME ':' suite
-        { $$ = code.class({ name: $2, code: $4 }) }
+        { $$ = { type: 'class',  name: $2, code: $4  } }
     | 'class' NAME '(' ')' ':' suite
-        { $$ = code.class({ name: $2, code: $6 }) }
+        { $$ = { type: 'class',  name: $2, code: $6  } }
     | 'class' NAME '(' arglist ')' ':' suite
-        { $$ = code.class({ name: $2, code: $7, extends: $4 }) }
+        { $$ = { type: 'class',  name: $2, code: $7, extends: $4  } }
     ;
 
 // arglist: (argument ',')* (argument [',']
@@ -1924,23 +1238,25 @@ comp_iter: comp_for | comp_if ;
 // comp_for: 'for' exprlist 'in' or_test [comp_iter]
 comp_for
     : 'for' exprlist 'in' or_test
-        { $$ = [{ for: $2, in: $4 }] }
+        { $$ = [{ type: 'for', for: $2, in: $4 }] }
     | 'for' exprlist 'in' or_test comp_iter
-        { $$ = [{ for: $2, in: $4 }].concat( $5 ) }
+        { $$ = [{ type: 'for', for: $2, in: $4 }].concat( $5 ) }
     ;
 
 // comp_if: 'if' test_nocond [comp_iter]
 comp_if
     : 'if' test_nocond
-        { $$ = [{ if: $2 }] }
+        { $$ = [{ type: 'if', test: $2 }] }
     | 'if' test_nocond comp_iter
-        { $$ = [{ if: $2 }].concat( $3 )}
+        { $$ = [{ type: 'if', test: $2 }].concat( $3 )}
     ;
 
 // yield_expr: 'yield' [yield_arg]
 yield_expr
     : 'yield'
+        { $$ = { type: 'yield' } }
     | 'yield' yield_arg
+        { $$ = { type: 'yield', arg: $1 } }
     ;
 
 // yield_arg: 'from' test | testlist
