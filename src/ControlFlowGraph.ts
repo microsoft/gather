@@ -52,7 +52,7 @@ export class ControlFlowGraph {
     public get blocks(): Block[] {
         const result: Block[] = [];
         const visited = new Set<Block>();
-        const toVisit = new Set<Block>();
+        const toVisit = new Set<Block>([this.entry]);
         while (toVisit.size) {
             const block = toVisit.values().next().value;
             toVisit.delete(block);

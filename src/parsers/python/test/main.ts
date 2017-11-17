@@ -7,11 +7,11 @@ for (let i = 2; i < process.argv.length; i++) {
     const path = process.argv[i];
     const text = fs.readFileSync(path).toString().replace(/\r\n/g, '\n');
     const ast = python3.parse(text);
-    // console.log(JSON.stringify(ast, null, 2));
+    //console.log(JSON.stringify(ast, null, 2));
     const cfg = new ControlFlowGraph(ast);
     cfg.print();
     const dfa = dataflowAnalysis(cfg);
-    for (let d of dfa) {
-        console.log(d);
+    for (let {fromNode, toNode} of dfa) {
+        console.log(JSON.stringify(fromNode), '->', JSON.stringify(toNode));
     }
 }

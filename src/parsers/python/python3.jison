@@ -343,8 +343,7 @@ small_stmt: expr_stmt | del_stmt | pass_stmt | flow_stmt | import_stmt |
 //  ('=' (yield_expr|testlist_star_expr))*)
 expr_stmt
     : testlist_star_expr
-        { $$ = { type: 'assign', targets: $1 } }
-    | testlist_star_expr expr_stmt0
+    | testlist_star_expr assign
         { 
             $$ = {
                 type: 'assign', 
@@ -354,15 +353,15 @@ expr_stmt
         }
     | testlist_star_expr augassign yield_expr
     | testlist_star_expr augassign testlist
-        { $$ = { type: 'assign', targets: $1, sources: $3, op: $2 } }
+        { $$ = { type: 'assign', op: $2, targets: $1, sources: $3 } }
     ;
 
-expr_stmt0
+assign
     : '=' yield_expr
-    | '=' yield_expr expr_stmt0
+    | '=' yield_expr assign
     | '=' testlist_star_expr
         { $$ = { targets: [], sources: $2 } }
-    | '=' testlist_star_expr expr_stmt0
+    | '=' testlist_star_expr assign
         { 
             $$ = { 
                 targets: ($2).concat( $3.targets ), 

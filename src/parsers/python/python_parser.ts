@@ -6,6 +6,7 @@ export type ISyntaxNode =
     | IDecorate
     | IDef
     | IAssignment
+    | IAssert
     | IReturn
     | IYield
     | IRaise
@@ -18,6 +19,7 @@ export type ISyntaxNode =
     | IFor
     | ITry
     | IWith
+    | ICall
     | IIfExpr
     | ILambda
     | IUnaryOperator
@@ -89,6 +91,14 @@ export interface IAssignment {
     type: typeof ASSIGN;
     targets: ISyntaxNode[];
     sources: ISyntaxNode[];
+}
+
+export const ASSERT = 'assert';
+
+export interface IAssert {
+    type: typeof ASSERT;
+    cond: ISyntaxNode;
+    err: ISyntaxNode;
 }
 
 export const RETURN = 'return';
@@ -182,6 +192,14 @@ export interface IWith {
     type: typeof WITH;
     items: { with: ISyntaxNode; as: ISyntaxNode }[];
     code: ISyntaxNode[];
+}
+
+export const CALL = 'call';
+
+export interface ICall {
+    type: typeof CALL;
+    func: ISyntaxNode;
+    args: ISyntaxNode[];
 }
 
 export const IFEXPR = 'ifexpr';
@@ -311,6 +329,7 @@ export function walk(node: ISyntaxNode): ISyntaxNode[] {
             break;
         case DECORATE: children = [node.def]; break;
         case LAMBDA: children = [node.code]; break;
+        case CALL: children = [node.func].concat(node.args); break;
         case IFEXPR: children = [node.test, node.then, node.else]; break;
         case UNOP: children = [node.operand]; break;
         case BINOP: children = [node.left, node.right]; break;
@@ -319,6 +338,8 @@ export function walk(node: ISyntaxNode): ISyntaxNode[] {
         case LIST: children = node.items; break;
         case TUPLE: children = node.value; break;
         case DICT: children = flatten(node.pairs.map(p => [p.k, p.v])); break;
+        case ASSIGN: children = node.sources.concat(node.targets); break;
+        case ASSERT: children = [node.cond].concat([node.err] || []); break;
     }
     return [node].concat(flatten(children.map(node => walk(node))));
 }
