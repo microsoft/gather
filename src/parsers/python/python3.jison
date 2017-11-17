@@ -193,11 +193,11 @@ file_input0
 // decorator: '@' dotted_name [ '(' [arglist] ')' ] NEWLINE
 decorator
     : '@' dotted_name NEWLINE
-        { $$ = { decorator: $2 } }
+        { $$ = { type: 'decorator', decorator: $2 } }
     | '@' dotted_name '(' ')' NEWLINE
-        { $$ = { decorator: $2 + '()' } }
+        { $$ = { type: 'decorator', decorator: $2, args: '()' } }
     | '@' dotted_name '(' arglist ')' NEWLINE
-        { $$ = { decorator: $2, args: $4 } }
+        { $$ = { type: 'decorator', decorator: $2, args: $4 } }
     ;
 
 // decorators: decorator+
@@ -211,8 +211,9 @@ decorators
 // decorated: decorators (classdef | funcdef)
 decorated
     : decorators classdef
+        { $$ = { type: 'decorate', decorators: $1, def: $2 } }
     | decorators funcdef
-        { $$ = { type: 'decorate', decorators: $1, func: $2 } }
+        { $$ = { type: 'decorate', decorators: $1, def: $2 } }
     ;
 
 // funcdef: 'def' NAME parameters ['->' test] ':' suite
@@ -342,18 +343,18 @@ small_stmt: expr_stmt | del_stmt | pass_stmt | flow_stmt | import_stmt |
 //  ('=' (yield_expr|testlist_star_expr))*)
 expr_stmt
     : testlist_star_expr
-        { $$ = { type: 'var', targets: $1 } }
+        { $$ = { type: 'assign', targets: $1 } }
     | testlist_star_expr expr_stmt0
         { 
             $$ = {
-                type: 'var', 
+                type: 'assign', 
                 targets: ($1).concat( $2.targets ), 
                 sources: $2.sources 
             }
         }
     | testlist_star_expr augassign yield_expr
     | testlist_star_expr augassign testlist
-        { $$ = { type: 'var', targets: $1, sources: $3, op: $2 } }
+        { $$ = { type: 'assign', targets: $1, sources: $3, op: $2 } }
     ;
 
 expr_stmt0
@@ -415,17 +416,7 @@ augassign
     | '<<='
     | '>>='
     | '**='
-        { 
-            $$ = function( a, b ) { 
-                return a + '=' + 'Math.pow(' + a + ',' + b + ')'
-            } 
-        }
     | '//='
-        {
-            $$ = function( a, b ) {
-                return a + '=' + 'Math.floor(' + a + '/' + b + ')'
-            }
-        }
     ;
 
 // del_stmt: 'del' exprlist
@@ -460,7 +451,7 @@ return_stmt
     : 'return'
         { $$ = {type:'return'} }
     | 'return' testlist
-        { $$ = {type:'return', value:$1} }
+        { $$ = {type:'return', value:$2} }
     ;
 
 // yield_stmt: yield_expr
@@ -499,9 +490,9 @@ import_name
 //  'import' ('*' | '(' import_as_names ')' | import_as_names))
 import_from
     : 'from' dotted_name 'import' import_from_tail
-        { $$ = { type: 'import',  base: $2, imports: $4  } }
+        { $$ = { type: 'from',  base: $2, imports: $4  } }
     | 'from' import_from0 dotted_name 'import' import_from_tail
-        { $$ = { type: 'import',  base: $2 + $3, imports: $5  } }
+        { $$ = { type: 'from',  base: $2 + $3, imports: $5  } }
     | 'from' import_from0 'import' import_from_tail
     ;
 
@@ -587,27 +578,35 @@ dotted_name0
     ;
 
 // global_stmt: 'global' NAME (',' NAME)*
-// todo: behavior undefined (maybe use to avoid setting a 'var' within the scope)
+// todo: behavior undefined (maybe use to avoid setting a 'assign' within the scope)
 global_stmt
     : 'global' NAME
+        { $$ = { type: 'global', names: [$2] } }
     | 'global' NAME global_stmt0
+        { $$ = { type: 'global', names: $2 } }
     ;
 
 global_stmt0
     : ',' NAME
+        { $$ = [$2] }
     | ',' NAME global_stmt0
+        { $$ = [$2].concat($3) }
     ;
 
 // nonlocal_stmt: 'nonlocal' NAME (',' NAME)*
-// todo: behavior undefined (maybe use to avoid setting a 'var' within the scope)
+// todo: behavior undefined (maybe use to avoid setting a 'assign' within the scope)
 nonlocal_stmt
     : 'nonlocal' NAME
+        { $$ = { type: 'nonlocal', names: [$2] } }
     | 'nonlocal' NAME nonlocal_stmt0
+        { $$ = { type: 'nonlocal', names: $2 } }
     ;
 
 nonlocal_stmt0
     : ',' NAME
+        { $$ = [$2] }
     | ',' NAME nonlocal_stmt0
+        { $$ = [$2].concat($3) }
     ;
 
 // assert_stmt: 'assert' test [',' test]
@@ -706,7 +705,7 @@ try_excepts
 // make sure that the default except clause is last
 except_clause
     : 'except'
-        { $$ = {} }
+        { $$ = { cond: null} }
     | 'except' test
         { $$ = { cond: $2 } }
     | 'except' test 'as' NAME
@@ -716,13 +715,12 @@ except_clause
 // with_stmt: 'with' with_item (',' with_item)*  ':' suite
 with_stmt
     : 'with' with_item ':' suite
-        { $$ = { type: 'with',  with: $2.with, as: $2.as, code: $4  } }
+        { $$ = { type: 'with',  items: $2, code: $4 } }
     | 'with' with_item with_stmt0 ':' suite
         { 
             $2 = [ $2 ].concat( $3 )
             $$ = { type: 'with', 
-                with: $2.map(function(w){ return w.with }).join( ',' ),
-                as: $2.map(function(w){ return w.as }).join( ',' ),
+                items: $2,
                 code: $5 
             }
         }
@@ -761,7 +759,7 @@ suite0
 test
     : or_test
     | or_test 'if' or_test 'else' test
-        { $$ = {type:'ifexpr', test: $1, thenExpr:$3, elseExpr: $5} }
+        { $$ = {type:'ifexpr', test: $1, then:$3, else: $5} }
     | lambdef
     ;
 
@@ -1256,7 +1254,7 @@ yield_expr
     : 'yield'
         { $$ = { type: 'yield' } }
     | 'yield' yield_arg
-        { $$ = { type: 'yield', arg: $1 } }
+        { $$ = { type: 'yield', value: $1 } }
     ;
 
 // yield_arg: 'from' test | testlist

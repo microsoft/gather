@@ -149,7 +149,7 @@ class ControlFlowGraph:
             # All the handler CFGs go to the finally.
             if statement.handlers:
                 for (_, handler_exit) in handler_pairs:
-                    self._add_successor(handler_exit, after_try)
+                    self._add_successor(handler_exit, finally_entry)
         else:
             # All the handler CFGs go to the statement after the try,
             # since the corresponding exception was handled.
