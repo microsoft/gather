@@ -178,7 +178,7 @@ expressions
 // file_input: (NEWLINE | stmt)* ENDMARKER
 file_input
     : EOF
-    | file_input0 EOF    { $$ = { type: 'module', code: $1 } }
+    | file_input0 EOF    { $$ = { type: 'module', code: $1, location: @$ } }
     ;
 
 file_input0
@@ -193,11 +193,11 @@ file_input0
 // decorator: '@' dotted_name [ '(' [arglist] ')' ] NEWLINE
 decorator
     : '@' dotted_name NEWLINE
-        { $$ = { type: 'decorator', decorator: $2 } }
+        { $$ = { type: 'decorator', decorator: $2, location: @$ } }
     | '@' dotted_name '(' ')' NEWLINE
-        { $$ = { type: 'decorator', decorator: $2, args: '()' } }
+        { $$ = { type: 'decorator', decorator: $2, args: '()', location: @$ } }
     | '@' dotted_name '(' arglist ')' NEWLINE
-        { $$ = { type: 'decorator', decorator: $2, args: $4 } }
+        { $$ = { type: 'decorator', decorator: $2, args: $4, location: @$ } }
     ;
 
 // decorators: decorator+
@@ -211,16 +211,17 @@ decorators
 // decorated: decorators (classdef | funcdef)
 decorated
     : decorators classdef
-        { $$ = { type: 'decorate', decorators: $1, def: $2 } }
+        { $$ = { type: 'decorate', decorators: $1, def: $2, location: @$ } }
     | decorators funcdef
-        { $$ = { type: 'decorate', decorators: $1, def: $2 } }
+        { $$ = { type: 'decorate', decorators: $1, def: $2, location: @$ } }
     ;
 
 // funcdef: 'def' NAME parameters ['->' test] ':' suite
 funcdef
     : 'def' NAME parameters ':' suite
-        { $$ = { type: 'def', name: $2, params: $3, code: $5 } }
+        { $$ = { type: 'def', name: $2, params: $3, code: $5, location: @$ } }
     | 'def' NAME parameters '->' test ':' suite
+        { $$ = { type: 'def', name: $2, params: $3, code: $7, annot: $5, location: @$ } }
     ;
 
 // parameters: '(' [typedargslist] ')'
@@ -343,17 +344,13 @@ small_stmt: expr_stmt | del_stmt | pass_stmt | flow_stmt | import_stmt |
 //  ('=' (yield_expr|testlist_star_expr))*)
 expr_stmt
     : testlist_star_expr
+        { $$ = $1.length == 1 ? $1[0] : { type: 'tuple', items: $1, location: @$ } }
     | testlist_star_expr assign
-        { 
-            $$ = {
-                type: 'assign', 
-                targets: ($1).concat( $2.targets ), 
-                sources: $2.sources 
-            }
-        }
+        { $$ = { type: 'assign', targets: $1.concat($2.targets), sources: $2.sources, location: @$ } }
     | testlist_star_expr augassign yield_expr
+        { $$ = { type: 'assign', op: $2, targets: $1, sources: $3, location: @$ } }
     | testlist_star_expr augassign testlist
-        { $$ = { type: 'assign', op: $2, targets: $1, sources: $3 } }
+        { $$ = { type: 'assign', op: $2, targets: $1, sources: $3, location: @$ } }
     ;
 
 assign
@@ -362,12 +359,7 @@ assign
     | '=' testlist_star_expr
         { $$ = { targets: [], sources: $2 } }
     | '=' testlist_star_expr assign
-        { 
-            $$ = { 
-                targets: ($2).concat( $3.targets ), 
-                sources: $3.sources 
-            } 
-        }
+        { $$ = { targets: $2.concat($3.targets), sources: $3.sources } }
     ;
 
 // testlist_star_expr: (test|star_expr) (',' (test|star_expr))* [',']
@@ -421,13 +413,13 @@ augassign
 // del_stmt: 'del' exprlist
 del_stmt
     : 'del' NAME
-        { $$ = {type:'del', name: $1} }
+        { $$ = {type:'del', name: $1, location: @$} }
     ;
 
 // pass_stmt: 'pass'
 pass_stmt
     : 'pass' 
-        { $$ = {type:'pass'} }
+        { $$ = {type:'pass', location: @$} }
     ;
 
 // flow_stmt: break_stmt | continue_stmt | return_stmt | raise_stmt | yield_stmt
@@ -436,21 +428,21 @@ flow_stmt: break_stmt | continue_stmt | return_stmt | raise_stmt | yield_stmt;
 // break_stmt: 'break'
 break_stmt
     : 'break' 
-        { $$ = {type:'break'} }
+        { $$ = {type:'break', location: @$} }
     ;
 
 // continue_stmt: 'continue'
 continue_stmt
     : 'continue'
-        { $$ = {type:'continue'} }
+        { $$ = {type:'continue', location: @$} }
     ;
 
 // return_stmt: 'return' [testlist]
 return_stmt
     : 'return'
-        { $$ = {type:'return'} }
+        { $$ = {type:'return', location: @$} }
     | 'return' testlist
-        { $$ = {type:'return', value:$2} }
+        { $$ = {type:'return', value:$2, location: @$} }
     ;
 
 // yield_stmt: yield_expr
@@ -461,17 +453,12 @@ yield_stmt
 // raise_stmt: 'raise' [test ['from' test]]
 raise_stmt
     : 'raise'
-        { $$ = {type: 'raise'} }
+        { $$ = {type: 'raise', location: @$} }
     | 'raise' test
-        { $$ = {type: 'raise', err: $2 } }
+        { $$ = {type: 'raise', err: $2, location: @$ } }
     | 'raise' test 'from' test
         { 
-            $2 =  '(function(){'
-                + 'var ___pys_exc=' + $2 + ';'
-                + '___pys_exc.__cause__=' + $4 + ';'
-                + 'return ___pys_exc'
-                + '})()'
-            $$ = { type: 'raise',  err: $2  }
+            $$ = { type: 'raise',  err: $2, location: @$  }
         }
     ;
 
@@ -482,16 +469,16 @@ import_stmt
 // import_name: 'import' dotted_as_names
 import_name
     : 'import' dotted_as_names
-        { $$ = {type: 'import', names: $2 } }
+        { $$ = {type: 'import', names: $2, location: @$ } }
     ;
 
 // import_from: ('from' (('.' | '...')* dotted_name | ('.' | '...')+)
 //  'import' ('*' | '(' import_as_names ')' | import_as_names))
 import_from
     : 'from' dotted_name 'import' import_from_tail
-        { $$ = { type: 'from',  base: $2, imports: $4  } }
+        { $$ = { type: 'from',  base: $2, imports: $4, location: @$ } }
     | 'from' import_from0 dotted_name 'import' import_from_tail
-        { $$ = { type: 'from',  base: $2 + $3, imports: $5  } }
+        { $$ = { type: 'from',  base: $2 + $3, imports: $5, location: @$ } }
     | 'from' import_from0 'import' import_from_tail
     ;
 
@@ -580,9 +567,9 @@ dotted_name0
 // todo: behavior undefined (maybe use to avoid setting a 'assign' within the scope)
 global_stmt
     : 'global' NAME
-        { $$ = { type: 'global', names: [$2] } }
+        { $$ = { type: 'global', names: [$2], location: @$ } }
     | 'global' NAME global_stmt0
-        { $$ = { type: 'global', names: $2 } }
+        { $$ = { type: 'global', names: $2, location: @$ } }
     ;
 
 global_stmt0
@@ -596,9 +583,9 @@ global_stmt0
 // todo: behavior undefined (maybe use to avoid setting a 'assign' within the scope)
 nonlocal_stmt
     : 'nonlocal' NAME
-        { $$ = { type: 'nonlocal', names: [$2] } }
+        { $$ = { type: 'nonlocal', names: [$2], location: @$ } }
     | 'nonlocal' NAME nonlocal_stmt0
-        { $$ = { type: 'nonlocal', names: $2 } }
+        { $$ = { type: 'nonlocal', names: $2, location: @$ } }
     ;
 
 nonlocal_stmt0
@@ -611,9 +598,9 @@ nonlocal_stmt0
 // assert_stmt: 'assert' test [',' test]
 assert_stmt
     : 'assert' test
-        { $$ = { type: 'assert',  cond: $2  } }
+        { $$ = { type: 'assert',  cond: $2, location: @$ } }
     | 'assert' test ',' test
-        { $$ = { type: 'assert',  cond: $2, err: $4  } }
+        { $$ = { type: 'assert',  cond: $2, err: $4, location: @$ } }
     ;
 
 // compound_stmt: if_stmt | while_stmt | for_stmt | try_stmt | with_stmt |
@@ -624,31 +611,18 @@ compound_stmt:  if_stmt | while_stmt | for_stmt | try_stmt | with_stmt |
 // if_stmt: 'if' test ':' suite ('elif' test ':' suite)* ['else' ':' suite]
 if_stmt
     : 'if' test ':' suite
-        { $$ = { type: 'if',  cond: $2, code: $4  } }
+        { $$ = { type: 'if',  cond: $2, code: $4, location: @$ } }
     | 'if' test ':' suite 'else' ':' suite
         { 
-            $$ = { type: 'if', 
-                cond: $2, 
-                code: $4, 
-                else: $7
-            }
+            $$ = { type: 'if', cond: $2, code: $4, else: $7, location: @$ }
         }
     | 'if' test ':' suite if_stmt0
         {
-            $$ = { type: 'if',
-                cond: $2,
-                code: $4,
-                elif: $5
-            }
+            $$ = { type: 'if', cond: $2, code: $4, elif: $5 }
         }
     | 'if' test ':' suite if_stmt0 'else' ':' suite
         {
-            $$ = { type: 'if',
-                cond: $2,
-                code: $4,
-                elif: $5,
-                else: $8
-            }
+            $$ = { type: 'if', cond: $2, code: $4, elif: $5, else: $8 }
         }
     ;
 
@@ -662,17 +636,17 @@ if_stmt0
 // while_stmt: 'while' test ':' suite ['else' ':' suite]
 while_stmt
     : 'while' test ':' suite
-        { $$ = { type: 'while',  cond: $2, code: $4  } }
+        { $$ = { type: 'while',  cond: $2, code: $4, location: @$ } }
     | 'while' test ':' suite 'else' ':' suite
-        { $$ = { type: 'while',  cond: $2, code: $4, else: $7  } }
+        { $$ = { type: 'while',  cond: $2, code: $4, else: $7, location: @$ } }
     ;
 
 // for_stmt: 'for' exprlist 'in' testlist ':' suite ['else' ':' suite]
 for_stmt
     : 'for' exprlist 'in' testlist ':' suite
-        { $$ = { type: 'for',  target: $2, iter: $4, code: $6  } }
+        { $$ = { type: 'for',  target: $2, iter: $4, code: $6, location: @$ } }
     | 'for' exprlist 'in' testlist ':' suite 'else' ':' suite
-        { $$ = { type: 'for',  target: $2, iter: $4, code: $6, else: $9  } }
+        { $$ = { type: 'for',  target: $2, iter: $4, code: $6, else: $9, location: @$ } }
     ;
 
 // try_stmt: ('try' ':' suite
@@ -682,15 +656,15 @@ for_stmt
 //     'finally' ':' suite))
 try_stmt
     : 'try' ':' suite 'finally' ':' suite
-        { $$ = { type: 'try',  code: $3, finally: $6  } }
+        { $$ = { type: 'try',  code: $3, finally: $6, location: @$ } }
     | 'try' ':' suite try_excepts
-        { $$ = { type: 'try',  code: $3, excepts: $4  } }
+        { $$ = { type: 'try',  code: $3, excepts: $4, location: @$ } }
     | 'try' ':' suite try_excepts 'finally' ':' suite
-        { $$ = { type: 'try',  code: $3, excepts: $4, finally: $7  } }
+        { $$ = { type: 'try',  code: $3, excepts: $4, finally: $7, location: @$ } }
     | 'try' ':' suite try_excepts 'else' ':' suite
-        { $$ = { type: 'try',  code: $3, excepts: $4, else: $7  } }
+        { $$ = { type: 'try',  code: $3, excepts: $4, else: $7, location: @$ } }
     | 'try' ':' suite try_excepts 'else' ':' suite 'finally' ':' suite
-        { $$ = { type: 'try',  code: $3, excepts: $4, else: $7, finally: $10  } }
+        { $$ = { type: 'try',  code: $3, excepts: $4, else: $7, finally: $10, location: @$ } }
     ;
 
 try_excepts
@@ -714,14 +688,11 @@ except_clause
 // with_stmt: 'with' with_item (',' with_item)*  ':' suite
 with_stmt
     : 'with' with_item ':' suite
-        { $$ = { type: 'with',  items: $2, code: $4 } }
+        { $$ = { type: 'with',  items: $2, code: $4, location: @$ } }
     | 'with' with_item with_stmt0 ':' suite
         { 
             $2 = [ $2 ].concat( $3 )
-            $$ = { type: 'with', 
-                items: $2,
-                code: $5 
-            }
+            $$ = { type: 'with', items: $2, code: $5, location: @$ }
         }
     ;
 
@@ -758,7 +729,7 @@ suite0
 test
     : or_test
     | or_test 'if' or_test 'else' test
-        { $$ = {type:'ifexpr', test: $1, then:$3, else: $5} }
+        { $$ = {type:'ifexpr', test: $1, then:$3, else: $5, location: @$ } }
     | lambdef
     ;
 
@@ -768,9 +739,9 @@ test_nocond: or_test | lambdef_nocond ;
 // lambdef: 'lambda' [varargslist] ':' test
 lambdef
     : 'lambda' ':' test
-        { $$ = { type: 'lambda',  args: '', code: $3  } }
+        { $$ = { type: 'lambda',  args: '', code: $3, location: @$ } }
     | 'lambda' varargslist ':' test
-        { $$ = { type: 'lambda',  args: $2, code: $3  } }
+        { $$ = { type: 'lambda',  args: $2, code: $3, location: @$ } }
     ;
 
 // lambdef_nocond: 'lambda' [varargslist] ':' test_nocond
@@ -788,9 +759,9 @@ or_test
 
 or_test0
     : 'or' and_test
-        { $$ = function (left) { return { type: 'binop', op: $1, left: left, right: $2 }; } }
+        { loc = @$; $$ = function (left) { return { type: 'binop', op: $1, left: left, right: $2, location: loc }; } }
     | 'or' and_test or_test0
-        { $$ = function (left) { return $3({ type: 'binop', op: $1, left: left, right: $2 }); } }
+        { loc = @$; $$ = function (left) { return $3({ type: 'binop', op: $1, left: left, right: $2, location: loc }); } }
     ;
 
 // and_test: not_test ('and' not_test)*
@@ -802,15 +773,15 @@ and_test
 
 and_test0
     : 'and' not_test
-        { $$ = function (left) { return { type: 'binop', op: $1, left: left, right: $2 }; } }
+        { loc = @$; $$ = function (left) { return { type: 'binop', op: $1, left: left, right: $2, location: loc }; } }
     | 'and' not_test and_test0
-        { $$ = function (left) { return $3({ type: 'binop', op: $1, left: left, right: $2 }); } }
+        { loc = @$; $$ = function (left) { return $3({ type: 'binop', op: $1, left: left, right: $2, location: loc }); } }
     ;
 
 // not_test: 'not' not_test | comparison
 not_test
     : 'not' not_test
-        { $$ = { type: 'unop', op: $1, operand: $2 } }
+        { $$ = { type: 'unop', op: $1, operand: $2, location: @$ } }
     | comparison
     ;
 
@@ -823,9 +794,9 @@ comparison
 
 comparison0
     : comp_op expr
-        { $$ = function (left) { return { type: 'binop', op: $1, left: left, right: $2 }; } }
+        { loc=@$; $$ = function (left) { return { type: 'binop', op: $1, left: left, right: $2, location: loc, foo:'hi' }; } }
     | comp_op expr comparison0
-        { $$ = function (left) { return $3({ type: 'binop', op: $1, left: left, right: $2 }); } }
+        { loc=@$; $$ = function (left) { return $3({ type: 'binop', op: $1, left: left, right: $2, location: loc, bar:'hi' }); } }
     ;
 
 // comp_op: '<'|'>'|'=='|'>='|'<='|'<>'|'!='|'in'|'not' 'in'|'is'|'is' 'not'
@@ -842,7 +813,7 @@ comp_op: '<'|'>'|'=='|'>='|'<='|'!='
 // star_expr: '*' expr
 star_expr
     : '*' expr 
-        { $$ = { type:'starred', value: $1 } }
+        { $$ = { type:'starred', value: $1, location: @$ } }
     ;
 
 // expr: xor_expr ('|' xor_expr)*
@@ -854,9 +825,9 @@ expr
 
 expr0
     : '|' xor_expr
-        { $$ = function (left) { return {type:'binop', op:$1, left: left, right: $2}; } }
+        { loc = @$; $$ = function (left) { return {type:'binop', op:$1, left: left, right: $2, location: loc }; } }
     | '|' xor_expr expr0
-        { $$ = function (left) { return $3({type:'binop', op:$1, left: left, right: $2 }); } }
+        { loc = @$; $$ = function (left) { return $3({type:'binop', op:$1, left: left, right: $2, location: loc }); } }
     ;
 
 // xor_expr: and_expr ('^' and_expr)*
@@ -868,9 +839,9 @@ xor_expr
 
 xor_expr0
     : '^' and_expr
-        { $$ = function (left) { return {type:'binop', op:$1, left: left, right: $2}; } }
+        { loc = @$; $$ = function (left) { return {type:'binop', op:$1, left: left, right: $2, location: loc }; } }
     | '^' and_expr xor_expr0
-        { $$ = function (left) { return $3({type:'binop', op:$1, left: left, right: $2 }); } }
+        { loc = @$; $$ = function (left) { return $3({type:'binop', op:$1, left: left, right: $2, location: loc }); } }
     ;
 
 // and_expr: shift_expr ('&' shift_expr)*
@@ -882,9 +853,9 @@ and_expr
 
 and_expr0
     : '&' shift_expr
-        { $$ = function (left) { return {type:'binop', op:$1, left: left, right: $2}; } }
+        { loc = @$; $$ = function (left) { return {type:'binop', op:$1, left: left, right: $2, location: loc }; } }
     | '&' shift_expr and_expr0
-        { $$ = function (left) { return $3({type:'binop', op:$1, left: left, right: $2 }); } }
+        { loc = @$; $$ = function (left) { return $3({type:'binop', op:$1, left: left, right: $2, location: loc }); } }
     ;
 
 // shift_expr: arith_expr (('<<'|'>>') arith_expr)*
@@ -896,13 +867,13 @@ shift_expr
 
 shift_expr0
     : '<<' arith_expr
-        { $$ = function (left) { return {type:'binop', op:$1, left: left, right: $2}; } }
+        { loc = @$; $$ = function (left) { return {type:'binop', op:$1, left: left, right: $2, location: loc }; } }
     | '<<' arith_expr shift_expr0
-        { $$ = function (left) { return $3({type:'binop', op:$1, left: left, right: $2 }); } }
+        { loc = @$; $$ = function (left) { return $3({type:'binop', op:$1, left: left, right: $2, location: loc }); } }
     | '>>' arith_expr
-        { $$ = function (left) { return {type:'binop', op:$1, left: left, right: $2}; } }
+        { loc = @$; $$ = function (left) { return {type:'binop', op:$1, left: left, right: $2, location: loc }; } }
     | '>>' arith_expr shift_expr0
-        { $$ = function (left) { return $3({type:'binop', op:$1, left: left, right: $2 }); } }
+        { loc = @$; $$ = function (left) { return $3({type:'binop', op:$1, left: left, right: $2, location: loc }); } }
     ;
 
 // arith_expr: term (('+'|'-') term)*
@@ -914,13 +885,13 @@ arith_expr
 
 arith_expr0
     : '+' term
-        { $$ = function (left) { return {type:'binop', op:$1, left: left, right: $2}; } }
+        { loc = @$; $$ = function (left) { return {type:'binop', op:$1, left: left, right: $2, location: loc }; } }
     | '+' term arith_expr0
-        { $$ = function (left) { return $3({type:'binop', op:$1, left: left, right: $2 }); } }
+        { loc = @$; $$ = function (left) { return $3({type:'binop', op:$1, left: left, right: $2, location: loc }); } }
     | '-' term
-        { $$ = function (left) { return {type:'binop', op:$1, left: left, right: $2}; } }
+        { loc = @$; $$ = function (left) { return {type:'binop', op:$1, left: left, right: $2, location: loc }; } }
     | '-' term arith_expr0
-        { $$ = function (left) { return $3({type:'binop', op:$1, left: left, right: $2 }); } }
+        { loc = @$; $$ = function (left) { return $3({type:'binop', op:$1, left: left, right: $2, location: loc }); } }
     ;
 
 // term: factor (('*'|'/'|'%'|'//') factor)*
@@ -932,31 +903,31 @@ term
 
 term0
     : '*' factor
-        { $$ = function (left) { return {type:'binop', op:$1, left: left, right: $2}; } }
+        { loc = @$; $$ = function (left) { return {type:'binop', op:$1, left: left, right: $2, location: loc }; } }
     | '*' factor term0
-        { $$ = function (left) { return $3({type:'binop', op:$1, left: left, right: $2 }); } }
+        { loc = @$; $$ = function (left) { return $3({type:'binop', op:$1, left: left, right: $2, location: loc }); } }
     | '/' factor
-        { $$ = function (left) { return {type:'binop', op:$1, left: left, right: $2}; } }
+        { loc = @$; $$ = function (left) { return {type:'binop', op:$1, left: left, right: $2, location: loc }; } }
     | '/' factor term0
-        { $$ = function (left) { return $3({type:'binop', op:$1, left: left, right: $2 }); } }
+        { loc = @$; $$ = function (left) { return $3({type:'binop', op:$1, left: left, right: $2, location: loc }); } }
     | '%' factor
-        { $$ = function (left) { return {type:'binop', op:$1, left: left, right: $2}; } }
+        { loc = @$; $$ = function (left) { return {type:'binop', op:$1, left: left, right: $2, location: loc }; } }
     | '%' factor term0
-        { $$ = function (left) { return $3({type:'binop', op:$1, left: left, right: $2 }); } }
+        { loc = @$; $$ = function (left) { return $3({type:'binop', op:$1, left: left, right: $2, location: loc }); } }
     | '//' factor
-        { $$ = function (left) { return {type:'binop', op:$1, left: left, right: $2}; } }
+        { loc = @$; $$ = function (left) { return {type:'binop', op:$1, left: left, right: $2, location: loc }; } }
     | '//' factor term0
-        { $$ = function (left) { return $3({type:'binop', op:$1, left: left, right: $2 }); } }
+        { loc = @$; $$ = function (left) { return $3({type:'binop', op:$1, left: left, right: $2, location: loc }); } }
     ;
 
 // factor: ('+'|'-'|'~') factor | power
 factor
     : '+' factor
-        { $$ = {type:'unop', op:$1, operand:$2} }
+        { $$ = {type:'unop', op:$1, operand:$2, location: @$} }
     | '-' factor
-        { $$ = {type:'unop', op:$1, operand:$2} }
+        { $$ = {type:'unop', op:$1, operand:$2, location: @$} }
     | '~' factor
-        { $$ = {type:'unop', op:$1, operand:$2} }
+        { $$ = {type:'unop', op:$1, operand:$2, location: @$} }
     | power
     ;
 
@@ -964,7 +935,7 @@ factor
 power
     : atom_expr
     | atom_expr '**' factor
-        { $$ = {type: 'binop', op:$2, left: $1, right: $3} }
+        { $$ = {type: 'binop', op:$2, left: $1, right: $3, location: @$} }
     ;
 
 trailer_list
@@ -985,36 +956,36 @@ atom_expr
 //        NAME | NUMBER | STRING+ | '...' | 'None' | 'True' | 'False')
 atom
     : '(' ')'
-        { $$ = { type: 'tuple', value: [] } }
+        { $$ = { type: 'tuple', value: [], location: @$ } }
     | '(' yield_expr ')'
         { $$ = $2 }
     | '(' testlist_comp ')'
         { $$ = $2 }
     | '[' ']'
-        { $$ = { type: 'list', items: [] } }
+        { $$ = { type: 'list', items: [], location: @$ } }
     | '[' testlist_comp ']'
-        { $$ = { type: 'list',  items: $2  } }
+        { $$ = { type: 'list',  items: $2, location: @$ } }
     | '{' '}'
-        { $$ = { type: 'dict',  pairs: []  } }
+        { $$ = { type: 'dict',  pairs: [], location: @$ } }
     | '{' dictorsetmaker '}'
         {
             $$ = ( $2[ 0 ].k )
-                ? { type: 'dict',  pairs: $2  }
-                : { type: 'set',  items: $2  };
+                ? { type: 'dict',  pairs: $2, location: @$ }
+                : { type: 'set',  items: $2, location: @$ };
         }
     | NAME
-        { $$ = { type: 'name', id: $1 } }
+        { $$ = { type: 'name', id: $1, location: @$ } }
     | NUMBER
-        { $$ = { type: 'literal', value: $1 * 1 } } // convert to number
+        { $$ = { type: 'literal', value: $1 * 1, location: @$ } } // convert to number
     | STRING
-        { $$ = { type: 'literal', value: $1 } }
+        { $$ = { type: 'literal', value: $1, location: @$ } }
     | '...'
     | 'None'
-        { $$ = { type: 'literal', value: 'None' } }
+        { $$ = { type: 'literal', value: 'None', location: @$ } }
     | 'True'
-        { $$ = { type: 'literal', value: 'True'} }
+        { $$ = { type: 'literal', value: 'True', location: @$} }
     | 'False'
-        { $$ = { type: 'literal', value: 'False'} }
+        { $$ = { type: 'literal', value: 'False', location: @$} }
     ;
 
 // testlist_comp: (test|star_expr) ( comp_for | (',' (test|star_expr))* [','] )
@@ -1056,15 +1027,15 @@ testlist_comp_tail0
 // trailer: '(' [arglist] ')' | '[' subscriptlist ']' | '.' NAME
 trailer
     : '(' ')'
-        { $$ = function (left) { return {type: 'call', func: left, args: []}; } }
+        { loc = @$; $$ = function (left) { return {type: 'call', func: left, args: [], location: loc }; } }
     | '(' arglist ')'
-        { $$ = function (left) { return {type: 'call', func: left, args: $2}; } }
+        { loc = @$; $$ = function (left) { return {type: 'call', func: left, args: $2, location: loc }; } }
     | '[' ']'
-        { $$ = function (left) { return {type: 'index', value: left, args: []}; } }
+        { loc = @$; $$ = function (left) { return {type: 'index', value: left, args: [], location: loc }; } }
     | '[' subscriptlist ']'
-        { $$ = function (left) { return {type: 'index', value: left, args: $2}; } }
+        { loc = @$; $$ = function (left) { return {type: 'index', value: left, args: $2, location: loc }; } }
     | '.' NAME
-        { $$ = function (left) { return {type: 'dot', value: left, name: $2}; } }
+        { loc = @$; $$ = function (left) { return {type: 'dot', value: left, name: $2, location: loc }; } }
     ;
 
 // subscriptlist: subscript (',' subscript)* [',']
@@ -1193,11 +1164,11 @@ setmaker
 // classdef: 'class' NAME ['(' [arglist] ')'] ':' suite
 classdef
     : 'class' NAME ':' suite
-        { $$ = { type: 'class',  name: $2, code: $4  } }
+        { $$ = { type: 'class',  name: $2, code: $4, location: @$ } }
     | 'class' NAME '(' ')' ':' suite
-        { $$ = { type: 'class',  name: $2, code: $6  } }
+        { $$ = { type: 'class',  name: $2, code: $6, location: @$ } }
     | 'class' NAME '(' arglist ')' ':' suite
-        { $$ = { type: 'class',  name: $2, code: $7, extends: $4  } }
+        { $$ = { type: 'class',  name: $2, code: $7, extends: $4, location: @$ } }
     ;
 
 // arglist: (argument ',')* (argument [',']
@@ -1235,25 +1206,25 @@ comp_iter: comp_for | comp_if ;
 // comp_for: 'for' exprlist 'in' or_test [comp_iter]
 comp_for
     : 'for' exprlist 'in' or_test
-        { $$ = [{ type: 'for', for: $2, in: $4 }] }
+        { $$ = [{ type: 'for', for: $2, in: $4, location: @$ }] }
     | 'for' exprlist 'in' or_test comp_iter
-        { $$ = [{ type: 'for', for: $2, in: $4 }].concat( $5 ) }
+        { $$ = [{ type: 'for', for: $2, in: $4, location: @$ }].concat( $5 ) }
     ;
 
 // comp_if: 'if' test_nocond [comp_iter]
 comp_if
     : 'if' test_nocond
-        { $$ = [{ type: 'if', test: $2 }] }
+        { $$ = [{ type: 'if', test: $2, location: @$ }] }
     | 'if' test_nocond comp_iter
-        { $$ = [{ type: 'if', test: $2 }].concat( $3 )}
+        { $$ = [{ type: 'if', test: $2, location: @$ }].concat( $3 )}
     ;
 
 // yield_expr: 'yield' [yield_arg]
 yield_expr
     : 'yield'
-        { $$ = { type: 'yield' } }
+        { $$ = { type: 'yield', location: @$ } }
     | 'yield' yield_arg
-        { $$ = { type: 'yield', value: $1 } }
+        { $$ = { type: 'yield', value: $1, location: @$ } }
     ;
 
 // yield_arg: 'from' test | testlist

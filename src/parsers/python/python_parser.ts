@@ -34,30 +34,41 @@ export type ISyntaxNode =
     | IClass
     ;
 
+export interface ILocation {
+    first_line: number;
+    first_column: number;
+    last_line: number;
+    last_column: number;
+}
+
+export interface ILocatable {
+    location: ILocation; 
+}
+
 export const MODULE = 'module';
 
-export interface IModule {
+export interface IModule extends ILocatable {
     type: typeof MODULE;
     code: ISyntaxNode[];
 }
 
 export const IMPORT = 'import';
 
-export interface IImport {
+export interface IImport extends ILocatable {
     type: typeof IMPORT;
     names: { path: string }[];
 }
 
 export const FROM = 'from';
 
-export interface IFrom {
+export interface IFrom extends ILocatable {
     type: typeof FROM;
     imports: { path: string; name: string }[];
 }
 
 export const DECORATOR = 'decorator';
 
-export interface IDecorator {
+export interface IDecorator extends ILocatable {
     type: typeof DECORATOR;
     decorator: string;
     args: ISyntaxNode[];
@@ -65,7 +76,7 @@ export interface IDecorator {
 
 export const DECORATE = 'decorate';
 
-export interface IDecorate {
+export interface IDecorate extends ILocatable {
     type: typeof DECORATE;
     decorators: IDecorator[];
     def: ISyntaxNode;
@@ -73,7 +84,7 @@ export interface IDecorate {
 
 export const DEF = 'def';
 
-export interface IDef {
+export interface IDef extends ILocatable {
     type: typeof DEF;
     name: string;
     params: IParam[];
@@ -87,7 +98,7 @@ export interface IParam {
 
 export const ASSIGN = 'assign';
 
-export interface IAssignment {
+export interface IAssignment extends ILocatable {
     type: typeof ASSIGN;
     targets: ISyntaxNode[];
     sources: ISyntaxNode[];
@@ -95,7 +106,7 @@ export interface IAssignment {
 
 export const ASSERT = 'assert';
 
-export interface IAssert {
+export interface IAssert extends ILocatable {
     type: typeof ASSERT;
     cond: ISyntaxNode;
     err: ISyntaxNode;
@@ -103,54 +114,54 @@ export interface IAssert {
 
 export const RETURN = 'return';
 
-export interface IReturn {
+export interface IReturn extends ILocatable {
     type: typeof RETURN;
     value: ISyntaxNode;
 }
 
 export const YIELD = 'yield';
 
-export interface IYield {
+export interface IYield extends ILocatable {
     type: typeof YIELD;
     value: ISyntaxNode;
 }
 
 export const RAISE = 'raise';
 
-export interface IRaise {
+export interface IRaise extends ILocatable {
     type: typeof RAISE;
     err: ISyntaxNode;
 }
 
 export const BREAK = 'break';
 
-export interface IBreak {
+export interface IBreak extends ILocatable {
     type: typeof BREAK;
 }
 
 export const CONTINUE = 'continue';
 
-export interface IContinue {
+export interface IContinue extends ILocatable {
     type: typeof CONTINUE;
 }
 
 export const GLOBAL = 'global';
 
-export interface IGlobal {
+export interface IGlobal extends ILocatable {
     type: typeof GLOBAL;
     names: string[];
 }
 
 export const NONLOCAL = 'nonlocal';
 
-export interface INonlocal {
+export interface INonlocal extends ILocatable {
     type: typeof NONLOCAL;
     names: string[];
 }
 
 export const IF = 'if';
 
-export interface IIf {
+export interface IIf extends ILocatable {
     type: typeof IF;
     cond: ISyntaxNode;
     code: ISyntaxNode[];
@@ -160,7 +171,7 @@ export interface IIf {
 
 export const WHILE = 'while';
 
-export interface IWhile {
+export interface IWhile extends ILocatable {
     type: typeof WHILE;
     cond: ISyntaxNode;
     code: ISyntaxNode[];
@@ -169,7 +180,7 @@ export interface IWhile {
 
 export const FOR = 'for';
 
-export interface IFor {
+export interface IFor extends ILocatable {
     type: typeof FOR;
     target: ISyntaxNode;
     iter: ISyntaxNode;
@@ -178,7 +189,7 @@ export interface IFor {
 
 export const TRY = 'try';
 
-export interface ITry {
+export interface ITry extends ILocatable {
     type: typeof TRY;
     code: ISyntaxNode[];
     excepts: { cond: ISyntaxNode; name: string; code: ISyntaxNode[] }[];
@@ -188,7 +199,7 @@ export interface ITry {
 
 export const WITH = 'with';
 
-export interface IWith {
+export interface IWith extends ILocatable {
     type: typeof WITH;
     items: { with: ISyntaxNode; as: ISyntaxNode }[];
     code: ISyntaxNode[];
@@ -196,7 +207,7 @@ export interface IWith {
 
 export const CALL = 'call';
 
-export interface ICall {
+export interface ICall extends ILocatable {
     type: typeof CALL;
     func: ISyntaxNode;
     args: ISyntaxNode[];
@@ -204,7 +215,7 @@ export interface ICall {
 
 export const IFEXPR = 'ifexpr';
 
-export interface IIfExpr {
+export interface IIfExpr extends ILocatable {
     type: typeof IFEXPR;
     test: ISyntaxNode;
     then: ISyntaxNode;
@@ -213,7 +224,7 @@ export interface IIfExpr {
 
 export const LAMBDA = 'lambda';
 
-export interface ILambda {
+export interface ILambda extends ILocatable {
     type: typeof LAMBDA;
     args: IParam[];
     code: ISyntaxNode;
@@ -221,7 +232,7 @@ export interface ILambda {
 
 export const UNOP = 'unop';
 
-export interface IUnaryOperator {
+export interface IUnaryOperator extends ILocatable {
     type: typeof UNOP;
     op: string;
     operand: ISyntaxNode;
@@ -229,7 +240,7 @@ export interface IUnaryOperator {
 
 export const BINOP = 'binop';
 
-export interface IBinaryOperator {
+export interface IBinaryOperator extends ILocatable {
     type: typeof BINOP;
     op: string;
     left: ISyntaxNode;
@@ -238,56 +249,56 @@ export interface IBinaryOperator {
 
 export const STARRED = 'starred';
 
-export interface IStarred {
+export interface IStarred extends ILocatable {
     type: typeof STARRED;
     value: ISyntaxNode;
 }
 
 export const TUPLE = 'tuple';
 
-export interface ITuple {
+export interface ITuple extends ILocatable {
     type: typeof TUPLE;
     value: ISyntaxNode[];
 }
 
 export const LIST = 'list';
 
-export interface IList {
+export interface IList extends ILocatable {
     type: typeof LIST;
     items: ISyntaxNode[]
 }
 
 export const SET = 'set';
 
-export interface ISet {
+export interface ISet extends ILocatable {
     type: typeof SET;
     items: ISyntaxNode[]
 }
 
 export const DICT = 'dict';
 
-export interface IDict {
+export interface IDict extends ILocatable {
     type: typeof DICT;
     pairs: { k: ISyntaxNode; v: ISyntaxNode }[];
 }
 
 export const NAME = 'name';
 
-export interface IName {
+export interface IName extends ILocatable {
     type: typeof NAME;
     id: string;
 }
 
 export const LITERAL = 'literal';
 
-export interface ILiteral {
+export interface ILiteral extends ILocatable {
     type: typeof LITERAL;
     value: any;
 }
 
 export const CLASS = 'class';
 
-export interface IClass {
+export interface IClass extends ILocatable {
     type: typeof CLASS;
     name: string;
     extends: ISyntaxNode[];

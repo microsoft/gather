@@ -1,5 +1,5 @@
 import * as ast from './parsers/python/python_parser';
-
+import { Set } from './Set';
 
 
 export class Block {
@@ -12,6 +12,13 @@ export class Block {
     public toString(): string {
         return 'BLOCK ' + this.id + ' (' + this.hint + ')\n' +
             this.statements.map(s => '    ' + JSON.stringify(s)).join('\n');
+    }
+}
+
+
+class BlockSet extends Set<Block> {
+    constructor(...items: Block[]) {
+        super(b => b.id.toString(), ...items);
     }
 }
 
@@ -36,7 +43,7 @@ export class ControlFlowGraph {
     private globalId = 0;
     private entry: Block;
     private exit: Block;
-    private successors = new Set<[Block, Block]>();
+    private successors = new Set<[Block, Block]>(([b1, b2]) => b1.id + ',' + b2.id);
 
     constructor(module: ast.IModule) {
         [this.entry, this.exit] = this.makeCFG(
@@ -50,31 +57,28 @@ export class ControlFlowGraph {
     }
 
     public get blocks(): Block[] {
-        const result: Block[] = [];
-        const visited = new Set<Block>();
-        const toVisit = new Set<Block>([this.entry]);
-        while (toVisit.size) {
-            const block = toVisit.values().next().value;
-            toVisit.delete(block);
-            visited.add(block);
-            result.push(block);
-            for (let [pred, succ] of this.successors.values()) {
-                if (pred === block && !visited.has(succ)) {
+        const visited: Block[] = [];
+        const toVisit = new BlockSet(this.entry);
+        while (!toVisit.empty) {
+            const block = toVisit.take();
+            visited.push(block);
+            this.successors.items.forEach(([pred, succ]) => {
+                if (pred === block && visited.indexOf(succ) < 0) {
                     toVisit.add(succ);
                 }
-            }
+            });
         }
-        return result;
+        return visited;
     }
 
     public getSuccessors(block: Block): Block[] {
-        return [...this.successors.values()]
+        return this.successors.items
             .filter(([p, _]) => p == block)
             .map(([_, s]) => s);
     }
 
     public getPredecessors(block: Block): Block[] {
-        return [...this.successors.values()]
+        return this.successors.items
             .filter(([_, s]) => s == block)
             .map(([p, _]) => p);
     }
@@ -105,14 +109,14 @@ export class ControlFlowGraph {
         this.link(bodyExit, joinBlock);
         let lastCondBlock: Block = ifCondBlock;
         if (statement.elif) {
-            for (let elif of statement.elif) {
+            statement.elif.forEach(elif => {
                 const elifCondBlock = this.makeBlock('elif cond', [elif.cond]);
                 this.link(lastCondBlock, elifCondBlock);
                 const [elifEntry, elifExit] = this.makeCFG('elif body', elif.code, context);
                 this.link(elifCondBlock, elifEntry);
                 this.link(elifExit, joinBlock);
                 lastCondBlock = elifCondBlock;
-            }
+            });
         }
         if (statement.else && statement.else.length) {
             const [elseEntry, elseExit] = this.makeCFG('else body', statement.else, context);
@@ -138,7 +142,7 @@ export class ControlFlowGraph {
     private handleFor(statement: ast.IFor, last: Block, context: Context): Block {
         const loopHeadBlock = this.makeBlock('for loop head',
             // synthesize a statement to simulate using the iterator
-            [{ type: ast.ASSIGN, sources: [statement.iter], targets: [statement.target] }]);
+            [{ type: ast.ASSIGN, sources: [statement.iter], targets: [statement.target], location: statement.location }]);
         this.link(last, loopHeadBlock);
         const afterLoop = this.makeBlock('for loop join');
         const [bodyEntry, bodyExit] = this.makeCFG('while body', statement.code, context.forLoop(loopHeadBlock, afterLoop));
@@ -150,7 +154,7 @@ export class ControlFlowGraph {
 
     private handleWith(statement: ast.IWith, last: Block, context: Context): Block {
         const assignments = statement.items.map(
-            ({ with: w, as: a }) => (<ast.IAssignment>{ type: ast.ASSIGN, targets: [a], sources: [w] }))
+            ({ with: w, as: a }) => (<ast.IAssignment>{ type: ast.ASSIGN, targets: [a], sources: [w], location: w.location }))
         const resourceBlock = this.makeBlock('with', assignments);
         this.link(last, resourceBlock);
         const [bodyEntry, bodyExit] = this.makeCFG('with body', statement.code, context);
@@ -187,7 +191,7 @@ export class ControlFlowGraph {
     private makeCFG(hint: string, statements: ast.ISyntaxNode[], context: Context): [Block, Block] {
         const entry = this.makeBlock(hint);
         let last = entry;
-        loop: for (let statement of statements) {
+        statements.forEach(statement => {
             switch (statement.type) {
                 case ast.DEF:
                     break;
@@ -208,18 +212,18 @@ export class ControlFlowGraph {
                     break;
                 case ast.RAISE:
                     this.link(last, context.exceptionBlock);
-                    break loop;
+                    return;
                 case ast.BREAK:
                     this.link(last, context.loopExit);
-                    break loop;
+                    return;
                 case ast.CONTINUE:
                     this.link(last, context.loopHead);
-                    break loop;
+                    return;
                 default:
                     last.statements.push(statement);
                     break;
             }
-        }
+        });
         return [entry, last];
     }
 }
