@@ -11,7 +11,7 @@ export class Block {
 
     public toString(): string {
         return 'BLOCK ' + this.id + ' (' + this.hint + ')\n' +
-            this.statements.map(s => '    ' + JSON.stringify(s)).join('\n');
+            this.statements.map(s => '    line ' + s.location.first_line).join('\n');
     }
 }
 
@@ -142,7 +142,7 @@ export class ControlFlowGraph {
     private handleFor(statement: ast.IFor, last: Block, context: Context): Block {
         const loopHeadBlock = this.makeBlock('for loop head',
             // synthesize a statement to simulate using the iterator
-            [{ type: ast.ASSIGN, sources: [statement.iter], targets: [statement.target], location: statement.location }]);
+            [{ type: ast.ASSIGN, op: undefined, sources: statement.iter, targets: statement.target, location: statement.iter[0].location }]);
         this.link(last, loopHeadBlock);
         const afterLoop = this.makeBlock('for loop join');
         const [bodyEntry, bodyExit] = this.makeCFG('while body', statement.code, context.forLoop(loopHeadBlock, afterLoop));
@@ -176,14 +176,20 @@ export class ControlFlowGraph {
         }
         const [bodyEntry, bodyExit] = this.makeCFG('try body', statement.code, exnContext);
         this.link(last, bodyEntry);
+        let normalExit = bodyExit;
+        if (statement.else) {
+            const [elseEntry, elseExit] = this.makeCFG('try else body', statement.else, context);
+            this.link(normalExit, elseEntry);
+            normalExit = elseExit;
+        }
         if (statement.finally) {
             const [finallyEntry, finallyExit] = this.makeCFG('finally body', statement.finally, context);
-            this.link(bodyExit, finallyEntry);
+            this.link(normalExit, finallyEntry);
             this.link(finallyExit, afterTry);
             handlerExits.forEach(handlerExit => this.link(handlerExit, finallyEntry));
         } else {
             handlerExits.forEach(handlerExit => this.link(handlerExit, afterTry));
-            this.link(bodyExit, afterTry);
+            this.link(normalExit, afterTry);
         }
         return afterTry;
     }

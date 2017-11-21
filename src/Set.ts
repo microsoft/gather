@@ -27,6 +27,10 @@ export class Set<T> {
         return Object.keys(this._items).map(k => this._items[k]);
     }
 
+    public equals (that: Set<T>): boolean {
+        return this.size == that.size && this.items.every(item => that.contains(item));
+    }
+    
     public get empty(): boolean {
         return Object.keys(this._items).length == 0;
     }
@@ -62,5 +66,11 @@ export class Set<T> {
 export class StringSet extends Set<string> {
     constructor(...items: string[]) {
         super(s => s, ...items)
+    }
+}
+
+export class NumberSet extends Set<number> {
+    constructor(...items: number[]) {
+        super(n => n.toString(), ...items);
     }
 }

@@ -23,7 +23,12 @@ function getNames(node: ast.ISyntaxNode | ast.ISyntaxNode[]): StringSet {
 
 function getDefsUses(statement: ast.ISyntaxNode): [StringSet, StringSet] {
     if (statement.type === ast.ASSIGN) {
-        return [getNames(statement.targets), getNames(statement.sources)];
+        const targetNames = getNames(statement.targets);
+        return [
+            targetNames,
+            // in x+=1, x is both a source and target
+            getNames(statement.sources).union(statement.op ? targetNames : new StringSet())
+        ];
     }
     return [new StringSet(), getNames(statement)];
 }
@@ -40,13 +45,13 @@ function getDefSetId([name, node]: [string, ast.ISyntaxNode]) {
 }
 
 function getDataflowId(df: IDataflow) {
-    if (!df.fromNode.location) console.error('*** FROM',df.fromNode, df.fromNode.location);
+    if (!df.fromNode.location) console.error('*** FROM', df.fromNode, df.fromNode.location);
     if (!df.toNode.location) console.error('*** TO', df.toNode, df.toNode.location);
     return locString(df.fromNode.location) + '->' + locString(df.toNode.location);
 }
 
 export function dataflowAnalysis(cfg: ControlFlowGraph): Set<IDataflow> {
-    const workQueue: Block[] = cfg.blocks;
+    const workQueue: Block[] = cfg.blocks.reverse();
 
     const definitionsForBlock = new Map(workQueue.map<[number, DefSet]>(block =>
         ([block.id, new Set(getDefSetId)])));
@@ -57,7 +62,8 @@ export function dataflowAnalysis(cfg: ControlFlowGraph): Set<IDataflow> {
         const block = workQueue.pop();
 
         // incoming definitions are those from every predecessor block
-        let defs = new Set(getDefSetId).union(...cfg.getPredecessors(block)
+        let oldDefs = definitionsForBlock.get(block.id);
+        let defs = oldDefs.union(...cfg.getPredecessors(block)
             .map(block => definitionsForBlock.get(block.id)));
 
         for (let statement of block.statements) {
@@ -70,15 +76,14 @@ export function dataflowAnalysis(cfg: ControlFlowGraph): Set<IDataflow> {
 
             const genSet = definedHere.map<[string, ISyntaxNode]>(getDefSetId, name => [name, statement]);
             const killSet = defs.filter(([name, _]) => definedHere.contains(name));
-            defs = defs.union(genSet).minus(killSet);
-
-            if (defs.size > definitionsForBlock.get(block.id).size) {
-                // Definitions have changed, so redo the successor blocks. 
-                definitionsForBlock.set(block.id, defs);
-                for (let succ of cfg.getSuccessors(block)) {
-                    if (workQueue.indexOf(succ) < 0) {
-                        workQueue.push(succ);
-                    }
+            defs = defs.minus(killSet).union(genSet);
+        }
+        if (!defs.equals(oldDefs)) {
+            // Definitions have changed, so redo the successor blocks. 
+            definitionsForBlock.set(block.id, defs);
+            for (let succ of cfg.getSuccessors(block)) {
+                if (workQueue.indexOf(succ) < 0) {
+                    workQueue.push(succ);
                 }
             }
         }

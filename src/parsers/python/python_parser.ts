@@ -100,6 +100,7 @@ export const ASSIGN = 'assign';
 
 export interface IAssignment extends ILocatable {
     type: typeof ASSIGN;
+    op: string | undefined; // defined for augment e.g. += 
     targets: ISyntaxNode[];
     sources: ISyntaxNode[];
 }
@@ -182,8 +183,8 @@ export const FOR = 'for';
 
 export interface IFor extends ILocatable {
     type: typeof FOR;
-    target: ISyntaxNode;
-    iter: ISyntaxNode;
+    target: ISyntaxNode[];
+    iter: ISyntaxNode[];
     code: ISyntaxNode[];
 }
 
@@ -330,7 +331,7 @@ export function walk(node: ISyntaxNode): ISyntaxNode[] {
             children = flatten(node.items.map(r => [r.with, r.as])).concat(node.code);
             break;
         case FOR:
-            children = [node.iter, node.target].concat(node.code);
+            children = node.iter.concat(node.target).concat(node.code);
             break;
         case TRY:
             children = node.code

@@ -9,6 +9,7 @@ except:
     print('oops')
 else:
     print(x)
+    x = 4
 finally:
-    x = 0
-    y = 0
+    y = x
+z = y
