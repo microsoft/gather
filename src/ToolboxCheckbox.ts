@@ -13,27 +13,27 @@ const TOOLBAR_CHECKBOX_CLASS = 'jp-Notebook-toolbarCheckbox';
 
 export
     class ToolbarCheckbox extends Widget {
+
+    private input: HTMLInputElement;
+
     constructor(widget: Notebook) {
-        super({ node: createToolbarCheckbox() });
+        let label = document.createElement('label');
+        label.innerText = 'Live code';
+
+        let input = document.createElement('input');
+        input.setAttribute('type', 'checkbox');
+        input.className = TOOLBAR_CHECKBOX_CLASS;
+        label.appendChild(input);
+
+        super({ node: label });
+        this.input = input;
         this.addClass(TOOLBAR_CHECKBOX_CLASS);
     }
+
+    public get checked() {
+        return this.input.checked;
+    }
+
 }
 
 
-function createToolbarCheckbox(): HTMLElement {
-    let div = document.createElement('div');
-
-    const checkboxId = 'jp-live-code';
-    let select = document.createElement('input');
-    select.setAttribute('type', 'checkbox');
-    select.setAttribute('id', checkboxId);
-    select.className = TOOLBAR_CHECKBOX_CLASS;
-    div.appendChild(select);
-
-    let label = document.createElement('label');
-    label.setAttribute('for', checkboxId);
-    label.innerText = 'Live code';
-    div.appendChild(label);
-
-    return div;
-}

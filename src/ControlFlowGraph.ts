@@ -3,10 +3,12 @@ import { Set } from './Set';
 
 
 export class Block {
+
     constructor(
         public id: number,
         private hint: string,
-        public statements: ast.ISyntaxNode[]) {
+        public statements: ast.ISyntaxNode[],
+        public loopVariables: ast.ISyntaxNode[] = []) {
     }
 
     public toString(): string {
@@ -44,6 +46,7 @@ export class ControlFlowGraph {
     private entry: Block;
     private exit: Block;
     private successors = new Set<[Block, Block]>(([b1, b2]) => b1.id + ',' + b2.id);
+    private loopVariables: ast.ISyntaxNode[][] = [];
 
     constructor(module: ast.IModule) {
         [this.entry, this.exit] = this.makeCFG(
@@ -52,6 +55,9 @@ export class ControlFlowGraph {
 
     private makeBlock(hint: string, statements: ast.ISyntaxNode[] = []) {
         const b = new Block(this.globalId++, hint, statements);
+        if (this.loopVariables.length) {
+            b.loopVariables = this.loopVariables[this.loopVariables.length - 1];
+        }
         this._blocks.push(b);
         return b;
     }
@@ -132,7 +138,9 @@ export class ControlFlowGraph {
         const loopHeadBlock = this.makeBlock('while loop head', [statement.cond]);
         this.link(last, loopHeadBlock);
         const afterLoop = this.makeBlock('while loop join');
+        this.loopVariables.push([statement.cond]);
         const [bodyEntry, bodyExit] = this.makeCFG('while body', statement.code, context.forLoop(loopHeadBlock, afterLoop));
+        this.loopVariables.pop();
         this.link(loopHeadBlock, bodyEntry);
         this.link(bodyExit, loopHeadBlock); // back edge
         this.link(loopHeadBlock, afterLoop);
@@ -145,7 +153,9 @@ export class ControlFlowGraph {
             [{ type: ast.ASSIGN, op: undefined, sources: statement.iter, targets: statement.target, location: statement.iter[0].location }]);
         this.link(last, loopHeadBlock);
         const afterLoop = this.makeBlock('for loop join');
+        this.loopVariables.push(statement.target);
         const [bodyEntry, bodyExit] = this.makeCFG('while body', statement.code, context.forLoop(loopHeadBlock, afterLoop));
+        this.loopVariables.pop();
         this.link(loopHeadBlock, bodyEntry);
         this.link(bodyExit, loopHeadBlock); // back edge
         this.link(loopHeadBlock, afterLoop);

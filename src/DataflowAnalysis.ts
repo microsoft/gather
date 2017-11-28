@@ -33,6 +33,10 @@ function getDefsUses(statement: ast.ISyntaxNode): [StringSet, StringSet] {
     return [new StringSet(), getNames(statement)];
 }
 
+function getUses(statement: ast.ISyntaxNode): StringSet {
+    return getDefsUses(statement)[1];
+}
+
 function locString(loc: ILocation): string {
     return loc.first_line + ':' + loc.first_column + '-' + loc.last_line + ':' + loc.last_column;
 }
@@ -66,8 +70,11 @@ export function dataflowAnalysis(cfg: ControlFlowGraph): Set<IDataflow> {
         let defs = oldDefs.union(...cfg.getPredecessors(block)
             .map(block => definitionsForBlock.get(block.id)));
 
+        const loopUses = new StringSet().union(...block.loopVariables.map(s => getUses(s)));
+        
         for (let statement of block.statements) {
-            const [definedHere, usedHere] = getDefsUses(statement);
+            let [definedHere, usedHere] = getDefsUses(statement);
+            usedHere = usedHere.union(loopUses);
 
             const newFlows = defs.filter(([name, _]) => usedHere.contains(name))
                 .map(getDataflowId, ([_, defstmt]) => ({ fromNode: defstmt, toNode: statement }));
