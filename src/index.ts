@@ -1,44 +1,20 @@
-import {
-  IDisposable, DisposableDelegate
-} from '@phosphor/disposable';
-
-import {
-  JupyterLab, JupyterLabPlugin
-} from '@jupyterlab/application';
-
-import {
-  DocumentRegistry
-} from '@jupyterlab/docregistry';
-
-import {
-  NotebookPanel, INotebookModel, Notebook
-} from '@jupyterlab/notebook';
-
-import {
-  ToolbarCheckbox
-} from './ToolboxCheckbox';
-
-import {
-  IObservableUndoableList, IObservableList
-} from '@jupyterlab/coreutils';
-
-import {
-  ICellModel, CodeCell
-} from '@jupyterlab/cells';
-
-import {
-  IClientSession
-} from '@jupyterlab/apputils';
-
+import { IDisposable, DisposableDelegate } from '@phosphor/disposable';
+import { JupyterLab, JupyterLabPlugin } from '@jupyterlab/application';
+import { DocumentRegistry } from '@jupyterlab/docregistry';
+import { NotebookPanel, INotebookModel, Notebook } from '@jupyterlab/notebook';
+import { IObservableUndoableList, IObservableList } from '@jupyterlab/observables';
+import { ICellModel, CodeCell } from '@jupyterlab/cells';
+import { IClientSession } from '@jupyterlab/apputils';
 
 import * as python3 from './parsers/python/python3';
 import { ILocation } from './parsers/python/python_parser';
 import { ControlFlowGraph } from './ControlFlowGraph';
 import { dataflowAnalysis } from './DataflowAnalysis';
 import { NumberSet, range } from './Set';
+import { ToolbarCheckbox } from './ToolboxCheckbox';
 
 
-const plugin: JupyterLabPlugin<void> = {
+const extension: JupyterLabPlugin<void> = {
   activate,
   id: 'live-code-cells:liveCodePlugin',
   autoStart: true
@@ -176,6 +152,7 @@ export
 
 
 function activate(app: JupyterLab) {
+  console.log('starting livecells');
   app.docRegistry.addWidgetExtension('Notebook', new ButtonExtension());
 };
 
@@ -190,4 +167,4 @@ function doTasksInOrder<T>(work: (() => Promise<T>)[]) {
   }, Promise.resolve([]))
 }
 
-export default plugin;
+export default extension;
