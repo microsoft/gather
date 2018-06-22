@@ -71,7 +71,7 @@ export function dataflowAnalysis(cfg: ControlFlowGraph): Set<IDataflow> {
             .map(block => definitionsForBlock.get(block.id)));
 
         const loopUses = new StringSet().union(...block.loopVariables.map(s => getUses(s)));
-        
+
         for (let statement of block.statements) {
             let [definedHere, usedHere] = getDefsUses(statement);
             usedHere = usedHere.union(loopUses);
