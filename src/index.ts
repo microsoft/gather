@@ -6,6 +6,7 @@ import { IObservableList } from '@jupyterlab/observables';
 import { ICellModel, CodeCell } from '@jupyterlab/cells';
 import { IClientSession, ICommandPalette } from '@jupyterlab/apputils';
 import { IDocumentManager } from '@jupyterlab/docmanager';
+import { FileEditor } from '@jupyterlab/fileeditor';
 
 import * as python3 from './parsers/python/python3';
 import { ILocation } from './parsers/python/python_parser';
@@ -35,8 +36,9 @@ class CellProgram {
     private code: string;
     private changedCellLineNumbers: [number, number];
     private cellByLine: ICellModel[] = [];
+    private lineRangeForCell: { [id: string]: [number, number] } = {};
 
-    constructor(changedCell: ICellModel, cells: IObservableList<ICellModel>) {
+    constructor(changedCell: ICellModel, private cells: IObservableList<ICellModel>) {
         this.code = '';
         let lineNumber = 1;
         for (let i = 0; i < cells.length; i++) {
@@ -44,6 +46,7 @@ class CellProgram {
             const cellText = cell.value.text;
             this.code += cellText + '\n';
             const lineCount = cellText.split('\n').length;
+            this.lineRangeForCell[cell.id] = [lineNumber, lineNumber + lineCount];
             for (let lc = 0; lc < lineCount; lc++) {
                 this.cellByLine[lc + lineNumber] = cell;
             }
@@ -60,33 +63,33 @@ class CellProgram {
         const dfa = dataflowAnalysis(cfg);
 
         const forwardDirection = direction === DataflowDirection.Forward;
-        let changedLineNumbers = new NumberSet();
+        let relevantLineNumbers = new NumberSet();
         const [startLine, endLine] = this.changedCellLineNumbers;
         for (let line = startLine; line <= endLine; line++) {
-            changedLineNumbers.add(line);
+            relevantLineNumbers.add(line);
         }
 
         let lastSize: number;
         do {
-            lastSize = changedLineNumbers.size;
+            lastSize = relevantLineNumbers.size;
             for (let flow of dfa.items) {
                 const fromLines = lineRange(flow.fromNode.location);
                 const toLines = lineRange(flow.toNode.location);
                 const startLines = forwardDirection ? fromLines : toLines;
                 const endLines = forwardDirection ? toLines : fromLines;
-                if (!changedLineNumbers.intersect(startLines).empty) {
-                    changedLineNumbers = changedLineNumbers.union(endLines);
+                if (!relevantLineNumbers.intersect(startLines).empty) {
+                    relevantLineNumbers = relevantLineNumbers.union(endLines);
                 }
             }
-        } while (changedLineNumbers.size > lastSize);
+        } while (relevantLineNumbers.size > lastSize);
 
-        return changedLineNumbers;
+        return relevantLineNumbers;
     }
 
-    public forwardDataflow(): ICellModel[] {
-        const changedLineNumbers = this.followDataflow(DataflowDirection.Forward);
+    public getDataflowCells(direction: DataflowDirection): ICellModel[] {
+        const relevantLineNumbers = this.followDataflow(direction);
         const changedCells: ICellModel[] = [];
-        for (let line of changedLineNumbers.items.sort((line1, line2) => line1 - line2)) {
+        for (let line of relevantLineNumbers.items.sort((line1, line2) => line1 - line2)) {
             if (this.cellByLine[line] !== changedCells[changedCells.length - 1]) {
                 changedCells.push(this.cellByLine[line]);
             }
@@ -94,15 +97,22 @@ class CellProgram {
         return changedCells;
     }
 
-    public backwardDataflow(): ICellModel[] {
-        const changedLineNumbers = this.followDataflow(DataflowDirection.Backward);
-        const changedCells: ICellModel[] = [];
-        for (let line of changedLineNumbers.items.sort((line1, line2) => line1 - line2)) {
-            if (this.cellByLine[line] !== changedCells[changedCells.length - 1]) {
-                changedCells.push(this.cellByLine[line]);
+
+    public getDataflowText(direction: DataflowDirection): string {
+        const relevantLineNumbers = this.followDataflow(direction);
+        let text = '';
+        let lineNumber = 0;
+        for (let i = 0; i < this.cells.length; i++) {
+            const cell = this.cells.get(i);
+            const cellLines = cell.value.text.split('\n');
+            for (let line = 0; line < cellLines.length; line++) {
+                if (relevantLineNumbers.contains(line + lineNumber + 1)) {
+                    text += cellLines[line] + '\n';
+                }
             }
+            lineNumber += cellLines.length;
         }
-        return changedCells;
+        return text;
     }
 }
 
@@ -119,7 +129,7 @@ class CellLiveness {
 
     private findStaleCells(changedCell: ICellModel, cells: IObservableList<ICellModel>): ICellModel[] {
         const program = new CellProgram(changedCell, cells);
-        return program.forwardDataflow();
+        return program.getDataflowCells(DataflowDirection.Forward);
     }
 
     public onCellsChanged(
@@ -192,10 +202,7 @@ function activateExtension(app: JupyterLab, palette: ICommandPalette, notebooks:
     app.docRegistry.addWidgetExtension('Notebook', new LiveCheckboxExtension());
 
     function addCommand(command: string, label: string, execute: () => void) {
-        app.commands.addCommand(command, {
-            label: 'Create notebook for this result',
-            execute
-        });
+        app.commands.addCommand(command, { label, execute });
         palette.addItem({ command, category: 'Clean Up' });
     }
 
@@ -204,18 +211,15 @@ function activateExtension(app: JupyterLab, palette: ICommandPalette, notebooks:
         if (panel && panel.notebook && panel.notebook.activeCell.model.type === 'code') {
             const activeCell = panel.notebook.activeCell;
             const program = new CellProgram(activeCell.model, panel.notebook.model.cells);
-            const sliceCells = program.backwardDataflow();
+            const sliceCells = program.getDataflowCells(DataflowDirection.Backward);
 
             docManager.newUntitled({ ext: 'ipynb' }).then(model => {
                 const widget = docManager.open(model.path, undefined, panel.session.kernel.model) as NotebookPanel;
                 const newModel = widget.notebook.model;
-                const factory = widget.notebook.model.contentFactory;
-                sliceCells.forEach(cell => {
-                   const newCell = factory.createCodeCell(cell);
-                   newModel.cells.push(newCell); 
-                });
-                newModel.cells.remove(0); // remote the default blank cell
-                app.shell.activateById(widget.id);
+                setTimeout(() => {
+                    newModel.cells.remove(0); // remote the default blank cell                        
+                    newModel.cells.pushAll(sliceCells);
+                }, 100);
             });
 
             // const selection = editor.getSelection();
@@ -229,8 +233,21 @@ function activateExtension(app: JupyterLab, palette: ICommandPalette, notebooks:
             // }
         }
     });
+
     addCommand('livecells:createScript', 'Create script for this result', () => {
-        console.log('create script');
+        const panel = notebooks.currentWidget;
+        if (panel && panel.notebook && panel.notebook.activeCell.model.type === 'code') {
+            const activeCell = panel.notebook.activeCell;
+            const program = new CellProgram(activeCell.model, panel.notebook.model.cells);
+            const text = program.getDataflowText(DataflowDirection.Backward);
+
+            docManager.newUntitled({ ext: 'py' }).then(model => {
+                const editor = docManager.open(model.path, undefined, panel.session.kernel.model) as FileEditor;
+                setTimeout(() => {
+                    editor.model.value.text = text;
+                }, 100);
+            });
+        }
     });
 }
 
