@@ -1,12 +1,13 @@
 import { IDisposable, DisposableDelegate } from '@phosphor/disposable';
 import { JupyterLab, JupyterLabPlugin } from '@jupyterlab/application';
 import { DocumentRegistry } from '@jupyterlab/docregistry';
-import { NotebookPanel, INotebookModel, Notebook, INotebookTracker } from '@jupyterlab/notebook';
+import { NotebookPanel, INotebookModel, Notebook, INotebookTracker, NotebookModel } from '@jupyterlab/notebook';
 import { IObservableList } from '@jupyterlab/observables';
-import { ICellModel, CodeCell } from '@jupyterlab/cells';
+import { ICellModel, CodeCell, ICodeCellModel } from '@jupyterlab/cells';
 import { IClientSession, ICommandPalette } from '@jupyterlab/apputils';
 import { IDocumentManager } from '@jupyterlab/docmanager';
 import { FileEditor } from '@jupyterlab/fileeditor';
+import { nbformat } from '@jupyterlab/coreutils';
 
 import * as python3 from './parsers/python/python3';
 import { ILocation } from './parsers/python/python_parser';
@@ -14,6 +15,7 @@ import { ControlFlowGraph } from './ControlFlowGraph';
 import { dataflowAnalysis } from './DataflowAnalysis';
 import { NumberSet, range } from './Set';
 import { ToolbarCheckbox } from './ToolboxCheckbox';
+import { toArray } from '@phosphor/algorithm';
 
 
 const extension: JupyterLabPlugin<void> = {
@@ -38,11 +40,11 @@ class CellProgram {
     private cellByLine: ICellModel[] = [];
     private lineRangeForCell: { [id: string]: [number, number] } = {};
 
-    constructor(changedCell: ICellModel, private cells: IObservableList<ICellModel>) {
+    constructor(changedCell: ICellModel, private cells: ICellModel[]) {
         this.code = '';
         let lineNumber = 1;
         for (let i = 0; i < cells.length; i++) {
-            const cell = cells.get(i);
+            const cell = cells[i];
             const cellText = cell.value.text;
             this.code += cellText + '\n';
             const lineCount = cellText.split('\n').length;
@@ -103,7 +105,7 @@ class CellProgram {
         let text = '';
         let lineNumber = 0;
         for (let i = 0; i < this.cells.length; i++) {
-            const cell = this.cells.get(i);
+            const cell = this.cells[i];
             const cellLines = cell.value.text.split('\n');
             for (let line = 0; line < cellLines.length; line++) {
                 if (relevantLineNumbers.contains(line + lineNumber + 1)) {
@@ -123,11 +125,18 @@ class CellLiveness {
     private currentlyExecutingCells = false;
 
     constructor(
-        private checkbox: ToolbarCheckbox
+        private checkbox: ToolbarCheckbox,
+        panel: NotebookPanel
     ) {
+        panel.notebook.model.cells.changed.connect(
+            (cells, value) =>
+                this.onCellsChanged(panel.notebook, panel.session, cells, value),
+            this);
     }
 
-    private findStaleCells(changedCell: ICellModel, cells: IObservableList<ICellModel>): ICellModel[] {
+    public dispose() { }
+
+    private findStaleCells(changedCell: ICellModel, cells: ICellModel[]): ICellModel[] {
         const program = new CellProgram(changedCell, cells);
         return program.getDataflowCells(DataflowDirection.Forward);
     }
@@ -158,7 +167,7 @@ class CellLiveness {
                                 return Promise.resolve(0);
                             }
 
-                        const tasks = this.findStaleCells(changedCell, allCells)
+                        const tasks = this.findStaleCells(changedCell, toArray(allCells))
                             .filter(cell => cell.id !== changedCell.id)
                             .map(cell => <CodeCell>notebook.widgets.find(c => c.model.id == cell.id))
                             .filter(cellWidget => cellWidget)
@@ -173,44 +182,122 @@ class CellLiveness {
             }, this);
         }
     }
-
 }
 
 
 export class LiveCheckboxExtension implements DocumentRegistry.IWidgetExtension<NotebookPanel, INotebookModel> {
+    private liveness: CellLiveness;
 
     createNew(panel: NotebookPanel, context: DocumentRegistry.IContext<INotebookModel>): IDisposable {
         const checkbox = new ToolbarCheckbox(panel.notebook);
         panel.toolbar.insertItem(9, 'liveCode', checkbox);
-        const liveness = new CellLiveness(checkbox);
-
-        panel.notebook.model.cells.changed.connect(
-            (cells, value) =>
-                liveness.onCellsChanged(panel.notebook, panel.session, cells, value),
-            liveness);
+        this.liveness = new CellLiveness(checkbox, panel);
 
         return new DisposableDelegate(() => {
+            this.liveness.dispose();
             checkbox.dispose();
         });
     }
 }
 
 
+class RememberedCell {
+    constructor(
+        public id: string,
+        public cellModel: ICodeCellModel) {
+    }
+}
+
+class NotebookCopy {
+    constructor(
+        public cells: RememberedCell[]
+    ) { }
+}
+
+class ExecutionLoggerExtension implements DocumentRegistry.IWidgetExtension<NotebookPanel, INotebookModel> {
+    private executionHistoryPerCell: { [cellId: string]: NotebookCopy[] } = {};
+
+    createNew(panel: NotebookPanel, context: DocumentRegistry.IContext<INotebookModel>): IDisposable {
+        panel.notebook.model.cells.changed.connect(
+            (cells, value) =>
+                this.onCellsChanged(panel.notebook, panel.session, cells, value),
+            this);
+
+        return new DisposableDelegate(() => {
+        });
+    }
+
+    private copyNotebook(notebookModel: INotebookModel): NotebookCopy {
+        const cells: RememberedCell[] = [];
+        const nbmodel = new NotebookModel();
+        nbmodel.fromJSON(notebookModel.toJSON() as nbformat.INotebookContent);
+        for (let i = 0; i < notebookModel.cells.length; i++) {
+            const cell = notebookModel.cells.get(i) as ICodeCellModel;
+            if (cell) {
+                const clone = nbmodel.cells.get(i) as ICodeCellModel;
+                cells.push(new RememberedCell(cell.id, clone));
+            }
+        }
+        return new NotebookCopy(cells);
+    }
+
+    public onCellsChanged(
+        notebook: Notebook,
+        session: IClientSession,
+        allCells: IObservableList<ICellModel>,
+        cellListChange: IObservableList.IChangedArgs<ICellModel>
+    ): void {
+        if (cellListChange.type === 'add') {
+            const cell = cellListChange.newValues[0] as ICellModel;
+            // When a cell is added, register for its state changes.
+            cell.stateChanged.connect((changedCell, cellStateChange) => {
+                // If cell has been executed
+                if (cellStateChange.name === 'executionCount' && cellStateChange.newValue) {
+                    const codeCell = notebook.widgets.find(c => c.model.id === cell.id) as CodeCell;
+                    const cellid = codeCell.model.id;
+                    let history = this.executionHistoryPerCell[cellid];
+                    if (!history) {
+                        history = this.executionHistoryPerCell[cellid] = [];
+                    };
+                    history.push(this.copyNotebook(notebook.model));
+                }
+            });
+        }
+    }
+
+    public versions(cell: ICellModel) {
+        let notebookVersions = this.executionHistoryPerCell[cell.id];
+        let slices = notebookVersions.map(notebookVersion => {
+            const cellProgram = new CellProgram(
+                notebookVersion.cells.find(c => c.id === cell.id).cellModel,
+                notebookVersion.cells.map(c => c.cellModel));
+            const slice = cellProgram.getDataflowCells(DataflowDirection.Backward);
+            return slice;
+        });
+        console.log('slices', slices);
+    }
+}
+
+
+
 
 function activateExtension(app: JupyterLab, palette: ICommandPalette, notebooks: INotebookTracker, docManager: IDocumentManager) {
     console.log('livecells start');
-    app.docRegistry.addWidgetExtension('Notebook', new LiveCheckboxExtension());
+    // Disable live programming feature for now
+    // app.docRegistry.addWidgetExtension('Notebook', new LiveCheckboxExtension());
+    const executionLogger = new ExecutionLoggerExtension();
+    app.docRegistry.addWidgetExtension('Notebook', executionLogger);
 
     function addCommand(command: string, label: string, execute: () => void) {
         app.commands.addCommand(command, { label, execute });
         palette.addItem({ command, category: 'Clean Up' });
     }
 
-    addCommand('livecells:createNotebook', 'Create notebook for this result', () => {
+    addCommand('livecells:gatherToNotebook', 'Gather this result into a new notebook', () => {
         const panel = notebooks.currentWidget;
         if (panel && panel.notebook && panel.notebook.activeCell.model.type === 'code') {
             const activeCell = panel.notebook.activeCell;
-            const program = new CellProgram(activeCell.model, panel.notebook.model.cells);
+            const program = new CellProgram(activeCell.model, toArray(panel.notebook.model.cells));
             const sliceCells = program.getDataflowCells(DataflowDirection.Backward);
 
             docManager.newUntitled({ ext: 'ipynb' }).then(model => {
@@ -234,11 +321,11 @@ function activateExtension(app: JupyterLab, palette: ICommandPalette, notebooks:
         }
     });
 
-    addCommand('livecells:createScript', 'Create script for this result', () => {
+    addCommand('livecells:gatherToScript', 'Gather this result into a new script', () => {
         const panel = notebooks.currentWidget;
         if (panel && panel.notebook && panel.notebook.activeCell.model.type === 'code') {
             const activeCell = panel.notebook.activeCell;
-            const program = new CellProgram(activeCell.model, panel.notebook.model.cells);
+            const program = new CellProgram(activeCell.model, toArray(panel.notebook.model.cells));
             const text = program.getDataflowText(DataflowDirection.Backward);
 
             docManager.newUntitled({ ext: 'py' }).then(model => {
@@ -247,6 +334,14 @@ function activateExtension(app: JupyterLab, palette: ICommandPalette, notebooks:
                     editor.model.value.text = text;
                 }, 100);
             });
+        }
+    });
+
+    addCommand('livecells:gatherFromHistory', 'Compare previous versions of this result', () => {
+        const panel = notebooks.currentWidget;
+        if (panel && panel.notebook && panel.notebook.activeCell.model.type === 'code') {
+            const activeCell = panel.notebook.activeCell;
+            console.log(executionLogger.versions(activeCell.model));
         }
     });
 }
