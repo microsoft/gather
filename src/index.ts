@@ -20,6 +20,7 @@ import { HistoryModel } from './widgets/history';
 import { toArray } from '@phosphor/algorithm';
 import { RenderMimeRegistry, standardRendererFactories as initialFactories } from '@jupyterlab/rendermime';
 
+import '../style/index.css';
 
 const extension: JupyterLabPlugin<void> = {
     activate: activateExtension,
@@ -282,8 +283,6 @@ class ExecutionLoggerExtension implements DocumentRegistry.IWidgetExtension<Note
 }
 
 
-
-
 function activateExtension(app: JupyterLab, palette: ICommandPalette, notebooks: INotebookTracker, docManager: IDocumentManager) {
     console.log('livecells start');
     // Disable live programming feature for now
@@ -291,17 +290,18 @@ function activateExtension(app: JupyterLab, palette: ICommandPalette, notebooks:
     const executionLogger = new ExecutionLoggerExtension();
     app.docRegistry.addWidgetExtension('Notebook', executionLogger);
 
-    let widget: HistoryViewer = new HistoryViewer({
-        model: new HistoryModel({}),
-        rendermime: new RenderMimeRegistry({ initialFactories })
-    });
-
     function addCommand(command: string, label: string, execute: () => void) {
         app.commands.addCommand(command, { label, execute });
         palette.addItem({ command, category: 'Clean Up' });
     }
 
     addCommand('livecells:reviewHistory', 'Review history for this result', () => {
+        let widget: HistoryViewer = new HistoryViewer({
+            model: new HistoryModel({}),
+            rendermime: new RenderMimeRegistry({ initialFactories }),
+            editorFactory: notebooks.activeCell.contentFactory.editorFactory
+        });
+
         if (!widget.isAttached) {
             app.shell.addToMainArea(widget);
         }

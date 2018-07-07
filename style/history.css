@@ -1,0 +1,11 @@
+.jp-HistoryViewer {
+  padding: var(--jp-notebook-padding);
+  overflow: auto;
+  background: var(--jp-layout-color0);
+}
+
+.jp-SlicedCell {
+  padding: var(--jp-cell-padding);
+  border: var(--jp-border-width) solid var(--jp-cell-editor-border-color);
+  background-color: var(--jp-cell-editor-background);
+}

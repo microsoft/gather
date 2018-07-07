@@ -1,21 +1,29 @@
+import { CodeEditor } from '@jupyterlab/codeeditor';
+import { IModelDB } from '@jupyterlab/observables';
+
 /**
  * The definition of a model object for a sliced cell.
  */
-export interface ISlicedCellModel {}
+export interface ISlicedCellModel extends CodeEditor.IModel {}
 
 /**
  * An implementation for the sliced cell model.
  */
-export class SlicedCellModel implements ISlicedCellModel {
+export class SlicedCellModel extends CodeEditor.Model implements ISlicedCellModel {
     /**
      * Construct a sliced cell model.
      */
     constructor(options: SlicedCellModel.IOptions) {
+        super({ modelDB: options.modelDB });
+
         this._cellId = options.cellId;
         this._executionCount = options.executionCount;
         this._cellInSlice = options.cellInSlice;
         this._sourceOriginal = options.sourceOriginal;
         this._slicedSource = options.slicedSource;
+
+        let text = this._sourceOriginal;
+        this.value.text = text as string;
     }
 
     /**
@@ -92,5 +100,10 @@ export namespace SlicedCellModel {
          * The part of the cell's code that's included in a slice.
          */
         slicedSource: string;
+
+        /**
+         * An IModelDB in which to store cell data.
+         */
+        modelDB?: IModelDB;
     }
 }

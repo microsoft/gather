@@ -1,65 +1,48 @@
-import { CodeEditor } from '@jupyterlab/codeeditor';
-import { IModelDB } from '@jupyterlab/observables';
-import { ISourceModel } from './source';
-import { nbformat } from '@jupyterlab/coreutils';
+import { ISlicedCellModel } from '../slicedcell';
 
 /**
- * The definition of a model object for a code version.
+ * The definition of a model object for a source code revision.
  */
-export interface ICodeVersionModel extends CodeEditor.IModel {
+export interface ICodeVersionModel {
     /**
-     * A unique index for this code version---lower indexes were are for earlier versions.
+     * A string with the slice of code relevant to a result.
      */
-    readonly versionIndex: number;
+    readonly codeSlice: string;
 
     /**
-     * The source code for this revision.
+     * A list of cells for this version of the code, with slice info.
      */
-    readonly source: ISourceModel;
-
-    /**
-     * The result of the computation.
-     */
-    readonly result: nbformat.IDisplayData;
+    readonly cells: ReadonlyArray<ISlicedCellModel>;
 }
 
 /**
- * An implementation of the code version model.
+ * An implementation of the source code model.
  */
-export class CodeVersionModel extends CodeEditor.Model implements ICodeVersionModel {
+export class CodeVersionModel implements ICodeVersionModel {
     /**
-     * Construct a code version model.
+     * Construct a source model.
      */
     constructor(options: CodeVersionModel.IOptions) {
-        super({ modelDB: options.modelDB });
-        
-        this.versionIndex = options.versionIndex;
-
-        let text = options.source.codeSlice;
-        this.value.text = text as string;
-
-        this._source = options.source;
-        this._result = options.result;
-    }
-
-    readonly versionIndex: number; 
-
-    /**
-     * Get the source code for this revision.
-     */
-    get source(): ISourceModel {
-        return this._source;
+        this._codeSlice = options.codeSlice;
+        this._cells = options.cells;
     }
 
     /**
-     * Get the result of this computation.
+     * Get the text for the code slice used in the computation.
      */
-    get result(): nbformat.IDisplayData {
-        return this._result;
+    get codeSlice(): string {
+        return this._codeSlice;
     }
 
-    private _source: ISourceModel;
-    private _result: nbformat.IDisplayData;
+    /**
+     * Get the cells for this revision of the source code.
+     */
+    get cells(): ReadonlyArray<ISlicedCellModel> {
+        return this._cells;
+    }
+
+    private _codeSlice: string;
+    private _cells: ReadonlyArray<ISlicedCellModel>;
 }
 
 /**
@@ -67,32 +50,17 @@ export class CodeVersionModel extends CodeEditor.Model implements ICodeVersionMo
  */
 export namespace CodeVersionModel {
     /**
-     * The options used to initialize a `CodeVerionModel`.
+     * The options used to initialize a `CodeVersionModel`.
      */
     export interface IOptions {
         /**
-         * A slice of the source code for this revision.
+         * Code slice including all lines that were used to compute a result.
          */
-        source?: ISourceModel;
+        codeSlice?: string;
 
         /**
-         * A unique index for this version---lower indexes were made earlier.
+         * The cells in the notebook at the time of this revision.
          */
-        versionIndex?: number;
-
-        /**
-         * The display data for the result at this version.
-         */
-        result?: nbformat.IDisplayData;
-
-        /**
-         * The time this version was created. POSIX format.
-         */
-        timeCreated?: string;
-
-        /**
-         * An IModelDB in which to store cell data.
-         */
-        modelDB?: IModelDB;
+        cells: ReadonlyArray<ISlicedCellModel>;
     }
 }

@@ -1,10 +1,10 @@
-import { ICodeVersionModel } from "../codeversion";
+import { IRevisionModel } from "../revision";
 
 /**
  * The definition of a model object for a code history.
  */
 export interface IHistoryModel {
-    readonly versions: ReadonlyArray<ICodeVersionModel>;
+    readonly revisions: ReadonlyArray<IRevisionModel>;
 }
 
 /**
@@ -15,17 +15,17 @@ export class HistoryModel implements IHistoryModel {
      * Construct a history model
      */
     constructor(options: HistoryModel.IOptions) {
-        this._versions = options.versions;
+        this._revisions = options.revisions;
     }
 
     /**
      * Get the versions from the history.
      */
-    get versions(): ReadonlyArray<ICodeVersionModel> {
-        return this._versions;
+    get revisions(): ReadonlyArray<IRevisionModel> {
+        return this._revisions;
     }
 
-    private _versions: Array<ICodeVersionModel> = null;
+    private _revisions: Array<IRevisionModel> = null;
 }
 
 /**
@@ -39,6 +39,6 @@ export namespace HistoryModel {
         /**
          * Versions of the code.
          */
-        versions?: Array<ICodeVersionModel>;
+        revisions?: Array<IRevisionModel>;
     }
 }
