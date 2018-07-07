@@ -1,5 +1,6 @@
 import { CodeEditor, CodeEditorWrapper } from '@jupyterlab/codeeditor';
 import { CodeMirrorEditorFactory } from '@jupyterlab/codemirror';
+import { RenderMimeRegistry, OutputModel } from '@jupyterlab/rendermime';
 import { PanelLayout } from '@phosphor/widgets';
 import { Widget } from '@phosphor/widgets';
 import { ICodeVersionModel } from './model';
@@ -27,12 +28,25 @@ export class CodeVersion extends Widget {
         let model = (this.model = options.model);
 
         this.contentFactory = options.contentFactory || CodeVersion.defaultContentFactory;
+        let rendermime = (this.rendermime = options.rendermime);
+
         let editorOptions = { model, factory: this.contentFactory.editorFactory };
         let editor = (this._editor = new CodeEditorWrapper(editorOptions));
         editor.addClass(CODE_VERSION_EDITOR_CLASS);
 
         let layout = (this.layout = new PanelLayout());
         layout.addWidget(editor);
+
+        // Code from OutputArea extension.
+        // TODO(andrewhead): make the second argument (preferSafe) depend on whether the output
+        // is "trusted".
+        console.log("Available types", rendermime.mimeTypes);
+        let mimeType = rendermime.preferredMimeType(model.result.data, false);
+        console.log("I'm here, with mimeType", mimeType, "for data", model.result.data);
+        let output = rendermime.createRenderer(mimeType);
+        output.renderModel(new OutputModel({ value: model.result }));
+        let widget = output;
+        layout.addWidget(widget);
     }
 
     /**
@@ -44,6 +58,11 @@ export class CodeVersion extends Widget {
      * The content factory used by the widget.
      */
     readonly contentFactory: CodeVersion.IContentFactory;
+
+    /**
+     * The rendermime instance used by the widget.
+     */
+    readonly rendermime: RenderMimeRegistry;
 
     /**
      * Get the CodeEditorWrapper used by this widget.
@@ -91,6 +110,11 @@ export namespace CodeVersion {
          * The content factory used by the widget to create children.
          */
         contentFactory?: IContentFactory;
+
+        /**
+         * The mime renderer for this widget.
+         */
+        rendermime: RenderMimeRegistry;
     }
 
     /**

@@ -18,6 +18,7 @@ import { ToolbarCheckbox } from './ToolboxCheckbox';
 import { HistoryViewer } from './widgets/history/widget';
 import { HistoryModel } from './widgets/history';
 import { toArray } from '@phosphor/algorithm';
+import { RenderMimeRegistry, standardRendererFactories as initialFactories } from '@jupyterlab/rendermime';
 
 
 const extension: JupyterLabPlugin<void> = {
@@ -291,7 +292,8 @@ function activateExtension(app: JupyterLab, palette: ICommandPalette, notebooks:
     app.docRegistry.addWidgetExtension('Notebook', executionLogger);
 
     let widget: HistoryViewer = new HistoryViewer({
-        model: new HistoryModel({})
+        model: new HistoryModel({}),
+        rendermime: new RenderMimeRegistry({ initialFactories })
     });
 
     function addCommand(command: string, label: string, execute: () => void) {

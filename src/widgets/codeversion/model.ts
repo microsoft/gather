@@ -1,7 +1,7 @@
 import { CodeEditor } from '@jupyterlab/codeeditor';
 import { IModelDB } from '@jupyterlab/observables';
 import { ISourceModel } from './source';
-import { IResultModel } from './result';
+import { nbformat } from '@jupyterlab/coreutils';
 
 /**
  * The definition of a model object for a code version.
@@ -11,6 +11,16 @@ export interface ICodeVersionModel extends CodeEditor.IModel {
      * A unique index for this code version---lower indexes were are for earlier versions.
      */
     readonly versionIndex: number;
+
+    /**
+     * The source code for this revision.
+     */
+    readonly source: ISourceModel;
+
+    /**
+     * The result of the computation.
+     */
+    readonly result: nbformat.IDisplayData;
 }
 
 /**
@@ -44,12 +54,12 @@ export class CodeVersionModel extends CodeEditor.Model implements ICodeVersionMo
     /**
      * Get the result of this computation.
      */
-    get result(): IResultModel {
+    get result(): nbformat.IDisplayData {
         return this._result;
     }
 
     private _source: ISourceModel;
-    private _result: IResultModel;
+    private _result: nbformat.IDisplayData;
 }
 
 /**
@@ -72,9 +82,8 @@ export namespace CodeVersionModel {
 
         /**
          * The display data for the result at this version.
-         * TODO(andrewhead): replace this with its own model.
          */
-        result?: IResultModel;
+        result?: nbformat.IDisplayData;
 
         /**
          * The time this version was created. POSIX format.
