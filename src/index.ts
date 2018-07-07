@@ -14,6 +14,8 @@ import { ControlFlowGraph } from './ControlFlowGraph';
 import { dataflowAnalysis } from './DataflowAnalysis';
 import { NumberSet, range } from './Set';
 import { ToolbarCheckbox } from './ToolboxCheckbox';
+import { HistoryViewer } from './widgets/history/widget';
+import { HistoryModel } from './widgets/history';
 
 
 const extension: JupyterLabPlugin<void> = {
@@ -199,12 +201,24 @@ export class LiveCheckboxExtension implements DocumentRegistry.IWidgetExtension<
 
 function activateExtension(app: JupyterLab, palette: ICommandPalette, notebooks: INotebookTracker, docManager: IDocumentManager) {
     console.log('livecells start');
+    // Andrew's note: I want to do something like this with cells.
     app.docRegistry.addWidgetExtension('Notebook', new LiveCheckboxExtension());
+
+    let widget: HistoryViewer = new HistoryViewer({
+        model: new HistoryModel({})
+    });
 
     function addCommand(command: string, label: string, execute: () => void) {
         app.commands.addCommand(command, { label, execute });
         palette.addItem({ command, category: 'Clean Up' });
     }
+
+    addCommand('livecells:reviewHistory', 'Review history for this result', () => {
+        if (!widget.isAttached) {
+            app.shell.addToMainArea(widget);
+        }
+        app.shell.activateById(widget.id);
+    });
 
     addCommand('livecells:createNotebook', 'Create notebook for this result', () => {
         const panel = notebooks.currentWidget;
@@ -265,6 +279,5 @@ function doTasksInOrder<T>(work: (() => Promise<T>)[]) {
 function lineRange(loc: ILocation): NumberSet {
     return range(loc.first_line, loc.last_line + (loc.last_column ? 1 : 0));
 }
-
 
 export default extension;
