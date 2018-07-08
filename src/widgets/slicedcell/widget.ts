@@ -30,7 +30,7 @@ export class SlicedCell extends Widget {
         this.contentFactory = options.contentFactory || SlicedCell.defaultContentFactory;
         this.editorFactory = options.editorFactory || this.contentFactory.editorFactory;
 
-        let editorOptions = { model, factory: this.editorFactory };
+        let editorOptions = { model, factory: this.editorFactory, config: { readOnly: true }};
         let editor = (this._editor = new CodeEditorWrapper(editorOptions));
         editor.addClass(SLICED_CELL_EDITOR_CLASS);
 

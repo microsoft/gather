@@ -26,13 +26,13 @@ export class Revision extends Widget {
         let editorFactory = (this.editorFactory = options.editorFactory);
 
         let layout = (this.layout = new PanelLayout());
-        layout.addWidget(new CodeVersion({
-            model: model.source,
-            editorFactory: editorFactory
-        }));
         layout.addWidget(new DisplayData({
             model: model.result,
             rendermime: rendermime
+        }));
+        layout.addWidget(new CodeVersion({
+            model: model.source,
+            editorFactory: editorFactory
         }));
     }
 

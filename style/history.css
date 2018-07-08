@@ -1,3 +1,7 @@
+:root {
+  --jp-icon-history-viewer: url('icons/history_viewer.png')
+}
+
 .jp-HistoryViewer {
   padding: var(--jp-notebook-padding);
   overflow: auto;
@@ -6,6 +10,19 @@
 
 .jp-SlicedCell {
   padding: var(--jp-cell-padding);
+}
+
+.jp-SlicedCell .jp-CodeMirrorEditor {
   border: var(--jp-border-width) solid var(--jp-cell-editor-border-color);
   background-color: var(--jp-cell-editor-background);
+}
+
+.jp-HistoryViewerIcon {
+  background-image: var(--jp-icon-history-viewer);
+  background-size: 100%;
+}
+
+/* CodeMirror instance */
+.jp-HistoryViewer .CodeMirror.cm-s-jupyter {
+  background: transparent;
 }
