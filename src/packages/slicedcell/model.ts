@@ -1,12 +1,42 @@
 import { CodeEditor } from '@jupyterlab/codeeditor';
 import { IModelDB } from '@jupyterlab/observables';
-import { CharacterRange } from '../codeversion';
-import { CodeDiffModel } from '../history';
+import { CharacterRange, CodeDiffModel } from '../codeversion';
 
 /**
  * The definition of a model object for a sliced cell.
  */
-export interface ISlicedCellModel extends CodeEditor.IModel {}
+export interface ISlicedCellModel extends CodeEditor.IModel {
+    /**
+     * A unique ID for a cell.
+     */
+    readonly cellId: string;
+
+    /**
+     * The execution count for the cell.
+     */
+    readonly executionCount: number;
+
+    /**
+     * The source code for the cell.
+     */
+    readonly sourceCode: string;
+
+    /**
+     * A text diff between the cell's contents in this version and the contents in the most
+     * recent version of the cell.
+     */
+    readonly diff: CodeDiffModel;
+
+    /**
+     * Whether the cell is included in a source slice.
+     */
+    readonly cellInSlice: boolean;
+
+    /**
+     * The part of the cell's code are in the slice.
+     */
+    readonly sliceRanges: Array<CharacterRange>;
+}
 
 /**
  * An implementation for the sliced cell model.

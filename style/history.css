@@ -2,12 +2,18 @@
   --jp-icon-history-viewer: url('icons/history_viewer.png')
 }
 
+.jp-HistoryViewerIcon {
+  background-image: var(--jp-icon-history-viewer);
+  background-size: 100%;
+}
+
 .jp-HistoryViewer {
   padding: var(--jp-notebook-padding);
   overflow: auto;
   background: var(--jp-layout-color0);
 }
 
+/* Cell */
 .jp-SlicedCell {
   padding: var(--jp-cell-padding);
 }
@@ -17,12 +23,15 @@
   background-color: var(--jp-cell-editor-background);
 }
 
-.jp-HistoryViewerIcon {
-  background-image: var(--jp-icon-history-viewer);
-  background-size: 100%;
-}
-
-/* CodeMirror instance */
+/* CodeMirror editor */
 .jp-HistoryViewer .CodeMirror.cm-s-jupyter {
   background: transparent;
+}
+
+.jp-SlicedCell-editor-highlightedtext {
+  background-color: yellow;
+}
+
+.jp-SlicedCell-editor-blurredtext {
+  opacity: .5;
 }

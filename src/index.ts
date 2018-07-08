@@ -334,7 +334,7 @@ function activateExtension(app: JupyterLab, palette: ICommandPalette, notebooks:
 
         const panel = notebooks.currentWidget;
         if (panel && panel.notebook && panel.notebook.activeCell.model.type === 'code') {
-            console.log("Gathering from history");
+            // console.log("Gathering from history");
             const activeCell = panel.notebook.activeCell;
             let snapshots: NotebookSnapshot[] = executionLogger.snapshots(activeCell.model);
             let historyModel: HistoryModel = buildHistoryModel(activeCell.model.id, snapshots);
@@ -350,7 +350,6 @@ function activateExtension(app: JupyterLab, palette: ICommandPalette, notebooks:
             }
             app.shell.activateById(widget.id);
         }
-
     });
 }
 

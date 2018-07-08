@@ -3,7 +3,7 @@ import { CodeMirrorEditorFactory, CodeMirrorEditor } from '@jupyterlab/codemirro
 import { PanelLayout } from '@phosphor/widgets';
 import { Widget } from '@phosphor/widgets';
 import { ISlicedCellModel } from './model';
-// import 'codemirror/mode/python/python';
+import { CharacterRange } from '../codeversion';
 
 /**
  * The class name added to sliced cell widgets.
@@ -14,6 +14,16 @@ const SLICED_CELL_CLASS = 'jp-SlicedCell';
  * The class name added to the editor area of a sliced cell.
  */
 const SLICED_CELL_EDITOR_CLASS = 'jp-SlicedCell-editor';
+
+/**
+ * The class name added to editor text that was changed.
+ */
+const SLICED_CELL_HIGHLIGHTED_TEXT_CLASS = 'jp-SlicedCell-editor-highlightedtext';
+
+/**
+ * The class name added to editor text that should be blurred.
+ */
+const SLICED_CELL_BLURRED_TEXT_CLASS = 'jp-SlicedCell-editor-blurredtext';
 
 /**
  * A widget for showing a cell with a code slice.
@@ -37,10 +47,33 @@ export class SlicedCell extends Widget {
         let layout = (this.layout = new PanelLayout());
         layout.addWidget(editor);
 
+        let codeMirrorEditor: CodeMirror.Editor = (editor.editor as CodeMirrorEditor).editor;
+        let codeMirrorDoc: CodeMirror.Doc = (editor.editor as CodeMirrorEditor).doc;
+
         // XXX: Syntax highlighting only appears to work if we wait before applying it.
+        // Though some other operations (e.g., marking text) without a delay.
         setTimeout(function() {
-            (editor.editor as CodeMirrorEditor).setOption('mode', 'ipython');
+            codeMirrorEditor.setOption('mode', 'ipython');
         }, 1000);
+
+        // Highlight all cell text that is different in the diff.
+        this.model.diff.updatedRanges.forEach(function(range: CharacterRange) {
+            console.log("Marking updated range:", range.start, range.end);
+            codeMirrorDoc.markText(
+                codeMirrorDoc.posFromIndex(range.start),
+                codeMirrorDoc.posFromIndex(range.end + 1),
+                { className: SLICED_CELL_HIGHLIGHTED_TEXT_CLASS }
+            )
+        });
+
+        // Hide or blur all text that wasn't changed.
+        this.model.diff.sameRanges.forEach(function(range: CharacterRange) {
+            codeMirrorDoc.markText(
+                codeMirrorDoc.posFromIndex(range.start),
+                codeMirrorDoc.posFromIndex(range.end + 1),
+                { className: SLICED_CELL_BLURRED_TEXT_CLASS }
+            );
+        });
     }
 
     /**
