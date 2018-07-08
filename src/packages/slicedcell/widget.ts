@@ -26,6 +26,11 @@ const SLICED_CELL_HIGHLIGHTED_TEXT_CLASS = 'jp-SlicedCell-editor-highlightedtext
 const SLICED_CELL_BLURRED_TEXT_CLASS = 'jp-SlicedCell-editor-blurredtext';
 
 /**
+ * Number of lines of context to show before and after updated code.
+ */
+const CONTEXT_SIZE = 1;
+
+/**
  * A widget for showing a cell with a code slice.
  */
 export class SlicedCell extends Widget {
@@ -56,17 +61,26 @@ export class SlicedCell extends Widget {
             codeMirrorEditor.setOption('mode', 'ipython');
         }, 1000);
 
-        // Highlight all cell text that is different in the diff.
+        let linesToShow: Array<number> = new Array<number>();
         this.model.diff.updatedRanges.forEach(function(range: CharacterRange) {
-            console.log("Marking updated range:", range.start, range.end);
-            codeMirrorDoc.markText(
-                codeMirrorDoc.posFromIndex(range.start),
-                codeMirrorDoc.posFromIndex(range.end + 1),
-                { className: SLICED_CELL_HIGHLIGHTED_TEXT_CLASS }
-            )
-        });
 
-        // Hide or blur all text that wasn't changed.
+            // Build a list of lines that should be showing in the cell.
+            let startPosition: CodeMirror.Position = codeMirrorDoc.posFromIndex(range.start);
+            let endPosition: CodeMirror.Position = codeMirrorDoc.posFromIndex(range.end + 1);
+            for (let i = startPosition.line - CONTEXT_SIZE; i < endPosition.line + CONTEXT_SIZE; i++) {
+                if (i < codeMirrorDoc.firstLine() || i > codeMirrorDoc.lastLine()) continue;
+                if (linesToShow.indexOf(i) == -1) {
+                    linesToShow.push(i);
+                }
+            }
+
+            // Highlight all cell text that was updated in the diff.
+            codeMirrorDoc.markText(startPosition, endPosition,
+                { className: SLICED_CELL_HIGHLIGHTED_TEXT_CLASS });
+        });
+        linesToShow.sort(function(a, b) { return a - b; });
+
+        // Blur all text that wasn't changed.
         this.model.diff.sameRanges.forEach(function(range: CharacterRange) {
             codeMirrorDoc.markText(
                 codeMirrorDoc.posFromIndex(range.start),
@@ -74,6 +88,39 @@ export class SlicedCell extends Widget {
                 { className: SLICED_CELL_BLURRED_TEXT_CLASS }
             );
         });
+
+        // Make a list of what lines to hide.
+        let hiddenLineRanges: Array<[number, number]> = new Array<[number, number]>();
+        let hiddenRangeStart: number = -1;
+        for (let i = codeMirrorDoc.firstLine(); i <= codeMirrorDoc.lastLine(); i++) {
+            if (linesToShow.indexOf(i) == -1 && hiddenRangeStart == -1) {
+                hiddenRangeStart = i;
+            } else if (linesToShow.indexOf(i) != -1 && hiddenRangeStart != -1) {
+                hiddenLineRanges.push([hiddenRangeStart, i]);
+                hiddenRangeStart = -1;
+            }
+        }
+        if (hiddenRangeStart != -1) {
+            hiddenLineRanges.push([hiddenRangeStart, codeMirrorDoc.lastLine() + 1]);
+        }
+        
+        // Hide the lines that should be hidden.
+        hiddenLineRanges.forEach(function(lineRange: [number, number]) {
+            let replacement = document.createElement('span');
+            replacement.textContent = "...";
+            replacement.classList.add(SLICED_CELL_BLURRED_TEXT_CLASS);
+            codeMirrorDoc.markText(
+                { line: lineRange[0], ch: 0 },
+                // codeMirrorDoc.posFromIndex(codeMirrorDoc.indexFromPos({ line: lineRange[1], ch: 0 }) -1),
+                { line: lineRange[1], ch: 0 },
+                { collapsed: true, replacedWith: replacement }
+            )
+        });
+
+        // If there is no new code in this cell, hide it.
+        if (linesToShow.length == 0) {
+            this.hide();
+        }
     }
 
     /**
