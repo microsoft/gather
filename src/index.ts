@@ -295,19 +295,6 @@ function activateExtension(app: JupyterLab, palette: ICommandPalette, notebooks:
         palette.addItem({ command, category: 'Clean Up' });
     }
 
-    addCommand('livecells:reviewHistory', 'Review history for this result', () => {
-        let widget: HistoryViewer = new HistoryViewer({
-            model: new HistoryModel({}),
-            rendermime: new RenderMimeRegistry({ initialFactories }),
-            editorFactory: notebooks.activeCell.contentFactory.editorFactory
-        });
-
-        if (!widget.isAttached) {
-            app.shell.addToMainArea(widget);
-        }
-        app.shell.activateById(widget.id);
-    });
-
     addCommand('livecells:gatherToNotebook', 'Gather this result into a new notebook', () => {
         const panel = notebooks.currentWidget;
         if (panel && panel.notebook && panel.notebook.activeCell.model.type === 'code') {
@@ -353,11 +340,25 @@ function activateExtension(app: JupyterLab, palette: ICommandPalette, notebooks:
     });
 
     addCommand('livecells:gatherFromHistory', 'Compare previous versions of this result', () => {
+
+        /*
         const panel = notebooks.currentWidget;
         if (panel && panel.notebook && panel.notebook.activeCell.model.type === 'code') {
             const activeCell = panel.notebook.activeCell;
             console.log(executionLogger.versions(activeCell.model));
         }
+        */
+
+        let widget: HistoryViewer = new HistoryViewer({
+            model: new HistoryModel({}),
+            rendermime: new RenderMimeRegistry({ initialFactories }),
+            editorFactory: notebooks.activeCell.contentFactory.editorFactory
+        });
+
+        if (!widget.isAttached) {
+            app.shell.addToMainArea(widget);
+        }
+        app.shell.activateById(widget.id);
     });
 }
 
