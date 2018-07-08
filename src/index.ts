@@ -8,6 +8,8 @@ import { IClientSession, ICommandPalette } from '@jupyterlab/apputils';
 import { IDocumentManager } from '@jupyterlab/docmanager';
 import { FileEditor } from '@jupyterlab/fileeditor';
 import { nbformat } from '@jupyterlab/coreutils';
+import { toArray } from '@phosphor/algorithm';
+import { RenderMimeRegistry, standardRendererFactories as initialFactories } from '@jupyterlab/rendermime';
 
 import * as python3 from './parsers/python/python3';
 import { ILocation } from './parsers/python/python_parser';
@@ -15,10 +17,7 @@ import { ControlFlowGraph } from './ControlFlowGraph';
 import { dataflowAnalysis } from './DataflowAnalysis';
 import { NumberSet, range } from './Set';
 import { ToolbarCheckbox } from './ToolboxCheckbox';
-import { HistoryViewer } from './widgets/history/widget';
-import { HistoryModel } from './widgets/history';
-import { toArray } from '@phosphor/algorithm';
-import { RenderMimeRegistry, standardRendererFactories as initialFactories } from '@jupyterlab/rendermime';
+import { HistoryModel, HistoryViewer, NotebookSnapshot, CellSnapshot, buildHistoryModel } from './packages/history';
 
 import '../style/index.css';
 
@@ -204,22 +203,8 @@ export class LiveCheckboxExtension implements DocumentRegistry.IWidgetExtension<
     }
 }
 
-
-class RememberedCell {
-    constructor(
-        public id: string,
-        public cellModel: ICodeCellModel) {
-    }
-}
-
-class NotebookCopy {
-    constructor(
-        public cells: RememberedCell[]
-    ) { }
-}
-
 class ExecutionLoggerExtension implements DocumentRegistry.IWidgetExtension<NotebookPanel, INotebookModel> {
-    private executionHistoryPerCell: { [cellId: string]: NotebookCopy[] } = {};
+    private executionHistoryPerCell: { [cellId: string]: NotebookSnapshot[] } = {};
 
     createNew(panel: NotebookPanel, context: DocumentRegistry.IContext<INotebookModel>): IDisposable {
         panel.notebook.model.cells.changed.connect(
@@ -231,18 +216,20 @@ class ExecutionLoggerExtension implements DocumentRegistry.IWidgetExtension<Note
         });
     }
 
-    private copyNotebook(notebookModel: INotebookModel): NotebookCopy {
-        const cells: RememberedCell[] = [];
+    private copyNotebook(notebookModel: INotebookModel): NotebookSnapshot {
+        const cells: CellSnapshot[] = [];
         const nbmodel = new NotebookModel();
         nbmodel.fromJSON(notebookModel.toJSON() as nbformat.INotebookContent);
         for (let i = 0; i < notebookModel.cells.length; i++) {
             const cell = notebookModel.cells.get(i) as ICodeCellModel;
             if (cell) {
                 const clone = nbmodel.cells.get(i) as ICodeCellModel;
-                cells.push(new RememberedCell(cell.id, clone));
+                cells.push(new CellSnapshot(cell.id, clone));
             }
         }
-        return new NotebookCopy(cells);
+        const copy: NotebookSnapshot = new NotebookSnapshot(cells);
+        console.log(copy);
+        return copy;
     }
 
     public onCellsChanged(
@@ -267,6 +254,10 @@ class ExecutionLoggerExtension implements DocumentRegistry.IWidgetExtension<Note
                 }
             });
         }
+    }
+
+    public snapshots(cell: ICellModel) {
+        return this.executionHistoryPerCell[cell.id];
     }
 
     public versions(cell: ICellModel) {
@@ -341,13 +332,15 @@ function activateExtension(app: JupyterLab, palette: ICommandPalette, notebooks:
 
     addCommand('livecells:gatherFromHistory', 'Compare previous versions of this result', () => {
 
-        /*
         const panel = notebooks.currentWidget;
         if (panel && panel.notebook && panel.notebook.activeCell.model.type === 'code') {
+            console.log("Gathering from history");
             const activeCell = panel.notebook.activeCell;
-            console.log(executionLogger.versions(activeCell.model));
+            // console.log(executionLogger.versions(activeCell.model));
+            let snapshots: NotebookSnapshot[] = executionLogger.snapshots(activeCell.model);
+            let history: HistoryModel = buildHistoryModel(snapshots);
+            console.log(history);
         }
-        */
 
         let widget: HistoryViewer = new HistoryViewer({
             model: new HistoryModel({}),
