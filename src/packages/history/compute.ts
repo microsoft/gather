@@ -1,8 +1,9 @@
 import { ICodeCellModel } from '@jupyterlab/cells';
 import { HistoryModel } from './model';
-import { Revision } from '../revision';
-import { CharacterRange, CodeDiffModel } from './codediff';
+import { RevisionModel } from '../revision';
+import { CharacterRange, CodeDiffModel, CodeVersionModel } from '../codeversion';
 import { SlicedCellModel } from '../slicedcell';
+import { nbformat } from '../../../node_modules/@jupyterlab/coreutils';
 let diff_match_patch = require('./diff-match-patch').diff_match_patch;
 
 export class CellSnapshot {
@@ -68,9 +69,12 @@ export function diffMatchPatchDiffToCodeDiff(diffMatchPatchDiff: Array<[number, 
 }
 
 /**
- * Build a history model from notebook snapshots
+ * Build a history model of how a cell was computed across notebook snapshots.
  */
-export function buildHistoryModel(notebookSnapshots: NotebookSnapshot[]): HistoryModel {
+export function buildHistoryModel(
+    selectedCellId: string,
+    notebookSnapshots: NotebookSnapshot[]
+): HistoryModel {
     
     // All cells in past revisions will be compared to those in the current revision. For the most
     // recent version, save a mapping from cells' IDs to their content, so we can look them up to
@@ -88,35 +92,72 @@ export function buildHistoryModel(notebookSnapshots: NotebookSnapshot[]): Histor
     let diffMatchPatch = new diff_match_patch();
 
     // Compute diffs between each of the previous revisions and the current revision.
-    let revisions = new Array<Revision>();
-    notebookSnapshots.forEach(function(notebookSnapshot) {
+    let revisions = new Array<RevisionModel>();
+    notebookSnapshots.forEach(function(notebookSnapshot: NotebookSnapshot, versionIndex: number) {
 
-        // First, difference the entire source of both versions.
+        // Difference the entire source of both versions.
         // Use the two-step diffing process of `diff_main` and `diff_cleanupSemantic` as the
         // second method will clean up the diffs to be more readable.
         let snapshotExecutedSource: string = getExecutedSource(notebookSnapshot);
         let sourceDiff: Array<[number, string]> = diffMatchPatch.diff_main(recentExecutedSource, snapshotExecutedSource);
         diffMatchPatch.diff_cleanupSemantic(sourceDiff);
         let sourceDiffModel: CodeDiffModel = diffMatchPatchDiffToCodeDiff(sourceDiff);
-        console.log(sourceDiffModel);
 
-        // Then difference the code in the cells.
+        // Then difference the code in each cell.
+        let slicedCellModels:Array<SlicedCellModel> = new Array<SlicedCellModel>();
         notebookSnapshot.cells.forEach(function(cellSnapshot: CellSnapshot) {
+            
             let recentCellSnapshot: CellSnapshot = recentCellSnapshots[cellSnapshot.id];
             let recentText: string = "";
             if (recentCellSnapshot) {
                 recentText = recentCellSnapshot.cellModel.value.text;
             }
+
             let snapshotText: string = cellSnapshot.cellModel.value.text;
             let cellDiff: Array<[number, string]> = diffMatchPatch.diff_main(recentText, snapshotText);
             diffMatchPatch.diff_cleanupSemantic(cellDiff);
             let cellDiffModel: CodeDiffModel = diffMatchPatchDiffToCodeDiff(cellDiff);
-            console.log(cellDiffModel);
+            
+            let slicedCellModel: SlicedCellModel  = new SlicedCellModel({
+                cellId: cellSnapshot.id,
+                executionCount: cellSnapshot.cellModel.executionCount,
+                sourceCode: snapshotText,
+                diff: cellDiffModel,
+                // TODO(andrewhead): update with slice information.
+                cellInSlice: true,
+                sliceRanges: []
+            });
+            slicedCellModels.push(slicedCellModel);
         })
 
-        console.log(revisions);
+        let result: nbformat.IOutput = null;
+        let selectedCellSnapshot: CellSnapshot = null
+        notebookSnapshot.cells.forEach(function(cellSnapshot: CellSnapshot) {
+            if (cellSnapshot.id == selectedCellId) {
+                selectedCellSnapshot = cellSnapshot;
+            }
+        });
+        if (selectedCellSnapshot) {
+            if (selectedCellSnapshot.cellModel.outputs &&
+                selectedCellSnapshot.cellModel.outputs.length > 0) {
+                result = selectedCellSnapshot.cellModel.outputs.get(0).toJSON();
+            }
+        }
 
+        let codeVersionModel:CodeVersionModel = new CodeVersionModel({
+            sourceCode: snapshotExecutedSource,
+            // TODO(andrewhead): update with slice information.
+            codeSlice: "",
+            sliceDiff: sourceDiffModel,
+            cells: slicedCellModels
+        });
+        let revisionModel:RevisionModel = new RevisionModel({
+            versionIndex: versionIndex,
+            source: codeVersionModel,
+            result: result
+        });
+        revisions.push(revisionModel);
     });
 
-    return null;
+    return new HistoryModel({ revisions: revisions });
 }

@@ -18,7 +18,7 @@ export interface IRevisionModel {
     /**
      * The result of the computation.
      */
-    readonly result: nbformat.IDisplayData;
+    readonly result: nbformat.IOutput;
 }
 
 /**
@@ -46,12 +46,12 @@ export class RevisionModel implements IRevisionModel {
     /**
      * Get the result of this computation.
      */
-    get result(): nbformat.IDisplayData {
+    get result(): nbformat.IOutput {
         return this._result;
     }
 
     private _source: ICodeVersionModel;
-    private _result: nbformat.IDisplayData;
+    private _result: nbformat.IOutput;
 }
 
 /**
@@ -75,7 +75,7 @@ export namespace RevisionModel {
         /**
          * The display data for the result at this version.
          */
-        result?: nbformat.IDisplayData;
+        result?: nbformat.IOutput;
 
         /**
          * The time this version was created. POSIX format.

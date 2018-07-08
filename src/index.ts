@@ -336,22 +336,21 @@ function activateExtension(app: JupyterLab, palette: ICommandPalette, notebooks:
         if (panel && panel.notebook && panel.notebook.activeCell.model.type === 'code') {
             console.log("Gathering from history");
             const activeCell = panel.notebook.activeCell;
-            // console.log(executionLogger.versions(activeCell.model));
             let snapshots: NotebookSnapshot[] = executionLogger.snapshots(activeCell.model);
-            let history: HistoryModel = buildHistoryModel(snapshots);
-            console.log(history);
+            let historyModel: HistoryModel = buildHistoryModel(activeCell.model.id, snapshots);
+
+            let widget: HistoryViewer = new HistoryViewer({
+                model: historyModel,
+                rendermime: new RenderMimeRegistry({ initialFactories }),
+                editorFactory: notebooks.activeCell.contentFactory.editorFactory
+            });
+    
+            if (!widget.isAttached) {
+                app.shell.addToMainArea(widget);
+            }
+            app.shell.activateById(widget.id);
         }
 
-        let widget: HistoryViewer = new HistoryViewer({
-            model: new HistoryModel({}),
-            rendermime: new RenderMimeRegistry({ initialFactories }),
-            editorFactory: notebooks.activeCell.contentFactory.editorFactory
-        });
-
-        if (!widget.isAttached) {
-            app.shell.addToMainArea(widget);
-        }
-        app.shell.activateById(widget.id);
     });
 }
 

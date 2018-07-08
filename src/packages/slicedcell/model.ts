@@ -1,5 +1,7 @@
 import { CodeEditor } from '@jupyterlab/codeeditor';
 import { IModelDB } from '@jupyterlab/observables';
+import { CharacterRange } from '../codeversion';
+import { CodeDiffModel } from '../history';
 
 /**
  * The definition of a model object for a sliced cell.
@@ -18,18 +20,19 @@ export class SlicedCellModel extends CodeEditor.Model implements ISlicedCellMode
 
         this._cellId = options.cellId;
         this._executionCount = options.executionCount;
+        this._sourceCode = options.sourceCode;
+        this._diff = options.diff;
         this._cellInSlice = options.cellInSlice;
-        this._sourceOriginal = options.sourceOriginal;
-        this._slicedSource = options.slicedSource;
+        this._sliceRanges = options.sliceRanges;
 
-        let text = this._sourceOriginal;
+        let text = this._sourceCode;
         this.value.text = text as string;
     }
 
     /**
      * Get the cell ID.
      */
-    get cellId(): number {
+    get cellId(): string {
         return this._cellId;
     }
 
@@ -41,6 +44,21 @@ export class SlicedCellModel extends CodeEditor.Model implements ISlicedCellMode
     }
 
     /**
+     * Get the source code for the cell.
+     */
+    get sourceCode(): string {
+        return this._sourceCode;
+    }
+
+    /**
+     * Get the difference between the cell contents in this version of the cell, and the contents
+     * from the most recent version.
+     */
+    get diff(): CodeDiffModel {
+        return this._diff;
+    }
+
+    /**
      * Get whether this cell is included in the slice.
      */
     get cellInSlice(): boolean {
@@ -48,24 +66,18 @@ export class SlicedCellModel extends CodeEditor.Model implements ISlicedCellMode
     }
 
     /**
-     * Get the original source code for the cell.
+     * Get the ranges of the cell's code that are in the slice.
      */
-    get sourceOriginal(): string {
-        return this._sourceOriginal;
+    get sliceRanges(): Array<CharacterRange> {
+        return this._sliceRanges;
     }
 
-    /**
-     * Get the part of the cell's code that is included in the slice.
-     */
-    get slicedSource(): string {
-        return this._slicedSource;
-    }
-
-    private _cellId: number;
+    private _cellId: string;
     private _executionCount: number;
+    private _sourceCode: string;
+    private _diff:CodeDiffModel;
     private _cellInSlice: boolean;
-    private _sourceOriginal: string;
-    private _slicedSource: string;
+    private _sliceRanges: Array<CharacterRange>;
 }
 
 /**
@@ -79,7 +91,7 @@ export namespace SlicedCellModel {
         /**
          * A unique ID for a cell.
          */
-        cellId: number;
+        cellId: string;
 
         /**
          * The execution count for the cell.
@@ -87,19 +99,25 @@ export namespace SlicedCellModel {
         executionCount: number;
 
         /**
+         * The source code for the cell.
+         */
+        sourceCode: string;
+
+        /**
+         * A text diff between the cell's contents in this version and the contents in the most
+         * recent version of the cell.
+         */
+        diff: CodeDiffModel;
+
+        /**
          * Whether the cell is included in a source slice.
          */
         cellInSlice: boolean;
 
         /**
-         * The original source code for the cell.
+         * The part of the cell's code are in the slice.
          */
-        sourceOriginal: string;
-
-        /**
-         * The part of the cell's code that's included in a slice.
-         */
-        slicedSource: string;
+        sliceRanges: Array<CharacterRange>;
 
         /**
          * An IModelDB in which to store cell data.

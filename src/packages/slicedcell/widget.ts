@@ -163,12 +163,7 @@ export namespace SlicedCell {
      * A function to create the default CodeMirror editor factory.
      */
     function _createDefaultEditorFactory(): CodeEditor.Factory {
-        let editorServices = new CodeMirrorEditorFactory({
-            // TODO(andrewhead): remove this theme hard-coding; get from original cells.
-            mode: "python",
-            theme: "jupyter",
-            // readOnly: true
-        });
+        let editorServices = new CodeMirrorEditorFactory({});
         return editorServices.newInlineEditor;
     }
 

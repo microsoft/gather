@@ -24,17 +24,20 @@ export class DisplayData extends Widget {
         let layout = (this.layout = new PanelLayout());
 
         // Code borrowed from OutputArea extension.
+        // TODO(andrewhead): support other types of display data.
         // TODO(andrewhead): change second argument (preferSafe) based on display data field.
-        let mimeType = rendermime.preferredMimeType(model.data, false);
-        let output = rendermime.createRenderer(mimeType);
-        output.renderModel(new OutputModel({ value: model }));
-        layout.addWidget(output);
+        if (nbformat.isExecuteResult(model) || nbformat.isDisplayData(model)) {
+            let mimeType = rendermime.preferredMimeType(model.data, true);
+            let output = rendermime.createRenderer(mimeType);
+            output.renderModel(new OutputModel({ value: model }));
+            layout.addWidget(output);
+        }
     }
 
     /**
      * The model used by the widget.
      */
-    readonly model: nbformat.IDisplayData;
+    readonly model: nbformat.IOutput;
 
     /**
      * The rendermime instance used by the widget.
@@ -51,9 +54,9 @@ export namespace DisplayData {
      */
     export interface IOptions {
         /**
-         * The model used by the widget.
+         * The model of the output.
          */
-        model: nbformat.IDisplayData;
+        model: nbformat.IOutput;
 
         /**
          * The mime renderer for this widget.
