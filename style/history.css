@@ -33,5 +33,10 @@
 }
 
 .jp-SlicedCell-editor-blurredtext {
-  opacity: .5;
+   opacity: .9;
+}
+
+.jp-SlicedCell-editor-hidetext {
+  opacity: .7;
+  font-style: italic;
 }
