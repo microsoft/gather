@@ -15,7 +15,8 @@ export class CellSnapshot {
 
 export class NotebookSnapshot {
     constructor(
-        public cells: CellSnapshot[]
+        public cells: CellSnapshot[],
+        public timeCreated: Date
     ) { }
 }
 
@@ -93,7 +94,7 @@ export function buildHistoryModel(
 
     // Compute diffs between each of the previous revisions and the current revision.
     let revisions = new Array<RevisionModel>();
-    notebookSnapshots.forEach(function(notebookSnapshot: NotebookSnapshot, versionIndex: number) {
+    notebookSnapshots.forEach(function(notebookSnapshot: NotebookSnapshot, snapshotIndex: number) {
 
         // Difference the entire source of both versions.
         // Use the two-step diffing process of `diff_main` and `diff_cleanupSemantic` as the
@@ -152,9 +153,11 @@ export function buildHistoryModel(
             cells: slicedCellModels
         });
         let revisionModel:RevisionModel = new RevisionModel({
-            versionIndex: versionIndex,
+            versionIndex: snapshotIndex + 1,  // Version index should start at 1
             source: codeVersionModel,
-            result: result
+            result: result,
+            latest: (snapshotIndex == notebookSnapshots.length - 1),
+            timeCreated: notebookSnapshot.timeCreated
         });
         revisions.push(revisionModel);
     });

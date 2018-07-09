@@ -19,6 +19,16 @@ export interface IRevisionModel {
      * The result of the computation.
      */
     readonly result: nbformat.IOutput;
+
+    /**
+     * Whether this revision is the latest revision.
+     */
+    readonly latest: boolean;
+
+    /**
+     * The time this version was created.
+     */
+    readonly timeCreated: Date;
 }
 
 /**
@@ -32,9 +42,12 @@ export class RevisionModel implements IRevisionModel {
         this.versionIndex = options.versionIndex;
         this._source = options.source;
         this._result = options.result;
+        this.latest = options.latest;
+        this._timeCreated = options.timeCreated;
     }
 
     readonly versionIndex: number; 
+    readonly latest: boolean;
 
     /**
      * Get the source code for this revision.
@@ -50,8 +63,16 @@ export class RevisionModel implements IRevisionModel {
         return this._result;
     }
 
+    /**
+     * Get the time this revision was created.
+     */
+    get timeCreated(): Date {
+        return this._timeCreated;
+    }
+
     private _source: ICodeVersionModel;
     private _result: nbformat.IOutput;
+    private _timeCreated: Date;
 }
 
 /**
@@ -78,8 +99,13 @@ export namespace RevisionModel {
         result?: nbformat.IOutput;
 
         /**
-         * The time this version was created. POSIX format.
+         * Whether this revision is the latest revision.
          */
-        timeCreated?: string;
+        latest?: boolean;
+
+        /**
+         * The time this version was created.
+         */
+        timeCreated?: Date;
     }
 }

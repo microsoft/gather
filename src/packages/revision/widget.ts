@@ -7,9 +7,14 @@ import { DisplayData } from '../displaydata';
 import { CodeEditor } from '@jupyterlab/codeeditor';
 
 /**
- * The class name added to code version widgets
+ * The class name added to revision widgets
  */
 const REVISION_CLASS = 'jp-Revision';
+
+/**
+ * The class name added to headers for revision widgets.
+ */
+const REVISION_HEADER_CLASS = 'jp-Revision-header';
 
 /**
  * A widget for showing revision of an execution.
@@ -26,6 +31,33 @@ export class Revision extends Widget {
         let editorFactory = (this.editorFactory = options.editorFactory);
 
         let layout = (this.layout = new PanelLayout());
+        
+        let header: HTMLElement = document.createElement("h1");
+        let headerText: string;
+        if (this.model.latest) {
+            headerText = "Latest ";
+        } else {
+            headerText = "Version " + this.model.versionIndex;
+        }
+        if (this.model.timeCreated) {
+            let dateString: string = this.model.timeCreated.toLocaleDateString(
+                undefined, {
+                    day: "numeric",
+                    month: "long",
+                    year: "numeric"
+                });
+            let timeString: string = this.model.timeCreated.toLocaleTimeString(
+                undefined, {
+                    hour: "numeric",
+                    minute: "2-digit"
+                });
+            headerText += ("(" + timeString + ", " + dateString + ")");
+        }
+        header.textContent = headerText;
+        let headerWidget: Widget = new Widget({ node: header });
+        headerWidget.addClass(REVISION_HEADER_CLASS);
+        layout.addWidget(headerWidget);
+
         layout.addWidget(new DisplayData({
             model: model.result,
             rendermime: rendermime

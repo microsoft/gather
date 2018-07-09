@@ -227,7 +227,7 @@ class ExecutionLoggerExtension implements DocumentRegistry.IWidgetExtension<Note
                 cells.push(new CellSnapshot(cell.id, clone));
             }
         }
-        const copy: NotebookSnapshot = new NotebookSnapshot(cells);
+        const copy: NotebookSnapshot = new NotebookSnapshot(cells, new Date());
         console.log(copy);
         return copy;
     }

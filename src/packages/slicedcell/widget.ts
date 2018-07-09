@@ -111,7 +111,6 @@ export class SlicedCell extends Widget {
             replacement.classList.add(SLICED_CELL_BLURRED_TEXT_CLASS);
             codeMirrorDoc.markText(
                 { line: lineRange[0], ch: 0 },
-                // codeMirrorDoc.posFromIndex(codeMirrorDoc.indexFromPos({ line: lineRange[1], ch: 0 }) -1),
                 { line: lineRange[1], ch: 0 },
                 { collapsed: true, replacedWith: replacement }
             )
