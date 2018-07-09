@@ -23,7 +23,7 @@ export interface IRevisionModel {
     /**
      * Whether this revision is the latest revision.
      */
-    readonly latest: boolean;
+    readonly isLatest: boolean;
 
     /**
      * The time this version was created.
@@ -42,12 +42,12 @@ export class RevisionModel implements IRevisionModel {
         this.versionIndex = options.versionIndex;
         this._source = options.source;
         this._result = options.result;
-        this.latest = options.latest;
+        this.isLatest = options.isLatest;
         this._timeCreated = options.timeCreated;
     }
 
     readonly versionIndex: number; 
-    readonly latest: boolean;
+    readonly isLatest: boolean;
 
     /**
      * Get the source code for this revision.
@@ -101,7 +101,7 @@ export namespace RevisionModel {
         /**
          * Whether this revision is the latest revision.
          */
-        latest?: boolean;
+        isLatest?: boolean;
 
         /**
          * The time this version was created.

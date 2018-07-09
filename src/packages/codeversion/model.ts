@@ -24,10 +24,15 @@ export interface ICodeVersionModel {
      * A list of cells for this version of the code, with slice info.
      */
     readonly cells: ReadonlyArray<ISlicedCellModel>;
+
+    /**
+     * Whether this is the latest source code version.
+     */
+    readonly isLatest: boolean;
 }
 
 /**
- * An implementation of the source code model.
+ * An implementation of the source code version model.
  */
 export class CodeVersionModel implements ICodeVersionModel {
     /**
@@ -38,6 +43,7 @@ export class CodeVersionModel implements ICodeVersionModel {
         this._codeSlice = options.codeSlice;
         this._sliceDiff = options.sliceDiff;
         this._cells = options.cells;
+        this._isLatest = options.isLatest;
     }
 
     /**
@@ -68,10 +74,18 @@ export class CodeVersionModel implements ICodeVersionModel {
         return this._cells;
     }
 
+    /**
+     * Whether this is the latest source code version.
+     */
+    get isLatest(): boolean {
+        return this._isLatest;
+    }
+
     private _sourceCode: string;
     private _codeSlice: string;
     private _sliceDiff: CodeDiffModel;
     private _cells: ReadonlyArray<ISlicedCellModel>;
+    private _isLatest: boolean;
 }
 
 /**
@@ -101,5 +115,10 @@ export namespace CodeVersionModel {
          * The cells in the notebook at the time of this revision.
          */
         cells: ReadonlyArray<ISlicedCellModel>;
+
+        /**
+         * Whether this is the latest source code version.
+         */
+        isLatest?: boolean;
     }
 }

@@ -34,7 +34,7 @@ export class Revision extends Widget {
         
         let header: HTMLElement = document.createElement("h1");
         let headerText: string;
-        if (this.model.latest) {
+        if (this.model.isLatest) {
             headerText = "Latest ";
         } else {
             headerText = "Version " + this.model.versionIndex;

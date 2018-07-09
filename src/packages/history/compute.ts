@@ -145,18 +145,20 @@ export function buildHistoryModel(
             }
         }
 
+        let isLatestVersion =  (snapshotIndex == notebookSnapshots.length - 1);
         let codeVersionModel:CodeVersionModel = new CodeVersionModel({
             sourceCode: snapshotExecutedSource,
             // TODO(andrewhead): update with slice information.
             codeSlice: "",
             sliceDiff: sourceDiffModel,
-            cells: slicedCellModels
+            cells: slicedCellModels,
+            isLatest: isLatestVersion
         });
         let revisionModel:RevisionModel = new RevisionModel({
             versionIndex: snapshotIndex + 1,  // Version index should start at 1
             source: codeVersionModel,
             result: result,
-            latest: (snapshotIndex == notebookSnapshots.length - 1),
+            isLatest: isLatestVersion,
             timeCreated: notebookSnapshot.timeCreated
         });
         revisions.push(revisionModel);
