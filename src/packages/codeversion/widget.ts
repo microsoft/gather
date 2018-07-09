@@ -1,7 +1,7 @@
 import { PanelLayout } from '@phosphor/widgets';
 import { Widget } from '@phosphor/widgets';
 import { ICodeVersionModel } from './model';
-import { DiffedSlicedCell, SlicedCell } from '../slicedcell';
+import { CellArea } from '../slicedcell';
 import { CodeEditor } from '@jupyterlab/codeeditor';
 
 /**
@@ -24,14 +24,12 @@ export class CodeVersion extends Widget {
 
         let layout = (this.layout = new PanelLayout());
         for (let cellModel of this.model.cells) {
-            let options: SlicedCell.IOptions = { model: cellModel, editorFactory };
-            let cellWidget: Widget;
-            if (this.model.isLatest) {
-                cellWidget = new SlicedCell(options);
-            } else {
-                cellWidget = new DiffedSlicedCell(options);
-            }
-            layout.addWidget(cellWidget);
+            let options: CellArea.IOptions = {
+                model: cellModel,
+                editorFactory,
+                showDiff: this.model.isLatest
+            };
+            layout.addWidget(new CellArea(options));
         }
     }
 

@@ -14,7 +14,13 @@
 }
 
 /* Cell */
+.jp-CellArea {
+  display: flex;
+  flex-direction: row;
+}
+
 .jp-SlicedCell {
+  flex: 1 1 auto;
   padding: var(--jp-cell-padding);
 }
 

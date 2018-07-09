@@ -1,7 +1,8 @@
-import { CodeEditor, CodeEditorWrapper } from '@jupyterlab/codeeditor';
-import { CodeMirrorEditor } from '@jupyterlab/codemirror';
 import { PanelLayout } from '@phosphor/widgets';
 import { Widget } from '@phosphor/widgets';
+import { CodeEditor, CodeEditorWrapper } from '@jupyterlab/codeeditor';
+import { CodeMirrorEditor } from '@jupyterlab/codemirror';
+import { InputPrompt } from '@jupyterlab/cells';
 import { ISlicedCellModel } from './model';
 import { CharacterRange } from '../codeversion';
 
@@ -44,6 +45,16 @@ const SLICED_CELL_REVEAL_TEXT_CLASS = 'jp-SlicedEditor-editor-revealtext';
  * Number of lines of context to show before and after updated code.
  */
 const CONTEXT_SIZE = 1;
+
+/**
+ * The class name given to cell area widgets.
+ */
+const CELL_AREA_CLASS = 'jp-CellArea';
+
+/**
+ * The class name added to the prompt area of cell.
+ */
+const INPUT_AREA_PROMPT_CLASS = 'jp-InputArea-prompt';
 
 /**
  * A widget for showing a cell with a code slice.
@@ -239,5 +250,76 @@ export namespace SlicedCell {
          * Factory for creating editor cells.
          */
         editorFactory: CodeEditor.Factory;
+    }
+}
+
+/**
+ * A cell area widget, which hosts a prompt and a cell editor widget.
+ */
+export class CellArea extends Widget {
+    /**
+     * Construct a cell area widget.
+     */
+    constructor(options: CellArea.IOptions) {
+        super()
+        this.addClass(CELL_AREA_CLASS);
+
+        let model = (this.model = options.model);
+        let prompt = (this._prompt = new InputPrompt());
+
+        prompt.executionCount = model.executionCount ? model.executionCount.toString() : "";
+        prompt.addClass(INPUT_AREA_PROMPT_CLASS);
+
+        let layout = (this.layout = new PanelLayout());
+        layout.addWidget(prompt);
+
+        let cellOptions: SlicedCell.IOptions = {
+            model: options.model,
+            editorFactory: options.editorFactory
+        };
+        if (options.showDiff) {
+            layout.addWidget(new SlicedCell(cellOptions));
+        } else {
+            layout.addWidget(new DiffedSlicedCell(cellOptions));
+        }
+    }
+
+    /**
+     * The model used by the widget.
+     */
+    readonly model: ISlicedCellModel;
+
+    /**
+     * Get the prompt node used by the cell.
+     */
+    get promptNode(): HTMLElement {
+        return this._prompt.node;
+    }
+
+    private _prompt: InputPrompt;
+}
+
+/**
+ * A namespace for `CellArea` statics.
+ */
+export namespace CellArea {
+    /**
+     * The options used to create a `CellArea`.
+     */
+    export interface IOptions {
+        /**
+         * The model used by the widget.
+         */
+        model: ISlicedCellModel;
+
+        /**
+         * Factory for creating editor cells.
+         */
+        editorFactory: CodeEditor.Factory;
+
+        /**
+         * Whether to show a differenced version of the cell.
+         */
+        showDiff: boolean;
     }
 }
