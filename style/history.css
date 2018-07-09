@@ -1,0 +1,48 @@
+:root {
+  --jp-icon-history-viewer: url('icons/history_viewer.png')
+}
+
+.jp-HistoryViewerIcon {
+  background-image: var(--jp-icon-history-viewer);
+  background-size: 100%;
+}
+
+.jp-HistoryViewer {
+  padding: var(--jp-notebook-padding);
+  overflow: auto;
+  background: var(--jp-layout-color0);
+}
+
+/* Cell */
+.jp-CellArea {
+  display: flex;
+  flex-direction: row;
+}
+
+.jp-SlicedCell {
+  flex: 1 1 auto;
+  padding: var(--jp-cell-padding);
+}
+
+.jp-SlicedCell .jp-CodeMirrorEditor {
+  border: var(--jp-border-width) solid var(--jp-cell-editor-border-color);
+  background-color: var(--jp-cell-editor-background);
+}
+
+/* CodeMirror editor */
+.jp-HistoryViewer .CodeMirror.cm-s-jupyter {
+  background: transparent;
+}
+
+.jp-SlicedCell-editor-highlightedtext {
+  background-color: yellow;
+}
+
+.jp-SlicedCell-editor-blurredtext {
+   opacity: .9;
+}
+
+.jp-SlicedCell-editor-hidetext {
+  opacity: .7;
+  font-style: italic;
+}
