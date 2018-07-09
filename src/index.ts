@@ -16,6 +16,7 @@ import { dataflowAnalysis } from './DataflowAnalysis';
 import { NumberSet, range } from './Set';
 import { ToolbarCheckbox } from './ToolboxCheckbox';
 import { toArray } from '@phosphor/algorithm';
+import { getDifferences } from './EditDistance';
 
 
 const extension: JupyterLabPlugin<void> = {
@@ -37,14 +38,15 @@ enum DataflowDirection { Forward, Backward };
 class CellProgram {
     private code: string;
     private changedCellLineNumbers: [number, number];
-    private cellByLine: ICellModel[] = [];
+    private cellByLine: ICodeCellModel[] = [];
     private lineRangeForCell: { [id: string]: [number, number] } = {};
 
     constructor(changedCell: ICellModel, private cells: ICellModel[]) {
         this.code = '';
         let lineNumber = 1;
         for (let i = 0; i < cells.length; i++) {
-            const cell = cells[i];
+            const cell = cells[i] as ICodeCellModel;
+            if (cell.type !== 'code') continue;
             const cellText = cell.value.text;
             this.code += cellText + '\n';
             const lineCount = cellText.split('\n').length;
@@ -88,9 +90,9 @@ class CellProgram {
         return relevantLineNumbers;
     }
 
-    public getDataflowCells(direction: DataflowDirection): ICellModel[] {
+    public getDataflowCells(direction: DataflowDirection): ICodeCellModel[] {
         const relevantLineNumbers = this.followDataflow(direction);
-        const changedCells: ICellModel[] = [];
+        const changedCells: ICodeCellModel[] = [];
         for (let line of relevantLineNumbers.items.sort((line1, line2) => line1 - line2)) {
             if (this.cellByLine[line] !== changedCells[changedCells.length - 1]) {
                 changedCells.push(this.cellByLine[line]);
@@ -267,14 +269,32 @@ class ExecutionLoggerExtension implements DocumentRegistry.IWidgetExtension<Note
 
     public versions(cell: ICellModel) {
         let notebookVersions = this.executionHistoryPerCell[cell.id];
-        let slices = notebookVersions.map(notebookVersion => {
-            const cellProgram = new CellProgram(
+        let slices = notebookVersions.map(notebookVersion =>
+            new CellProgram(
                 notebookVersion.cells.find(c => c.id === cell.id).cellModel,
-                notebookVersion.cells.map(c => c.cellModel));
-            const slice = cellProgram.getDataflowCells(DataflowDirection.Backward);
-            return slice;
-        });
+                notebookVersion.cells.map(c => c.cellModel))
+                .getDataflowCells(DataflowDirection.Backward));
         console.log('slices', slices);
+        const foils = slices.slice(1).concat([slices[0]]);
+
+        function sameCodeCells(cm1: ICodeCellModel, cm2: ICodeCellModel) {
+            if (cm1.value.text !== cm2.value.text) return false;
+            if (cm1.outputs.length !== cm2.outputs.length) return false;
+            for (let i = 0; i < cm1.outputs.length; i++) {
+                const out1 = cm1.outputs.get(i);
+                const out2 = cm2.outputs.get(i);
+                if (out1.type !== out2.type) return false;
+                if (JSON.stringify(out1.data) !== JSON.stringify(out2.data)) return false;
+            }
+            return true;
+        }
+
+        const diffed = slices.map((slice, i) =>
+            getDifferences(slice, foils[i], sameCodeCells)
+                .filter(d => d.kind !== 'same')
+                .map(d => d.source)
+                .filter(s => s));
+        console.log('diffs', diffed);
     }
 }
 
