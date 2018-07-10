@@ -18,7 +18,7 @@ import { dataflowAnalysis } from './DataflowAnalysis';
 import { NumberSet, range } from './Set';
 import { ToolbarCheckbox } from './ToolboxCheckbox';
 import { getDifferences } from './EditDistance';
-import { HistoryModel, HistoryViewer, NotebookSnapshot, CellSnapshot, buildHistoryModel } from './packages/history';
+import { HistoryModel, HistoryViewer, NotebookSnapshot, CellSnapshot, buildHistoryModel, SlicedNotebookSnapshot } from './packages/history';
 
 import '../style/index.css';
 
@@ -93,17 +93,27 @@ class CellProgram {
         return relevantLineNumbers;
     }
 
-    public getDataflowCells(direction: DataflowDirection): ICodeCellModel[] {
+    public getDataflowCells(direction: DataflowDirection): Array<[ICodeCellModel, NumberSet]> {
         const relevantLineNumbers = this.followDataflow(direction);
-        const changedCells: ICodeCellModel[] = [];
+        const cellsById: { [id: string]: ICodeCellModel } = {};
+        const cellExecutionInfo: { [id: string]: NumberSet } = {};
         for (let line of relevantLineNumbers.items.sort((line1, line2) => line1 - line2)) {
-            if (this.cellByLine[line] !== changedCells[changedCells.length - 1]) {
-                changedCells.push(this.cellByLine[line]);
+            let cellModel = this.cellByLine[line];
+            let lineNumbers;
+            if (!cellExecutionInfo.hasOwnProperty(cellModel.id)) {
+                lineNumbers = new NumberSet();
+                cellsById[cellModel.id] = cellModel;
+                cellExecutionInfo[cellModel.id] = lineNumbers;
             }
+            lineNumbers = cellExecutionInfo[cellModel.id];
+            lineNumbers.add(line - this.lineRangeForCell[cellModel.id][0]);
         }
-        return changedCells;
+        let result = new Array<[ICodeCellModel, NumberSet]>();
+        for (let cellId in cellExecutionInfo) {
+            result.push([cellsById[cellId], cellExecutionInfo[cellId]]);
+        }
+        return result;
     }
-
 
     public getDataflowText(direction: DataflowDirection): string {
         const relevantLineNumbers = this.followDataflow(direction);
@@ -123,8 +133,6 @@ class CellProgram {
     }
 }
 
-
-
 class CellLiveness {
 
     private currentlyExecutingCells = false;
@@ -143,7 +151,7 @@ class CellLiveness {
 
     private findStaleCells(changedCell: ICellModel, cells: ICellModel[]): ICellModel[] {
         const program = new CellProgram(changedCell, cells);
-        return program.getDataflowCells(DataflowDirection.Forward);
+        return program.getDataflowCells(DataflowDirection.Forward).map(r => r[0]);
     }
 
     public onCellsChanged(
@@ -220,17 +228,20 @@ class ExecutionLoggerExtension implements DocumentRegistry.IWidgetExtension<Note
 
     private copyNotebook(notebookModel: INotebookModel): NotebookSnapshot {
         const cells: CellSnapshot[] = [];
+        const snapshotToLiveIdMap: { [id: string]: string } = {};
         const nbmodel = new NotebookModel();
+        // When loading back from JSON, the cell IDs get changed. Make a mapping from new cell
+        // IDs to old ones so we can align the changes elsewhere in the code.
         nbmodel.fromJSON(notebookModel.toJSON() as nbformat.INotebookContent);
         for (let i = 0; i < notebookModel.cells.length; i++) {
             const cell = notebookModel.cells.get(i) as ICodeCellModel;
             if (cell) {
                 const clone = nbmodel.cells.get(i) as ICodeCellModel;
+                snapshotToLiveIdMap[clone.id] = cell.id;
                 cells.push(new CellSnapshot(cell.id, clone));
             }
         }
-        const copy: NotebookSnapshot = new NotebookSnapshot(cells, new Date());
-        console.log(copy);
+        const copy: NotebookSnapshot = new NotebookSnapshot(cells, snapshotToLiveIdMap, new Date());
         return copy;
     }
 
@@ -259,7 +270,15 @@ class ExecutionLoggerExtension implements DocumentRegistry.IWidgetExtension<Note
     }
 
     public snapshots(cell: ICellModel) {
-        return this.executionHistoryPerCell[cell.id];
+        let notebookVersions = this.executionHistoryPerCell[cell.id];
+        return notebookVersions.map(notebookVersion => 
+            new SlicedNotebookSnapshot(
+                notebookVersion,
+                new CellProgram(
+                    notebookVersion.cells.find(c => c.id === cell.id).cellModel,
+                    notebookVersion.cells.map(c => c.cellModel))
+                    .getDataflowCells(DataflowDirection.Backward)
+            ));
     }
 
     public versions(cell: ICellModel) {
@@ -268,7 +287,7 @@ class ExecutionLoggerExtension implements DocumentRegistry.IWidgetExtension<Note
             new CellProgram(
                 notebookVersion.cells.find(c => c.id === cell.id).cellModel,
                 notebookVersion.cells.map(c => c.cellModel))
-                .getDataflowCells(DataflowDirection.Backward));
+                .getDataflowCells(DataflowDirection.Backward).map(r => r[0]));
         console.log('slices', slices);
         const foils = slices.slice(1).concat([slices[0]]);
 
@@ -311,7 +330,7 @@ function activateExtension(app: JupyterLab, palette: ICommandPalette, notebooks:
         if (panel && panel.notebook && panel.notebook.activeCell.model.type === 'code') {
             const activeCell = panel.notebook.activeCell;
             const program = new CellProgram(activeCell.model, toArray(panel.notebook.model.cells));
-            const sliceCells = program.getDataflowCells(DataflowDirection.Backward);
+            const sliceCells = program.getDataflowCells(DataflowDirection.Backward).map(r => r[0]);
 
             docManager.newUntitled({ ext: 'ipynb' }).then(model => {
                 const widget = docManager.open(model.path, undefined, panel.session.kernel.model) as NotebookPanel;
@@ -354,9 +373,8 @@ function activateExtension(app: JupyterLab, palette: ICommandPalette, notebooks:
 
         const panel = notebooks.currentWidget;
         if (panel && panel.notebook && panel.notebook.activeCell.model.type === 'code') {
-            // console.log("Gathering from history");
             const activeCell = panel.notebook.activeCell;
-            let snapshots: NotebookSnapshot[] = executionLogger.snapshots(activeCell.model);
+            let snapshots: SlicedNotebookSnapshot[] = executionLogger.snapshots(activeCell.model);
             let historyModel: HistoryModel = buildHistoryModel(activeCell.model.id, snapshots);
 
             let widget: HistoryViewer = new HistoryViewer({

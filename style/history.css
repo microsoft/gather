@@ -34,15 +34,22 @@
   background: transparent;
 }
 
-.jp-SlicedCell-editor-highlightedtext {
+.jp-SlicedCell-editor-updatedtext {
   background-color: yellow;
 }
 
-.jp-SlicedCell-editor-blurredtext {
-   opacity: .9;
+.jp-SlicedCell-editor-unchangedtext {
+   opacity: .7;
+}
+
+/* Every line that isn't in the slice. */
+.jp-SlicedCell-editor-outofslicetext {
+  opacity: .5;
+  text-decoration: line-through;
+  text-decoration-color: lightgray;
 }
 
 .jp-SlicedCell-editor-hidetext {
-  opacity: .7;
+  opacity: .5;
   font-style: italic;
 }
