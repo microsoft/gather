@@ -1,4 +1,5 @@
 import { IDisposable, DisposableDelegate } from '@phosphor/disposable';
+import { Widget, PanelLayout } from '@phosphor/widgets';
 import { JupyterLab, JupyterLabPlugin } from '@jupyterlab/application';
 import { DocumentRegistry } from '@jupyterlab/docregistry';
 import { NotebookPanel, INotebookModel, Notebook, INotebookTracker, NotebookModel } from '@jupyterlab/notebook';
@@ -21,6 +22,7 @@ import { getDifferences } from './EditDistance';
 import { HistoryModel, HistoryViewer, NotebookSnapshot, CellSnapshot, buildHistoryModel, SlicedNotebookSnapshot } from './packages/history';
 
 import '../style/index.css';
+import { CommandRegistry } from '../node_modules/@phosphor/commands';
 
 const extension: JupyterLabPlugin<void> = {
     activate: activateExtension,
@@ -312,6 +314,91 @@ class ExecutionLoggerExtension implements DocumentRegistry.IWidgetExtension<Note
     }
 }
 
+/**
+ * The name of the class for the gather widget.
+ */
+const GATHER_WIDGET_CLASS = 'jp-GatherWidget';
+
+/**
+ * The name of the class for buttons on the gather widget.
+ */
+const BUTTON_CLASS = 'jp-GatherWidget-button';
+
+/**
+ * The name of the class for the gather button.
+ */
+const GATHER_BUTTON_CLASS = 'jp-GatherWidget-gatherbutton';
+
+/**
+ * The name of the class for the history button.
+ */
+const HISTORY_BUTTON_CLASS = 'jp-GatherWidget-historybutton';
+
+/**
+ * A widget for showing the gathering tools.
+ */
+class GatherWidget extends Widget {
+    /**
+     * Construct a gather widget.
+     */
+    constructor(commands: CommandRegistry) {
+        super();
+        this._commands = commands;
+        this.addClass(GATHER_WIDGET_CLASS);
+        let layout = (this.layout = new PanelLayout());
+        this._gatherButton = new Widget({ node: document.createElement("div") });
+        this._gatherButton.addClass(BUTTON_CLASS);
+        this._gatherButton.addClass(GATHER_BUTTON_CLASS);
+        this._gatherButton.node.onclick = function() {
+            commands.execute("livecells:gatherToNotebook");
+        }
+        layout.addWidget(this._gatherButton);
+        this._historyButton = new Widget({ node: document.createElement("div") });
+        this._historyButton.addClass(BUTTON_CLASS);
+        this._historyButton.addClass(HISTORY_BUTTON_CLASS);
+        this._historyButton.node.onclick = function() {
+            commands.execute("livecells:gatherFromHistory");
+        }
+        layout.addWidget(this._historyButton);
+    }
+
+    /**
+     * Set the element above which this widget should be anchored.
+     */
+    setAnchor(element: Element) {
+        let oldAnchor = this._anchor;
+        this._anchor = element;
+        if (this._anchor != oldAnchor) {
+            if (oldAnchor != null) {
+                oldAnchor.removeChild(this.node);
+            }
+            if (this._anchor != null) {
+                this._anchor.appendChild(this.node);
+            }
+        }
+    }
+
+    /**
+     * Dispose of the resources held by the widget.
+     */
+    dispose() {
+        // Do nothing if already disposed.
+        if (this.isDisposed) {
+            return;
+        }
+        this._gatherButton.dispose();
+        this._historyButton.dispose();
+        this._gatherButton = null;
+        this._historyButton = null;
+        this._anchor = null;
+        super.dispose();
+    }
+
+    private _commands: CommandRegistry;
+    private _anchor: Element;
+    private _gatherButton: Widget;
+    private _historyButton: Widget;
+}
 
 function activateExtension(app: JupyterLab, palette: ICommandPalette, notebooks: INotebookTracker, docManager: IDocumentManager) {
     console.log('livecells start');
@@ -319,6 +406,24 @@ function activateExtension(app: JupyterLab, palette: ICommandPalette, notebooks:
     // app.docRegistry.addWidgetExtension('Notebook', new LiveCheckboxExtension());
     const executionLogger = new ExecutionLoggerExtension();
     app.docRegistry.addWidgetExtension('Notebook', executionLogger);
+    let gatherWidget = new GatherWidget(app.commands);
+
+    // Listen for hovers over output areas so we can show the tool.
+    document.body.onmousemove = function(event: MouseEvent) {
+        let target:HTMLElement = event.target as HTMLElement;
+        let hoveringOverOutput = false;
+        while (target != null) {
+            if (target.classList && target.classList.contains("jp-Cell-outputWrapper")) {
+                console.log("Hovering over output");
+                let anchor = target.querySelector(".jp-OutputPrompt");
+                gatherWidget.setAnchor(anchor);
+                hoveringOverOutput = true;
+                break;
+            }
+            target = target.parentElement;
+        }
+        if (!hoveringOverOutput) gatherWidget.setAnchor(null);
+    }
 
     function addCommand(command: string, label: string, execute: () => void) {
         app.commands.addCommand(command, { label, execute });

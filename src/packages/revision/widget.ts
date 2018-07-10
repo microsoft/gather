@@ -35,7 +35,7 @@ export class Revision extends Widget {
         let header: HTMLElement = document.createElement("h1");
         let headerText: string;
         if (this.model.isLatest) {
-            headerText = "Latest ";
+            headerText = "Latest";
         } else {
             headerText = "Version " + this.model.versionIndex;
         }
@@ -51,7 +51,7 @@ export class Revision extends Widget {
                     hour: "numeric",
                     minute: "2-digit"
                 });
-            headerText += ("(" + timeString + ", " + dateString + ")");
+            headerText += (" (" + timeString + ", " + dateString + ")");
         }
         header.textContent = headerText;
         let headerWidget: Widget = new Widget({ node: header });

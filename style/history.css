@@ -1,5 +1,6 @@
 :root {
-  --jp-icon-history-viewer: url('icons/history_viewer.png')
+  --jp-icon-gather: url('icons/gather.png');
+  --jp-icon-history-viewer: url('icons/history_viewer.png');
 }
 
 .jp-HistoryViewerIcon {
@@ -34,12 +35,12 @@
   background: transparent;
 }
 
-.jp-SlicedCell-editor-updatedtext {
+.jp-SlicedCell-editor-updatedtext:not(.jp-SlicedCell-editor-outofslicetext) {
   background-color: yellow;
 }
 
 .jp-SlicedCell-editor-unchangedtext {
-   opacity: .7;
+   opacity: 1;
 }
 
 /* Every line that isn't in the slice. */
@@ -52,4 +53,56 @@
 .jp-SlicedCell-editor-hidetext {
   opacity: .5;
   font-style: italic;
+}
+
+/* Output prompt (so we can show tool buttons) */
+.jp-OutputArea {
+  overflow-y: visible;
+  overflow: visible;
+}
+
+.jp-OutputPrompt {
+  overflow: visible;
+}
+
+/* Gather tool buttons */
+.jp-OutputArea-child {
+  overflow: visible;
+}
+
+.jp-GatherWidget {
+  /* XXX: So the buttons don't add vertical height to the prompt. */
+  position: absolute;
+  bottom: -40px;
+  right: 0px;
+  overflow: visible;
+  z-index: 100;
+}
+
+.jp-Notebook :not(.jp-mod-active).jp-Cell .jp-OutputPrompt {
+  /* XXX: Don't make the prompt translucent; make just its text translucent, so the gather buttons
+     can be opaque. */
+  color: rgba(0, 0, 0, 0.32);
+  opacity: 1;
+}
+
+.jp-GatherWidget-button {
+  display: inline-block;
+  border: 1px solid black;
+  margin: 1px;
+  width: 40px;
+  height: 40px;
+  background-size: 100%;
+}
+
+.jp-GatherWidget-button:hover {
+  border-width: 3px;
+}
+
+.jp-GatherWidget-historybutton {
+  background-image: var(--jp-icon-history-viewer);
+}
+
+.jp-GatherWidget-gatherbutton {
+  background-image: var(--jp-icon-gather);
 }
