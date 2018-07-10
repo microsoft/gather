@@ -65,6 +65,11 @@
   overflow: visible;
 }
 
+/* Notifications */
+.jp-Toolbar-notification {
+  margin-top: -3px;
+}
+
 /* Gather tool buttons */
 .jp-OutputArea-child {
   overflow: visible;

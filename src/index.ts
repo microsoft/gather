@@ -1,6 +1,7 @@
 import { IDisposable, DisposableDelegate } from '@phosphor/disposable';
 import { Widget, PanelLayout } from '@phosphor/widgets';
 import { JupyterLab, JupyterLabPlugin } from '@jupyterlab/application';
+import { Clipboard } from '@jupyterlab/apputils';
 import { DocumentRegistry } from '@jupyterlab/docregistry';
 import { NotebookPanel, INotebookModel, Notebook, INotebookTracker, NotebookModel } from '@jupyterlab/notebook';
 import { IObservableList } from '@jupyterlab/observables';
@@ -38,7 +39,20 @@ function showStaleness(cell: CodeCell, stale: boolean) {
 
 enum DataflowDirection { Forward, Backward };
 
+/**
+ * Copy cells to clipboard. Does not have to be active cells. Logic copied from
+ * packages/notebooks/src/actions.tsx in Jupyter Lab project.
+ */
+function copyCellsToClipboard(cellModels: Array<ICellModel>) {
 
+    const JUPYTER_CELL_MIME = 'application/vnd.jupyter.cells';
+
+    const clipboard = Clipboard.getInstance();
+    clipboard.clear();
+
+    const data = cellModels.map(cellModel => cellModel.toJSON());
+    clipboard.setData(JUPYTER_CELL_MIME, data);
+}
 
 class CellProgram {
     private code: string;
@@ -335,6 +349,16 @@ const GATHER_BUTTON_CLASS = 'jp-GatherWidget-gatherbutton';
 const HISTORY_BUTTON_CLASS = 'jp-GatherWidget-historybutton';
 
 /**
+ * The name of the class for toolbar notifications.
+ */
+const TOOLBAR_NOTIFACTION_CLASS = 'jp-Toolbar-notification';
+
+/**
+ * Number of milliseconds to show a notification.
+ */
+const NOTIFICATION_MS = 5000;
+
+/**
  * A widget for showing the gathering tools.
  */
 class GatherWidget extends Widget {
@@ -350,7 +374,7 @@ class GatherWidget extends Widget {
         this._gatherButton.addClass(BUTTON_CLASS);
         this._gatherButton.addClass(GATHER_BUTTON_CLASS);
         this._gatherButton.node.onclick = function() {
-            commands.execute("livecells:gatherToNotebook");
+            commands.execute("livecells:gatherToClipboard");
         }
         layout.addWidget(this._gatherButton);
         this._historyButton = new Widget({ node: document.createElement("div") });
@@ -400,12 +424,33 @@ class GatherWidget extends Widget {
     private _historyButton: Widget;
 }
 
+export class NotifactionExtension implements DocumentRegistry.IWidgetExtension<NotebookPanel, INotebookModel> {
+    private notificationWidget: Widget;
+
+    createNew(panel: NotebookPanel, context: DocumentRegistry.IContext<INotebookModel>): IDisposable {
+        this.notificationWidget = new Widget({ node: document.createElement('p') });
+        this.notificationWidget.addClass(TOOLBAR_NOTIFACTION_CLASS);
+        panel.toolbar.insertItem(9, 'notifications', this.notificationWidget);
+        return new DisposableDelegate(() => {
+            this.notificationWidget.dispose();
+        })};
+
+    showMessage(message: string) {
+        this.notificationWidget.node.textContent = message;
+        setTimeout(() => {
+            this.notificationWidget.node.textContent = "";
+        }, NOTIFICATION_MS);
+    }
+}
+
 function activateExtension(app: JupyterLab, palette: ICommandPalette, notebooks: INotebookTracker, docManager: IDocumentManager) {
     console.log('livecells start');
     // Disable live programming feature for now
     // app.docRegistry.addWidgetExtension('Notebook', new LiveCheckboxExtension());
     const executionLogger = new ExecutionLoggerExtension();
     app.docRegistry.addWidgetExtension('Notebook', executionLogger);
+    const notificationExtension = new NotifactionExtension();
+    app.docRegistry.addWidgetExtension('Notebook', notificationExtension);
     let gatherWidget = new GatherWidget(app.commands);
 
     // Listen for hovers over output areas so we can show the tool.
@@ -414,7 +459,6 @@ function activateExtension(app: JupyterLab, palette: ICommandPalette, notebooks:
         let hoveringOverOutput = false;
         while (target != null) {
             if (target.classList && target.classList.contains("jp-Cell-outputWrapper")) {
-                console.log("Hovering over output");
                 let anchor = target.querySelector(".jp-OutputPrompt");
                 gatherWidget.setAnchor(anchor);
                 hoveringOverOutput = true;
@@ -455,6 +499,17 @@ function activateExtension(app: JupyterLab, palette: ICommandPalette, notebooks:
             //     const text = editor.model.value.text.substring(startOffset, endOffset);
             //     console.log(text);
             // }
+        }
+    });
+
+    addCommand('livecells:gatherToClipboard', 'Gather this result to the clipboard', () => {
+        const panel = notebooks.currentWidget;
+        if (panel && panel.notebook && panel.notebook.activeCell.model.type === 'code') {
+            const activeCell = panel.notebook.activeCell;
+            const program = new CellProgram(activeCell.model, toArray(panel.notebook.model.cells));
+            const sliceCells = program.getDataflowCells(DataflowDirection.Backward).map(r => r[0]);
+            copyCellsToClipboard(sliceCells);
+            notificationExtension.showMessage("Copied cells to clipboard. Right-click or type 'V' to paste.");
         }
     });
 

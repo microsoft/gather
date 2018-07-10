@@ -1,10 +1,10 @@
 import { ICodeCellModel } from '@jupyterlab/cells';
-import { nbformat } from '@jupyterlab/coreutils';
 import { HistoryModel } from './model';
 import { RevisionModel } from '../revision';
 import { CharacterRange, CodeDiffModel, CodeVersionModel } from '../codeversion';
 import { SlicedCellModel } from '../slicedcell';
 import { NumberSet } from '../../Set';
+import { IOutputAreaModel } from '../../../node_modules/@jupyterlab/outputarea';
 let diff_match_patch = require('./diff-match-patch').diff_match_patch;
 
 export class CellSnapshot {
@@ -156,7 +156,7 @@ export function buildHistoryModel(
             slicedCellModels.push(slicedCellModel);
         })
 
-        let result: nbformat.IOutput = null;
+        let results: IOutputAreaModel = null;
         let selectedCellModel:ICodeCellModel = null;
         slicedNotebookSnapshot.cellSlices.map(cs => cs[0]).forEach(function(cellModel) {
             if (snapshotToLiveIdMap[cellModel.id] == selectedCellId) {
@@ -166,7 +166,7 @@ export function buildHistoryModel(
         if (selectedCellModel) {
             if (selectedCellModel.outputs &&
                 selectedCellModel.outputs.length > 0) {
-                result = selectedCellModel.outputs.get(0).toJSON();
+                results = selectedCellModel.outputs;
             }
         }
 
@@ -182,7 +182,7 @@ export function buildHistoryModel(
         let revisionModel:RevisionModel = new RevisionModel({
             versionIndex: snapshotIndex + 1,  // Version index should start at 1
             source: codeVersionModel,
-            result: result,
+            results: results,
             isLatest: isLatestVersion,
             timeCreated: notebookSnapshot.timeCreated
         });
