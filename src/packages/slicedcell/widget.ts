@@ -201,7 +201,7 @@ export class DiffedSlicedCell extends SlicedCell {
             if (linesToShow.indexOf(i) == -1 && hiddenRangeStart == -1) {
                 hiddenRangeStart = i;
             } else if (linesToShow.indexOf(i) != -1 && hiddenRangeStart != -1) {
-                hiddenLineRanges.push([hiddenRangeStart, i - 1]);
+                hiddenLineRanges.push([hiddenRangeStart, i]);
                 hiddenRangeStart = -1;
             }
         }
@@ -233,7 +233,12 @@ export class DiffedSlicedCell extends SlicedCell {
             }
         };
         hiddenLineRanges.forEach(function(lineRange: [number, number]) {
-            hideRange({ line: lineRange[0], ch: 0 }, { line: lineRange[1], ch: 0 });
+            // If the line ends with "\n", don't hide the last character; keep it for prettiness.
+            let endIndex = codeMirrorDoc.indexFromPos({ line: lineRange[1], ch: 0 });
+            if (codeMirrorDoc.getValue()[endIndex - 1] == '\n') {
+                endIndex -= 1;
+            }
+            hideRange({ line: lineRange[0], ch: 0 }, codeMirrorDoc.posFromIndex(endIndex));
         });
 
         // Whenever someone clicks on hidden lines that were revealed, hide them again.
