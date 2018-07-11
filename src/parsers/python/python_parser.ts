@@ -20,6 +20,9 @@ export type ISyntaxNode =
     | ITry
     | IWith
     | ICall
+    | IIndex
+    | ISlice
+    | IDot
     | IIfExpr
     | ILambda
     | IUnaryOperator
@@ -42,7 +45,7 @@ export interface ILocation {
 }
 
 export interface ILocatable {
-    location: ILocation; 
+    location: ILocation;
 }
 
 export const MODULE = 'module';
@@ -214,6 +217,31 @@ export interface ICall extends ILocatable {
     args: ISyntaxNode[];
 }
 
+export const INDEX = 'index';
+
+export interface IIndex extends ILocatable {
+    type: typeof INDEX;
+    value: ISyntaxNode;
+    args: ISyntaxNode[];
+}
+
+export const SLICE = 'slice';
+
+export interface ISlice extends ILocatable {
+    type: typeof SLICE;
+    start?: ISyntaxNode;
+    stop?: ISyntaxNode;
+    step?: ISyntaxNode;
+}
+
+export const DOT = 'dot';
+
+export interface IDot extends ILocatable {
+    type: typeof DOT;
+    value: ISyntaxNode;
+    name: ISyntaxNode;
+}
+
 export const IFEXPR = 'ifexpr';
 
 export interface IIfExpr extends ILocatable {
@@ -352,6 +380,9 @@ export function walk(node: ISyntaxNode): ISyntaxNode[] {
         case DICT: children = flatten(node.pairs.map(p => [p.k, p.v])); break;
         case ASSIGN: children = node.sources.concat(node.targets); break;
         case ASSERT: children = [node.cond].concat([node.err] || []); break;
+        case DOT: children = [node.value, node.name]; break;
+        case INDEX: children = [node.value].concat(node.args); break;
+        case SLICE: children = ([node.start] || []).concat([node.stop] || []).concat([node.step] || []); break;
     }
     return [node].concat(flatten(children.map(node => walk(node))));
 }

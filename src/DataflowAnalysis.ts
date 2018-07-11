@@ -21,20 +21,34 @@ function getNames(node: ast.ISyntaxNode | ast.ISyntaxNode[]): StringSet {
     }
 }
 
-function getDefsUses(statement: ast.ISyntaxNode): [StringSet, StringSet] {
-    if (statement.type === ast.ASSIGN) {
-        const targetNames = getNames(statement.targets);
-        return [
-            targetNames,
-            // in x+=1, x is both a source and target
-            getNames(statement.sources).union(statement.op ? targetNames : new StringSet())
-        ];
+interface IDefUseInfo { defs: StringSet, uses: StringSet };
+
+function getDefsUses(statement: ast.ISyntaxNode): IDefUseInfo {
+    switch (statement.type) {
+        case ast.ASSIGN:
+            const targetNames = getNames(statement.targets);
+            return {
+                defs: targetNames,
+                // in x+=1, x is both a source and target
+                uses: getNames(statement.sources).union(statement.op ? targetNames : new StringSet())
+            };
+        case ast.IMPORT:
+            return {
+                defs: new StringSet(...statement.names.map(i => i.path)),
+                uses: new StringSet()
+            };
+        case ast.FROM:
+            return {
+                defs: new StringSet(...statement.imports.map(i => i.name || i.path)),
+                uses: new StringSet()
+            };
+        default:
+            return { defs: new StringSet(), uses: getNames(statement) };
     }
-    return [new StringSet(), getNames(statement)];
 }
 
 function getUses(statement: ast.ISyntaxNode): StringSet {
-    return getDefsUses(statement)[1];
+    return getDefsUses(statement).uses;
 }
 
 function locString(loc: ILocation): string {
@@ -73,7 +87,7 @@ export function dataflowAnalysis(cfg: ControlFlowGraph): Set<IDataflow> {
         const loopUses = new StringSet().union(...block.loopVariables.map(s => getUses(s)));
 
         for (let statement of block.statements) {
-            let [definedHere, usedHere] = getDefsUses(statement);
+            let { defs: definedHere, uses: usedHere } = getDefsUses(statement);
             usedHere = usedHere.union(loopUses);
 
             const newFlows = defs.filter(([name, _]) => usedHere.contains(name))

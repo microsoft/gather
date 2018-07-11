@@ -1061,16 +1061,30 @@ subscriptlist0
 subscript
     : test
     | test ':' test sliceop
+        { $$ = { type: 'slice', start: $1, stop: $2, step: $3 } }
     | test ':' test
+        { $$ = { type: 'slice', start: $1, stop: $2 } }
     | test ':' sliceop
+        { $$ = { type: 'slice', start: $1, step: $2 } }
     | test ':'
+        { $$ = { type: 'slice', start: $1 } }
     | ':' test sliceop
+        { $$ = { type: 'slice', stop: $1, step: $2 } }
+    | ':' test
+        { $$ = { type: 'slice', stop: $1 } }
     | ':' sliceop
+        { $$ = { type: 'slice', step: $1 } }
     | ':'
+        { $$ = { type: 'slice' } }
     ;
 
 // sliceop: ':' [test]
-sliceop: ':' | ':' test;
+sliceop
+    : ':'
+        { $$ = undefined } 
+    | ':' test
+        { $$ = $2 }
+    ;
 
 // exprlist: (expr|star_expr) (',' (expr|star_expr))* [',']
 exprlist
@@ -1079,7 +1093,7 @@ exprlist
     | expr ','
         { $$ = [$1] }
     | expr exprlist0
-        { $$ = $1.concast($2) }
+        { $$ = [$1].concat($2) }
     | star_expr
         { $$ = [$1] }
     | star_expr ','
@@ -1094,7 +1108,7 @@ exprlist0
     | ',' expr ','
         { $$ = [$2] }
     | ',' expr exprlist0
-        { $$ = $2.concast($3) }
+        { $$ = [$2].concat($3) }
     | ',' star_expr
         { $$ = [$2] }
     | ',' star_expr ','

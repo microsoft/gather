@@ -12,7 +12,7 @@
     "build": "tsc",
     "clean": "rimraf lib",
     "prepack": "npm run clean && npm run build",
-    "build_parser": "./node_modules/jison/lib/cli.js --outfile src/parsers/python/python3.js src/parsers/python/python3.jison",
+    "build_parser": "node ./node_modules/jison/lib/cli.js --outfile src/parsers/python/python3.js src/parsers/python/python3.jison",
     "watch": "tsc -w",
     "test": "mocha -r ts-node/register  src/**/*.test.ts"
   },

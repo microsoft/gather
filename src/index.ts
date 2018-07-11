@@ -67,7 +67,9 @@ class CellProgram {
     private followDataflow(direction: DataflowDirection): NumberSet {
         const ast = python3.parse(this.code);
         const cfg = new ControlFlowGraph(ast);
+        cfg.print();
         const dfa = dataflowAnalysis(cfg);
+        dfa.items.forEach(df => console.log(df.fromNode, df.toNode));
 
         const forwardDirection = direction === DataflowDirection.Forward;
         let relevantLineNumbers = new NumberSet();
@@ -111,6 +113,7 @@ class CellProgram {
         let lineNumber = 0;
         for (let i = 0; i < this.cells.length; i++) {
             const cell = this.cells[i];
+            if (cell.type !== 'code') continue;
             const cellLines = cell.value.text.split('\n');
             for (let line = 0; line < cellLines.length; line++) {
                 if (relevantLineNumbers.contains(line + lineNumber + 1)) {
@@ -364,7 +367,7 @@ function activateExtension(app: JupyterLab, palette: ICommandPalette, notebooks:
                 rendermime: new RenderMimeRegistry({ initialFactories }),
                 editorFactory: notebooks.activeCell.contentFactory.editorFactory
             });
-    
+
             if (!widget.isAttached) {
                 app.shell.addToMainArea(widget);
             }
