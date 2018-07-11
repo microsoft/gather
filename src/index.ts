@@ -1,5 +1,7 @@
 import { IDisposable, DisposableDelegate } from '@phosphor/disposable';
+import { Widget, PanelLayout } from '@phosphor/widgets';
 import { JupyterLab, JupyterLabPlugin } from '@jupyterlab/application';
+import { Clipboard } from '@jupyterlab/apputils';
 import { DocumentRegistry } from '@jupyterlab/docregistry';
 import { NotebookPanel, INotebookModel, Notebook, INotebookTracker, NotebookModel } from '@jupyterlab/notebook';
 import { IObservableList } from '@jupyterlab/observables';
@@ -18,9 +20,10 @@ import { dataflowAnalysis } from './DataflowAnalysis';
 import { NumberSet, range } from './Set';
 import { ToolbarCheckbox } from './ToolboxCheckbox';
 import { getDifferences } from './EditDistance';
-import { HistoryModel, HistoryViewer, NotebookSnapshot, CellSnapshot, buildHistoryModel } from './packages/history';
+import { HistoryModel, HistoryViewer, NotebookSnapshot, CellSnapshot, buildHistoryModel, SlicedNotebookSnapshot } from './packages/history';
 
 import '../style/index.css';
+import { CommandRegistry } from '../node_modules/@phosphor/commands';
 
 const extension: JupyterLabPlugin<void> = {
     activate: activateExtension,
@@ -36,7 +39,20 @@ function showStaleness(cell: CodeCell, stale: boolean) {
 
 enum DataflowDirection { Forward, Backward };
 
+/**
+ * Copy cells to clipboard. Does not have to be active cells. Logic copied from
+ * packages/notebooks/src/actions.tsx in Jupyter Lab project.
+ */
+function copyCellsToClipboard(cellModels: Array<ICellModel>) {
 
+    const JUPYTER_CELL_MIME = 'application/vnd.jupyter.cells';
+
+    const clipboard = Clipboard.getInstance();
+    clipboard.clear();
+
+    const data = cellModels.map(cellModel => cellModel.toJSON());
+    clipboard.setData(JUPYTER_CELL_MIME, data);
+}
 
 class CellProgram {
     private code: string;
@@ -95,17 +111,27 @@ class CellProgram {
         return relevantLineNumbers;
     }
 
-    public getDataflowCells(direction: DataflowDirection): ICodeCellModel[] {
+    public getDataflowCells(direction: DataflowDirection): Array<[ICodeCellModel, NumberSet]> {
         const relevantLineNumbers = this.followDataflow(direction);
-        const changedCells: ICodeCellModel[] = [];
+        const cellsById: { [id: string]: ICodeCellModel } = {};
+        const cellExecutionInfo: { [id: string]: NumberSet } = {};
         for (let line of relevantLineNumbers.items.sort((line1, line2) => line1 - line2)) {
-            if (this.cellByLine[line] !== changedCells[changedCells.length - 1]) {
-                changedCells.push(this.cellByLine[line]);
+            let cellModel = this.cellByLine[line];
+            let lineNumbers;
+            if (!cellExecutionInfo.hasOwnProperty(cellModel.id)) {
+                lineNumbers = new NumberSet();
+                cellsById[cellModel.id] = cellModel;
+                cellExecutionInfo[cellModel.id] = lineNumbers;
             }
+            lineNumbers = cellExecutionInfo[cellModel.id];
+            lineNumbers.add(line - this.lineRangeForCell[cellModel.id][0]);
         }
-        return changedCells;
+        let result = new Array<[ICodeCellModel, NumberSet]>();
+        for (let cellId in cellExecutionInfo) {
+            result.push([cellsById[cellId], cellExecutionInfo[cellId]]);
+        }
+        return result;
     }
-
 
     public getDataflowText(direction: DataflowDirection): string {
         const relevantLineNumbers = this.followDataflow(direction);
@@ -126,8 +152,6 @@ class CellProgram {
     }
 }
 
-
-
 class CellLiveness {
 
     private currentlyExecutingCells = false;
@@ -146,7 +170,7 @@ class CellLiveness {
 
     private findStaleCells(changedCell: ICellModel, cells: ICellModel[]): ICellModel[] {
         const program = new CellProgram(changedCell, cells);
-        return program.getDataflowCells(DataflowDirection.Forward);
+        return program.getDataflowCells(DataflowDirection.Forward).map(r => r[0]);
     }
 
     public onCellsChanged(
@@ -223,17 +247,20 @@ class ExecutionLoggerExtension implements DocumentRegistry.IWidgetExtension<Note
 
     private copyNotebook(notebookModel: INotebookModel): NotebookSnapshot {
         const cells: CellSnapshot[] = [];
+        const snapshotToLiveIdMap: { [id: string]: string } = {};
         const nbmodel = new NotebookModel();
+        // When loading back from JSON, the cell IDs get changed. Make a mapping from new cell
+        // IDs to old ones so we can align the changes elsewhere in the code.
         nbmodel.fromJSON(notebookModel.toJSON() as nbformat.INotebookContent);
         for (let i = 0; i < notebookModel.cells.length; i++) {
             const cell = notebookModel.cells.get(i) as ICodeCellModel;
             if (cell) {
                 const clone = nbmodel.cells.get(i) as ICodeCellModel;
+                snapshotToLiveIdMap[clone.id] = cell.id;
                 cells.push(new CellSnapshot(cell.id, clone));
             }
         }
-        const copy: NotebookSnapshot = new NotebookSnapshot(cells, new Date());
-        console.log(copy);
+        const copy: NotebookSnapshot = new NotebookSnapshot(cells, snapshotToLiveIdMap, new Date());
         return copy;
     }
 
@@ -262,7 +289,15 @@ class ExecutionLoggerExtension implements DocumentRegistry.IWidgetExtension<Note
     }
 
     public snapshots(cell: ICellModel) {
-        return this.executionHistoryPerCell[cell.id];
+        let notebookVersions = this.executionHistoryPerCell[cell.id];
+        return notebookVersions.map(notebookVersion => 
+            new SlicedNotebookSnapshot(
+                notebookVersion,
+                new CellProgram(
+                    notebookVersion.cells.find(c => c.id === cell.id).cellModel,
+                    notebookVersion.cells.map(c => c.cellModel))
+                    .getDataflowCells(DataflowDirection.Backward)
+            ));
     }
 
     public versions(cell: ICellModel) {
@@ -271,7 +306,7 @@ class ExecutionLoggerExtension implements DocumentRegistry.IWidgetExtension<Note
             new CellProgram(
                 notebookVersion.cells.find(c => c.id === cell.id).cellModel,
                 notebookVersion.cells.map(c => c.cellModel))
-                .getDataflowCells(DataflowDirection.Backward));
+                .getDataflowCells(DataflowDirection.Backward).map(r => r[0]));
         console.log('slices', slices);
         const foils = slices.slice(1).concat([slices[0]]);
 
@@ -296,6 +331,120 @@ class ExecutionLoggerExtension implements DocumentRegistry.IWidgetExtension<Note
     }
 }
 
+/**
+ * The name of the class for the gather widget.
+ */
+const GATHER_WIDGET_CLASS = 'jp-GatherWidget';
+
+/**
+ * The name of the class for buttons on the gather widget.
+ */
+const BUTTON_CLASS = 'jp-GatherWidget-button';
+
+/**
+ * The name of the class for the gather button.
+ */
+const GATHER_BUTTON_CLASS = 'jp-GatherWidget-gatherbutton';
+
+/**
+ * The name of the class for the history button.
+ */
+const HISTORY_BUTTON_CLASS = 'jp-GatherWidget-historybutton';
+
+/**
+ * The name of the class for toolbar notifications.
+ */
+const TOOLBAR_NOTIFACTION_CLASS = 'jp-Toolbar-notification';
+
+/**
+ * Number of milliseconds to show a notification.
+ */
+const NOTIFICATION_MS = 5000;
+
+/**
+ * A widget for showing the gathering tools.
+ */
+class GatherWidget extends Widget {
+    /**
+     * Construct a gather widget.
+     */
+    constructor(commands: CommandRegistry) {
+        super();
+        this._commands = commands;
+        this.addClass(GATHER_WIDGET_CLASS);
+        let layout = (this.layout = new PanelLayout());
+        this._gatherButton = new Widget({ node: document.createElement("div") });
+        this._gatherButton.addClass(BUTTON_CLASS);
+        this._gatherButton.addClass(GATHER_BUTTON_CLASS);
+        this._gatherButton.node.onclick = function() {
+            commands.execute("livecells:gatherToClipboard");
+        }
+        layout.addWidget(this._gatherButton);
+        this._historyButton = new Widget({ node: document.createElement("div") });
+        this._historyButton.addClass(BUTTON_CLASS);
+        this._historyButton.addClass(HISTORY_BUTTON_CLASS);
+        this._historyButton.node.onclick = function() {
+            commands.execute("livecells:gatherFromHistory");
+        }
+        layout.addWidget(this._historyButton);
+    }
+
+    /**
+     * Set the element above which this widget should be anchored.
+     */
+    setAnchor(element: Element) {
+        let oldAnchor = this._anchor;
+        this._anchor = element;
+        if (this._anchor != oldAnchor) {
+            if (oldAnchor != null) {
+                oldAnchor.removeChild(this.node);
+            }
+            if (this._anchor != null) {
+                this._anchor.appendChild(this.node);
+            }
+        }
+    }
+
+    /**
+     * Dispose of the resources held by the widget.
+     */
+    dispose() {
+        // Do nothing if already disposed.
+        if (this.isDisposed) {
+            return;
+        }
+        this._gatherButton.dispose();
+        this._historyButton.dispose();
+        this._gatherButton = null;
+        this._historyButton = null;
+        this._anchor = null;
+        super.dispose();
+    }
+
+    private _commands: CommandRegistry;
+    private _anchor: Element;
+    private _gatherButton: Widget;
+    private _historyButton: Widget;
+}
+
+export class NotifactionExtension implements DocumentRegistry.IWidgetExtension<NotebookPanel, INotebookModel> {
+    private notificationWidget: Widget;
+
+    createNew(panel: NotebookPanel, context: DocumentRegistry.IContext<INotebookModel>): IDisposable {
+        this.notificationWidget = new Widget({ node: document.createElement('p') });
+        this.notificationWidget.addClass(TOOLBAR_NOTIFACTION_CLASS);
+        panel.toolbar.insertItem(9, 'notifications', this.notificationWidget);
+        return new DisposableDelegate(() => {
+            this.notificationWidget.dispose();
+        })};
+
+    showMessage(message: string) {
+        this.notificationWidget.node.textContent = message;
+        setTimeout(() => {
+            this.notificationWidget.node.textContent = "";
+        }, NOTIFICATION_MS);
+    }
+}
 
 function activateExtension(app: JupyterLab, palette: ICommandPalette, notebooks: INotebookTracker, docManager: IDocumentManager) {
     console.log('livecells start');
@@ -303,6 +452,25 @@ function activateExtension(app: JupyterLab, palette: ICommandPalette, notebooks:
     // app.docRegistry.addWidgetExtension('Notebook', new LiveCheckboxExtension());
     const executionLogger = new ExecutionLoggerExtension();
     app.docRegistry.addWidgetExtension('Notebook', executionLogger);
+    const notificationExtension = new NotifactionExtension();
+    app.docRegistry.addWidgetExtension('Notebook', notificationExtension);
+    let gatherWidget = new GatherWidget(app.commands);
+
+    // Listen for hovers over output areas so we can show the tool.
+    document.body.onmousemove = function(event: MouseEvent) {
+        let target:HTMLElement = event.target as HTMLElement;
+        let hoveringOverOutput = false;
+        while (target != null) {
+            if (target.classList && target.classList.contains("jp-Cell-outputWrapper")) {
+                let anchor = target.querySelector(".jp-OutputPrompt");
+                gatherWidget.setAnchor(anchor);
+                hoveringOverOutput = true;
+                break;
+            }
+            target = target.parentElement;
+        }
+        if (!hoveringOverOutput) gatherWidget.setAnchor(null);
+    }
 
     function addCommand(command: string, label: string, execute: () => void) {
         app.commands.addCommand(command, { label, execute });
@@ -314,7 +482,7 @@ function activateExtension(app: JupyterLab, palette: ICommandPalette, notebooks:
         if (panel && panel.notebook && panel.notebook.activeCell.model.type === 'code') {
             const activeCell = panel.notebook.activeCell;
             const program = new CellProgram(activeCell.model, toArray(panel.notebook.model.cells));
-            const sliceCells = program.getDataflowCells(DataflowDirection.Backward);
+            const sliceCells = program.getDataflowCells(DataflowDirection.Backward).map(r => r[0]);
 
             docManager.newUntitled({ ext: 'ipynb' }).then(model => {
                 const widget = docManager.open(model.path, undefined, panel.session.kernel.model) as NotebookPanel;
@@ -334,6 +502,17 @@ function activateExtension(app: JupyterLab, palette: ICommandPalette, notebooks:
             //     const text = editor.model.value.text.substring(startOffset, endOffset);
             //     console.log(text);
             // }
+        }
+    });
+
+    addCommand('livecells:gatherToClipboard', 'Gather this result to the clipboard', () => {
+        const panel = notebooks.currentWidget;
+        if (panel && panel.notebook && panel.notebook.activeCell.model.type === 'code') {
+            const activeCell = panel.notebook.activeCell;
+            const program = new CellProgram(activeCell.model, toArray(panel.notebook.model.cells));
+            const sliceCells = program.getDataflowCells(DataflowDirection.Backward).map(r => r[0]);
+            copyCellsToClipboard(sliceCells);
+            notificationExtension.showMessage("Copied cells to clipboard. Right-click or type 'V' to paste.");
         }
     });
 
@@ -357,9 +536,8 @@ function activateExtension(app: JupyterLab, palette: ICommandPalette, notebooks:
 
         const panel = notebooks.currentWidget;
         if (panel && panel.notebook && panel.notebook.activeCell.model.type === 'code') {
-            // console.log("Gathering from history");
             const activeCell = panel.notebook.activeCell;
-            let snapshots: NotebookSnapshot[] = executionLogger.snapshots(activeCell.model);
+            let snapshots: SlicedNotebookSnapshot[] = executionLogger.snapshots(activeCell.model);
             let historyModel: HistoryModel = buildHistoryModel(activeCell.model.id, snapshots);
 
             let widget: HistoryViewer = new HistoryViewer({

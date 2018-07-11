@@ -1,4 +1,4 @@
-import { nbformat } from '@jupyterlab/coreutils';
+import { IOutputAreaModel } from '@jupyterlab/outputarea';
 import { ICodeVersionModel } from '../codeversion';
 
 /**
@@ -18,7 +18,7 @@ export interface IRevisionModel {
     /**
      * The result of the computation.
      */
-    readonly result: nbformat.IOutput;
+    readonly results: IOutputAreaModel;
 
     /**
      * Whether this revision is the latest revision.
@@ -41,7 +41,7 @@ export class RevisionModel implements IRevisionModel {
     constructor(options: RevisionModel.IOptions) {
         this.versionIndex = options.versionIndex;
         this._source = options.source;
-        this._result = options.result;
+        this._results = options.results;
         this.isLatest = options.isLatest;
         this._timeCreated = options.timeCreated;
     }
@@ -59,8 +59,8 @@ export class RevisionModel implements IRevisionModel {
     /**
      * Get the result of this computation.
      */
-    get result(): nbformat.IOutput {
-        return this._result;
+    get results(): IOutputAreaModel {
+        return this._results;
     }
 
     /**
@@ -71,7 +71,7 @@ export class RevisionModel implements IRevisionModel {
     }
 
     private _source: ICodeVersionModel;
-    private _result: nbformat.IOutput;
+    private _results: IOutputAreaModel;
     private _timeCreated: Date;
 }
 
@@ -96,7 +96,7 @@ export namespace RevisionModel {
         /**
          * The display data for the result at this version.
          */
-        result?: nbformat.IOutput;
+        results?: IOutputAreaModel;
 
         /**
          * Whether this revision is the latest revision.

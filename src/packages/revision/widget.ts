@@ -1,10 +1,10 @@
-import { RenderMimeRegistry } from '@jupyterlab/rendermime';
 import { PanelLayout } from '@phosphor/widgets';
 import { Widget } from '@phosphor/widgets';
+import { CodeEditor } from '@jupyterlab/codeeditor';
+import { OutputArea } from '@jupyterlab/outputarea';
+import { RenderMimeRegistry } from '@jupyterlab/rendermime';
 import { IRevisionModel } from './model';
 import { CodeVersion } from '../codeversion';
-import { DisplayData } from '../displaydata';
-import { CodeEditor } from '@jupyterlab/codeeditor';
 
 /**
  * The class name added to revision widgets
@@ -23,7 +23,7 @@ export class Revision extends Widget {
     /**
      * Construct a revision.
      */
-    constructor(options: Revision.IOptions) {
+    constructor(options: Revision.IOptions) {   
         super();
         this.addClass(REVISION_CLASS);
         let model = (this.model = options.model);
@@ -35,7 +35,7 @@ export class Revision extends Widget {
         let header: HTMLElement = document.createElement("h1");
         let headerText: string;
         if (this.model.isLatest) {
-            headerText = "Latest ";
+            headerText = "Latest";
         } else {
             headerText = "Version " + this.model.versionIndex;
         }
@@ -51,20 +51,20 @@ export class Revision extends Widget {
                     hour: "numeric",
                     minute: "2-digit"
                 });
-            headerText += ("(" + timeString + ", " + dateString + ")");
+            headerText += (" (" + timeString + ", " + dateString + ")");
         }
         header.textContent = headerText;
         let headerWidget: Widget = new Widget({ node: header });
         headerWidget.addClass(REVISION_HEADER_CLASS);
         layout.addWidget(headerWidget);
 
-        layout.addWidget(new DisplayData({
-            model: model.result,
-            rendermime: rendermime
-        }));
         layout.addWidget(new CodeVersion({
             model: model.source,
             editorFactory: editorFactory
+        }));
+        layout.addWidget(new OutputArea({
+            model: model.results,
+            rendermime: rendermime
         }));
     }
 
