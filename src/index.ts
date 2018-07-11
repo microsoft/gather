@@ -83,9 +83,7 @@ class CellProgram {
     private followDataflow(direction: DataflowDirection): NumberSet {
         const ast = python3.parse(this.code);
         const cfg = new ControlFlowGraph(ast);
-        cfg.print();
         const dfa = dataflowAnalysis(cfg);
-        dfa.items.forEach(df => console.log(df.fromNode, df.toNode));
 
         const forwardDirection = direction === DataflowDirection.Forward;
         let relevantLineNumbers = new NumberSet();
@@ -307,7 +305,6 @@ class ExecutionLoggerExtension implements DocumentRegistry.IWidgetExtension<Note
                 notebookVersion.cells.find(c => c.id === cell.id).cellModel,
                 notebookVersion.cells.map(c => c.cellModel))
                 .getDataflowCells(DataflowDirection.Backward).map(r => r[0]));
-        console.log('slices', slices);
         const foils = slices.slice(1).concat([slices[0]]);
 
         function sameCodeCells(cm1: ICodeCellModel, cm2: ICodeCellModel) {
@@ -327,7 +324,7 @@ class ExecutionLoggerExtension implements DocumentRegistry.IWidgetExtension<Note
                 .filter(d => d.kind !== 'same')
                 .map(d => d.source)
                 .filter(s => s));
-        console.log('diffs', diffed);
+        console.log(diffed);
     }
 }
 
@@ -370,7 +367,6 @@ class GatherWidget extends Widget {
      */
     constructor(commands: CommandRegistry) {
         super();
-        this._commands = commands;
         this.addClass(GATHER_WIDGET_CLASS);
         let layout = (this.layout = new PanelLayout());
         this._gatherButton = new Widget({ node: document.createElement("div") });
@@ -421,7 +417,6 @@ class GatherWidget extends Widget {
         super.dispose();
     }
 
-    private _commands: CommandRegistry;
     private _anchor: Element;
     private _gatherButton: Widget;
     private _historyButton: Widget;

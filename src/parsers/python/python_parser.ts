@@ -59,7 +59,7 @@ export const IMPORT = 'import';
 
 export interface IImport extends ILocatable {
     type: typeof IMPORT;
-    names: { path: string }[];
+    names: { path: string, name?: string }[];
 }
 
 export const FROM = 'from';

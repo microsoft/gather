@@ -11,9 +11,9 @@ export interface IDataflow {
 }
 
 
-function getNames(node: ast.ISyntaxNode | ast.ISyntaxNode[]): StringSet {
+function gatherNames(node: ast.ISyntaxNode | ast.ISyntaxNode[]): StringSet {
     if (Array.isArray(node)) {
-        return new StringSet().union(...node.map(getNames));
+        return new StringSet().union(...node.map(gatherNames));
     } else {
         return new StringSet(...ast.walk(node)
             .filter(e => e.type == ast.NAME)
@@ -23,32 +23,52 @@ function getNames(node: ast.ISyntaxNode | ast.ISyntaxNode[]): StringSet {
 
 interface IDefUseInfo { defs: StringSet, uses: StringSet };
 
-function getDefsUses(statement: ast.ISyntaxNode): IDefUseInfo {
+interface SymbolTable {
+    // ⚠️ We should be doing full-blown symbol resolution, but meh 🙄
+    moduleNames: StringSet;
+}
+
+function getDefsUses(statement: ast.ISyntaxNode, symbolTable: SymbolTable): IDefUseInfo {
+    // ️⚠️ The following is heuristic and unsound, but works for many scripts.
+    const funcArgs = new StringSet(...[].concat(
+        ...ast.walk(statement)
+            .filter(node => node.type === ast.CALL)
+            .map((call: ast.ICall) =>
+                (call.func.type === ast.DOT ? [call.func.value] : []).concat(call.args))
+            .reduce((prev, val) => prev.concat(val), []) // flatten the list of lists to a list
+            .filter(name => name.type === ast.NAME && !symbolTable.moduleNames.contains(name.id))));
+
     switch (statement.type) {
+        case ast.IMPORT: {
+            const modnames = statement.names.map(i => i.name || i.path);
+            symbolTable.moduleNames.add(...modnames);
+            return {
+                defs: new StringSet(...modnames),
+                uses: new StringSet()
+            };
+        }
+        case ast.FROM: {
+            const modnames = statement.imports.map(i => i.name || i.path);
+            symbolTable.moduleNames.add(...modnames);
+            return {
+                defs: new StringSet(...modnames),
+                uses: new StringSet()
+            };
+        }
         case ast.ASSIGN:
-            const targetNames = getNames(statement.targets);
+            const targetNames = gatherNames(statement.targets);
             return {
                 defs: targetNames,
                 // in x+=1, x is both a source and target
-                uses: getNames(statement.sources).union(statement.op ? targetNames : new StringSet())
-            };
-        case ast.IMPORT:
-            return {
-                defs: new StringSet(...statement.names.map(i => i.path)),
-                uses: new StringSet()
-            };
-        case ast.FROM:
-            return {
-                defs: new StringSet(...statement.imports.map(i => i.name || i.path)),
-                uses: new StringSet()
+                uses: gatherNames(statement.sources).union(funcArgs).union(statement.op ? targetNames : new StringSet())
             };
         default:
-            return { defs: new StringSet(), uses: getNames(statement) };
+            return { defs: funcArgs, uses: gatherNames(statement) };
     }
 }
 
-function getUses(statement: ast.ISyntaxNode): StringSet {
-    return getDefsUses(statement).uses;
+function getUses(statement: ast.ISyntaxNode, symbolTable: SymbolTable): StringSet {
+    return getDefsUses(statement, symbolTable).uses;
 }
 
 function locString(loc: ILocation): string {
@@ -76,6 +96,8 @@ export function dataflowAnalysis(cfg: ControlFlowGraph): Set<IDataflow> {
 
     let dataflows = new Set<IDataflow>(getDataflowId);
 
+    let symbolTable: SymbolTable = { moduleNames: new StringSet() };
+
     while (workQueue.length) {
         const block = workQueue.pop();
 
@@ -84,10 +106,10 @@ export function dataflowAnalysis(cfg: ControlFlowGraph): Set<IDataflow> {
         let defs = oldDefs.union(...cfg.getPredecessors(block)
             .map(block => definitionsForBlock.get(block.id)));
 
-        const loopUses = new StringSet().union(...block.loopVariables.map(s => getUses(s)));
+        const loopUses = new StringSet().union(...block.loopVariables.map(s => getUses(s, symbolTable)));
 
         for (let statement of block.statements) {
-            let { defs: definedHere, uses: usedHere } = getDefsUses(statement);
+            let { defs: definedHere, uses: usedHere } = getDefsUses(statement, symbolTable);
             usedHere = usedHere.union(loopUses);
 
             const newFlows = defs.filter(([name, _]) => usedHere.contains(name))
