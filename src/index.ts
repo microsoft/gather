@@ -24,6 +24,7 @@ import { HistoryModel, HistoryViewer, NotebookSnapshot, CellSnapshot, buildHisto
 
 import '../style/index.css';
 import { CommandRegistry } from '../node_modules/@phosphor/commands';
+import { CodeEditor } from '@jupyterlab/codeeditor';
 
 const extension: JupyterLabPlugin<void> = {
     activate: activateExtension,
@@ -60,7 +61,7 @@ class CellProgram {
     private cellByLine: ICodeCellModel[] = [];
     private lineRangeForCell: { [id: string]: [number, number] } = {};
 
-    constructor(changedCell: ICellModel, private cells: ICellModel[]) {
+    constructor(changedCell: ICellModel, private cells: ICellModel[], selection?: [number, number]) {
         this.code = '';
         let lineNumber = 1;
         for (let i = 0; i < cells.length; i++) {
@@ -74,7 +75,9 @@ class CellProgram {
                 this.cellByLine[lc + lineNumber] = cell;
             }
             if (cell.id === changedCell.id) {
-                this.changedCellLineNumbers = [lineNumber, lineNumber + lineCount - 1];
+                this.changedCellLineNumbers = selection ?
+                    [lineNumber + selection[0], lineNumber + selection[1]] :
+                    [lineNumber, lineNumber + lineCount - 1];
             }
             lineNumber += lineCount;
         }
@@ -288,7 +291,7 @@ class ExecutionLoggerExtension implements DocumentRegistry.IWidgetExtension<Note
 
     public snapshots(cell: ICellModel) {
         let notebookVersions = this.executionHistoryPerCell[cell.id];
-        return notebookVersions.map(notebookVersion => 
+        return notebookVersions.map(notebookVersion =>
             new SlicedNotebookSnapshot(
                 notebookVersion,
                 new CellProgram(
@@ -372,14 +375,14 @@ class GatherWidget extends Widget {
         this._gatherButton = new Widget({ node: document.createElement("div") });
         this._gatherButton.addClass(BUTTON_CLASS);
         this._gatherButton.addClass(GATHER_BUTTON_CLASS);
-        this._gatherButton.node.onclick = function() {
+        this._gatherButton.node.onclick = function () {
             commands.execute("livecells:gatherToClipboard");
         }
         layout.addWidget(this._gatherButton);
         this._historyButton = new Widget({ node: document.createElement("div") });
         this._historyButton.addClass(BUTTON_CLASS);
         this._historyButton.addClass(HISTORY_BUTTON_CLASS);
-        this._historyButton.node.onclick = function() {
+        this._historyButton.node.onclick = function () {
             commands.execute("livecells:gatherFromHistory");
         }
         layout.addWidget(this._historyButton);
@@ -431,7 +434,8 @@ export class NotifactionExtension implements DocumentRegistry.IWidgetExtension<N
         panel.toolbar.insertItem(9, 'notifications', this.notificationWidget);
         return new DisposableDelegate(() => {
             this.notificationWidget.dispose();
-        })};
+        })
+    };
 
     showMessage(message: string) {
         this.notificationWidget.node.textContent = message;
@@ -452,8 +456,8 @@ function activateExtension(app: JupyterLab, palette: ICommandPalette, notebooks:
     let gatherWidget = new GatherWidget(app.commands);
 
     // Listen for hovers over output areas so we can show the tool.
-    document.body.onmousemove = function(event: MouseEvent) {
-        let target:HTMLElement = event.target as HTMLElement;
+    document.body.onmousemove = function (event: MouseEvent) {
+        let target: HTMLElement = event.target as HTMLElement;
         let hoveringOverOutput = false;
         while (target != null) {
             if (target.classList && target.classList.contains("jp-Cell-outputWrapper")) {
@@ -465,6 +469,15 @@ function activateExtension(app: JupyterLab, palette: ICommandPalette, notebooks:
             target = target.parentElement;
         }
         if (!hoveringOverOutput) gatherWidget.setAnchor(null);
+    }
+
+    function getSelectedLines(editor: CodeEditor.IEditor): [number, number] {
+        const selection = editor.getSelection();
+        const { start, end } = selection;
+        if (start.column !== end.column || start.line !== end.line) {
+            return [start.line, end.line];
+        }
+        return undefined;
     }
 
     function addCommand(command: string, label: string, execute: () => void) {
@@ -487,16 +500,6 @@ function activateExtension(app: JupyterLab, palette: ICommandPalette, notebooks:
                     newModel.cells.pushAll(sliceCells);
                 }, 100);
             });
-
-            // const selection = editor.getSelection();
-            // const { start, end } = selection;
-            // let selected = start.column !== end.column || start.line !== end.line;
-            // if (selected) {
-            //     const startOffset = editor.getOffsetAt(selection.start);
-            //     const endOffset = editor.getOffsetAt(selection.end);
-            //     const text = editor.model.value.text.substring(startOffset, endOffset);
-            //     console.log(text);
-            // }
         }
     });
 
@@ -515,7 +518,9 @@ function activateExtension(app: JupyterLab, palette: ICommandPalette, notebooks:
         const panel = notebooks.currentWidget;
         if (panel && panel.notebook && panel.notebook.activeCell.model.type === 'code') {
             const activeCell = panel.notebook.activeCell;
-            const program = new CellProgram(activeCell.model, toArray(panel.notebook.model.cells));
+            const selection = getSelectedLines(activeCell.editor);
+            console.log('selection', selection);
+            const program = new CellProgram(activeCell.model, toArray(panel.notebook.model.cells), selection);
             const text = program.getDataflowText(DataflowDirection.Backward);
 
             docManager.newUntitled({ ext: 'py' }).then(model => {
