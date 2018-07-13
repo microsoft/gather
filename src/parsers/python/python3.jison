@@ -1061,19 +1061,19 @@ subscriptlist0
 subscript
     : test
     | test ':' test sliceop
-        { $$ = { type: 'slice', start: $1, stop: $2, step: $3 } }
+        { $$ = { type: 'slice', start: $1, stop: $3, step: $4 } }
     | test ':' test
-        { $$ = { type: 'slice', start: $1, stop: $2 } }
+        { $$ = { type: 'slice', start: $1, stop: $3 } }
     | test ':' sliceop
-        { $$ = { type: 'slice', start: $1, step: $2 } }
+        { $$ = { type: 'slice', start: $1, step: $3 } }
     | test ':'
         { $$ = { type: 'slice', start: $1 } }
     | ':' test sliceop
-        { $$ = { type: 'slice', stop: $1, step: $2 } }
+        { $$ = { type: 'slice', stop: $2, step: $3 } }
     | ':' test
-        { $$ = { type: 'slice', stop: $1 } }
+        { $$ = { type: 'slice', stop: $2 } }
     | ':' sliceop
-        { $$ = { type: 'slice', step: $1 } }
+        { $$ = { type: 'slice', step: $2 } }
     | ':'
         { $$ = { type: 'slice' } }
     ;
@@ -1210,8 +1210,11 @@ arglist0
 // argument: test [comp_for] | test '=' test
 argument
     : test
+        { $$ = { type: 'arg', actual: $1 } }
     | test comp_for
+        { $$ = { type: 'arg', actual: $1, loop: $2 } }
     | test '=' test
+        { $$ = { type: 'arg', keyword: $1, actual: $3 } }
     ;
 
 // comp_iter: comp_for | comp_if

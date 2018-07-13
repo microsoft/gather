@@ -214,7 +214,16 @@ export const CALL = 'call';
 export interface ICall extends ILocatable {
     type: typeof CALL;
     func: ISyntaxNode;
-    args: ISyntaxNode[];
+    args: IArgument[];
+}
+
+export const ARG = 'arg';
+
+export interface IArgument extends ILocatable {
+    type: typeof ARG;
+    actual: ISyntaxNode;
+    keyword?: ISyntaxNode;
+    loop?: ISyntaxNode;
 }
 
 export const INDEX = 'index';
@@ -369,7 +378,7 @@ export function walk(node: ISyntaxNode): ISyntaxNode[] {
             break;
         case DECORATE: children = [node.def]; break;
         case LAMBDA: children = [node.code]; break;
-        case CALL: children = [node.func].concat(node.args); break;
+        case CALL: children = [node.func].concat(node.args.map(a => a.actual)); break;
         case IFEXPR: children = [node.test, node.then, node.else]; break;
         case UNOP: children = [node.operand]; break;
         case BINOP: children = [node.left, node.right]; break;
@@ -382,7 +391,11 @@ export function walk(node: ISyntaxNode): ISyntaxNode[] {
         case ASSERT: children = [node.cond].concat([node.err] || []); break;
         case DOT: children = [node.value, node.name]; break;
         case INDEX: children = [node.value].concat(node.args); break;
-        case SLICE: children = ([node.start] || []).concat([node.stop] || []).concat([node.step] || []); break;
+        case SLICE:
+            children = (node.start ? [node.start] : [])
+                .concat(node.stop ? [node.stop] : [])
+                .concat(node.step ? [node.step] : []);
+            break;
     }
     return [node].concat(flatten(children.map(node => walk(node))));
 }

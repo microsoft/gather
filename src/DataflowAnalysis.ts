@@ -34,7 +34,7 @@ function getDefsUses(statement: ast.ISyntaxNode, symbolTable: SymbolTable): IDef
         ...ast.walk(statement)
             .filter(node => node.type === ast.CALL)
             .map((call: ast.ICall) =>
-                (call.func.type === ast.DOT ? [call.func.value] : []).concat(call.args))
+                (call.func.type === ast.DOT ? [call.func.value] : []).concat(call.args.map(a=>a.actual)))
             .reduce((prev, val) => prev.concat(val), []) // flatten the list of lists to a list
             .filter(name => name.type === ast.NAME && !symbolTable.moduleNames.contains(name.id))));
 
