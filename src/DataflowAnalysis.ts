@@ -28,7 +28,7 @@ interface SymbolTable {
     moduleNames: StringSet;
 }
 
-function getDefsUses(statement: ast.ISyntaxNode, symbolTable: SymbolTable): IDefUseInfo {
+export function getDefsUses(statement: ast.ISyntaxNode, symbolTable: SymbolTable): IDefUseInfo {
     // ️⚠️ The following is heuristic and unsound, but works for many scripts.
     const funcArgs = new StringSet(...[].concat(
         ...ast.walk(statement)
