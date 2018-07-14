@@ -348,7 +348,41 @@ function flatten<T>(arrayArrays: T[][]): T[] {
     return [].concat(...arrayArrays);
 }
 
-export function walk(node: ISyntaxNode): ISyntaxNode[] {
+
+/**
+ * Listener for pre-order traversal of the parse tree.
+ */
+export interface IWalkListener {
+
+    /**
+     * Called whenever a node is entered.
+     */
+    onEnterNode?(node: ISyntaxNode, type: string, ancestors: ISyntaxNode[]): void;
+
+    /**
+     * Called whenever a node is exited.
+     */
+    onExitNode?(node: ISyntaxNode, type: string, ancestors: ISyntaxNode[]): void;
+};
+
+/**
+ * Preorder tree traversal with optional listener.
+ */
+export function walk(node: ISyntaxNode, walkListener?: IWalkListener): ISyntaxNode[] {
+    return walkRecursive(node, [], walkListener);
+}
+
+/**
+ * Recursive implementation of pre-order tree walk.
+ */
+function walkRecursive(node: ISyntaxNode, ancestors?: ISyntaxNode[], walkListener?: IWalkListener): ISyntaxNode[] {
+
+    ancestors.push(node);
+
+    if (walkListener && walkListener.onEnterNode) {
+        walkListener.onEnterNode(node, node.type, ancestors);
+    }
+
     let children: ISyntaxNode[] = [];
     switch (node.type) {
         case MODULE:
@@ -397,5 +431,16 @@ export function walk(node: ISyntaxNode): ISyntaxNode[] {
                 .concat(node.step ? [node.step] : []);
             break;
     }
-    return [node].concat(flatten(children.map(node => walk(node))));
+
+    let nodes = [node];
+    let subtreeNodes = flatten(children.map(node => walkRecursive(node, ancestors, walkListener)));
+    nodes = nodes.concat(subtreeNodes);
+
+    if (walkListener && walkListener.onExitNode) {
+        walkListener.onExitNode(node, node.type, ancestors);
+    }
+
+    ancestors.pop();
+    return nodes;
+
 }

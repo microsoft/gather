@@ -28,16 +28,44 @@ interface SymbolTable {
     moduleNames: StringSet;
 }
 
+/**
+ * Tree walk listener for collecting names used in function call.
+ */
+class CallNamesListener implements ast.IWalkListener {
+
+    onEnterNode(node: ast.ISyntaxNode, type: string, ancestors: ast.ISyntaxNode[]) {
+        if (type == ast.CALL) {
+            let callNode = node as ast.ICall;
+            this._parentsOfRelevantNames.push(...callNode.args.map(arg => arg.actual));
+            if (callNode.func.type == ast.DOT) {
+                this._parentsOfRelevantNames.push(callNode.func.value);
+            }
+        }
+        if (type == ast.NAME) {
+            for (let ancestor of ancestors) {
+                if (this._parentsOfRelevantNames.indexOf(ancestor) != -1) {
+                    this.names.push((node as ast.IName).id);
+                    break;
+                }
+            }
+        }
+    }
+
+    private _parentsOfRelevantNames: ast.ISyntaxNode[] = [];
+    readonly names: string[] = [];
+}
+
 export function getDefsUses(statement: ast.ISyntaxNode, symbolTable: SymbolTable): IDefUseInfo {
     // ️⚠️ The following is heuristic and unsound, but works for many scripts.
-    const funcArgs = new StringSet(...[].concat(
-        ...ast.walk(statement)
-            .filter(node => node.type === ast.CALL)
-            .map((call: ast.ICall) =>
-                (call.func.type === ast.DOT ? [call.func.value] : []).concat(call.args.map(a=>a.actual)))
-            .reduce((prev, val) => prev.concat(val), []) // flatten the list of lists to a list
-            .filter(node => node.type === ast.NAME && !symbolTable.moduleNames.contains(node.id))
-            .map(node => (node as ast.IName).id)));
+    // Grabs *all names* referred to within the call arguments, even those nested within
+    // operations. This is because operators could be overloaded to return the same object. We
+    // could filter this list later by inspecting which variables are immutable (e.g., ints,
+    // floats, strings, etc.) during the code's execution.
+    // XXX: we don't consider that the callable is getting def'd, but maybe we should: if you override
+    // __call__ on an object, a call on an object can change that object.
+    let callNamesListener = new CallNamesListener();
+    ast.walk(statement, callNamesListener);
+    const funcArgs = new StringSet(...callNamesListener.names);
 
     switch (statement.type) {
         case ast.IMPORT: {
