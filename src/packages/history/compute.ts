@@ -139,9 +139,11 @@ export function buildHistoryModel(
             let sliceRanges = [];
             let cellLines = snapshotText.split('\n')
             let lineFirstCharIndex = 0;
-            for (let lineNumber of sliceLines) {
+            for (let lineNumber = 0; lineNumber < cellLines.length; lineNumber++) {
                 let lineLength = cellLines[lineNumber].length + 1;
-                sliceRanges.push(new CharacterRange(lineFirstCharIndex, lineFirstCharIndex + lineLength));
+                if (sliceLines.indexOf(lineNumber) != -1) {
+                    sliceRanges.push(new CharacterRange(lineFirstCharIndex, lineFirstCharIndex + lineLength));
+                }
                 lineFirstCharIndex += lineLength;
             }
 

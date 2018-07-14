@@ -296,7 +296,7 @@ export const TUPLE = 'tuple';
 
 export interface ITuple extends ILocatable {
     type: typeof TUPLE;
-    value: ISyntaxNode[];
+    items: ISyntaxNode[];
 }
 
 export const LIST = 'list';
@@ -385,7 +385,7 @@ export function walk(node: ISyntaxNode): ISyntaxNode[] {
         case STARRED: children = [node.value]; break;
         case SET:
         case LIST: children = node.items; break;
-        case TUPLE: children = node.value; break;
+        case TUPLE: children = node.items; break;
         case DICT: children = flatten(node.pairs.map(p => [p.k, p.v])); break;
         case ASSIGN: children = node.sources.concat(node.targets); break;
         case ASSERT: children = [node.cond].concat([node.err] || []); break;

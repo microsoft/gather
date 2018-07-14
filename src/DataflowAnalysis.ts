@@ -1,7 +1,7 @@
 import * as ast from './parsers/python/python_parser';
 import { Block, ControlFlowGraph } from './ControlFlowGraph';
 import { Set, StringSet } from './Set';
-import { ILocation, ISyntaxNode } from './parsers/python/python_parser';
+import { ILocation } from './parsers/python/python_parser';
 
 
 
@@ -36,7 +36,8 @@ function getDefsUses(statement: ast.ISyntaxNode, symbolTable: SymbolTable): IDef
             .map((call: ast.ICall) =>
                 (call.func.type === ast.DOT ? [call.func.value] : []).concat(call.args.map(a=>a.actual)))
             .reduce((prev, val) => prev.concat(val), []) // flatten the list of lists to a list
-            .filter(name => name.type === ast.NAME && !symbolTable.moduleNames.contains(name.id))));
+            .filter(node => node.type === ast.NAME && !symbolTable.moduleNames.contains(node.id))
+            .map(node => (node as ast.IName).id)));
 
     switch (statement.type) {
         case ast.IMPORT: {
@@ -48,8 +49,12 @@ function getDefsUses(statement: ast.ISyntaxNode, symbolTable: SymbolTable): IDef
             };
         }
         case ast.FROM: {
-            const modnames = statement.imports.map(i => i.name || i.path);
-            symbolTable.moduleNames.add(...modnames);
+            // ⚠️ Doesn't handle 'from <pkg> import *'
+            let modnames: Array<string> = [];
+            if (statement.imports.constructor === Array) {
+                modnames = statement.imports.map(i => i.name || i.path);
+                symbolTable.moduleNames.add(...modnames);
+            }
             return {
                 defs: new StringSet(...modnames),
                 uses: new StringSet()
@@ -112,12 +117,16 @@ export function dataflowAnalysis(cfg: ControlFlowGraph): Set<IDataflow> {
             let { defs: definedHere, uses: usedHere } = getDefsUses(statement, symbolTable);
             usedHere = usedHere.union(loopUses);
 
+            // TODO: fix up dataflow computation within this block: check for definitions in
+            // defsWithinBlock first; if found, don't look to defs that come from the predecessor.
+
+            // For everything that's defined coming into this block, if it's used in this block, save connection.
             const newFlows = defs.filter(([name, _]) => usedHere.contains(name))
                 .map(getDataflowId, ([_, defstmt]) => ({ fromNode: defstmt, toNode: statement }));
 
             dataflows = dataflows.union(newFlows);
 
-            const genSet = definedHere.map<[string, ISyntaxNode]>(getDefSetId, name => [name, statement]);
+            const genSet = definedHere.map(getDefSetId, name => [name, statement]) as Set<[string, ast.ISyntaxNode]>;
             const killSet = defs.filter(([name, _]) => definedHere.contains(name));
             defs = defs.minus(killSet).union(genSet);
         }

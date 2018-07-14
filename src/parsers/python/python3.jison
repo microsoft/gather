@@ -40,8 +40,8 @@ operators               ">>="|"<<="|"**="|"//="|"->"|"+="|"-="|"*="|"/="|"%="|
 
 // strings
 longstring              {longstring_double}|{longstring_single}
-longstring_double       '"""'{longstringitem}*'"""'
-longstring_single       "'''"{longstringitem}*"'''"
+longstring_double       '"""'{longstringitem}*?'"""'
+longstring_single       "'''"{longstringitem}*?"'''"
 longstringitem          {longstringchar}|{escapeseq}
 longstringchar          [^\\]
 
@@ -956,11 +956,11 @@ atom_expr
 //        NAME | NUMBER | STRING+ | '...' | 'None' | 'True' | 'False')
 atom
     : '(' ')'
-        { $$ = { type: 'tuple', value: [], location: @$ } }
+        { $$ = { type: 'tuple', items: [], location: @$ } }
     | '(' yield_expr ')'
-        { $$ = $2 }
+        { $$ = { type: 'yieldexpr', value: $2, location: @$ } }
     | '(' testlist_comp ')'
-        { $$ = $2 }
+        { $$ = { type: 'tuple', items: $2, location: @$ } }
     | '[' ']'
         { $$ = { type: 'list', items: [], location: @$ } }
     | '[' testlist_comp ']'
