@@ -80,8 +80,7 @@ describe('detects control dependencies', () => {
             "b = 2"
         );
         expect(deps).to.deep.equal([]);
-    })
-
+    });
 
 });
 

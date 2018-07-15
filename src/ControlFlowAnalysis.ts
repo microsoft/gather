@@ -164,7 +164,7 @@ export class ControlFlowGraph {
         this.link(last, loopHeadBlock);
         const afterLoop = this.makeBlock('for loop join');
         this.loopVariables.push(statement.target);
-        const [bodyEntry, bodyExit] = this.makeCFG('while body', statement.code, context.forLoop(loopHeadBlock, afterLoop));
+        const [bodyEntry, bodyExit] = this.makeCFG('for body', statement.code, context.forLoop(loopHeadBlock, afterLoop));
         this.loopVariables.pop();
         this.link(loopHeadBlock, bodyEntry);
         this.link(bodyExit, loopHeadBlock); // back edge
@@ -372,6 +372,7 @@ export class ControlFlowGraph {
             let successors = this.getSuccessors(block);
             if (successors.length > 1) {
                 let workQueue = successors;
+                let scheduled: Block[] = [];
                 let blockImmediatePostdominator = this.getImmediatePostdominator(block);
                 while (workQueue.length > 0) {
                     let item = workQueue.pop();
@@ -382,7 +383,12 @@ export class ControlFlowGraph {
                     frontier.add(block);
                     let immediatePostdominator = this.getImmediatePostdominator(item);
                     if (immediatePostdominator.postdominator != blockImmediatePostdominator.postdominator) {
-                        this.getSuccessors(item).forEach((b) => { workQueue.push(b) });
+                        this.getSuccessors(item).forEach((b) => { 
+                            if (scheduled.indexOf(b) == -1) {
+                                scheduled.push(b);
+                                workQueue.push(b);
+                            }
+                        });
                     }
                 }
             }
