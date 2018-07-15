@@ -15,6 +15,7 @@ export type ISyntaxNode =
     | IGlobal
     | INonlocal
     | IIf
+    | IElse
     | IWhile
     | IFor
     | ITry
@@ -170,7 +171,7 @@ export interface IIf extends ILocatable {
     cond: ISyntaxNode;
     code: ISyntaxNode[];
     elif: { cond: ISyntaxNode, code: ISyntaxNode[] }[];
-    else: ISyntaxNode[];
+    else: ISyntaxNode;
 }
 
 export const WHILE = 'while';
@@ -180,6 +181,13 @@ export interface IWhile extends ILocatable {
     cond: ISyntaxNode;
     code: ISyntaxNode[];
     else: ISyntaxNode[];
+}
+
+export const ELSE = 'else';
+
+export interface IElse extends ILocatable {
+    type: typeof ELSE;
+    code: ISyntaxNode[];
 }
 
 export const FOR = 'for';
@@ -393,7 +401,10 @@ function walkRecursive(node: ISyntaxNode, ancestors?: ISyntaxNode[], walkListene
         case IF:
             children = [node.cond].concat(node.code)
                 .concat(node.elif ? flatten(node.elif.map(e => [e.cond].concat(e.code))) : [])
-                .concat(node.else || []);
+                .concat([node.else]);
+            break;
+        case ELSE:
+            children = node.code;
             break;
         case WHILE:
             children = [node.cond].concat(node.code);

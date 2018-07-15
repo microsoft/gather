@@ -44,6 +44,45 @@ describe('detects control dependencies', () => {
         expect(deps).to.deep.equal([[2, 1]]);
     });
 
+    it('for multiple statements in a block', () => {
+        let deps = analyze(
+            "if cond:",
+            "    print(a)",
+            "    print(b)"
+        );
+        expect(deps).to.deep.equal([[2, 1], [3, 1]]);
+    });
+
+    it('from an else to an if', () => {
+        let deps = analyze(
+            "if cond:",
+            "    print(a)",
+            "elif cond2:",
+            "    print(b)",
+            "else:",
+            "    print(b)"
+        );
+        expect(deps).to.deep.include([3, 1]);
+        expect(deps).to.deep.include([5, 3]);
+    });
+
+    it('to a for-loop', () => {
+        let deps = analyze(
+            "for i in range(10):",
+            "    print(a)"
+        );
+        expect(deps).to.deep.include([2, 1]);
+    });
+
+    it('skipping non-dependencies', () => {
+        let deps = analyze(
+            "a = 1",
+            "b = 2"
+        );
+        expect(deps).to.deep.equal([]);
+    })
+
+
 });
 
 describe('getDefsUses', () => {

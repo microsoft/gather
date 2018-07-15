@@ -127,13 +127,20 @@ export class ControlFlowGraph {
                 lastCondBlock = elifCondBlock;
             });
         }
-        if (statement.else && statement.else.length) {
-            const [elseEntry, elseExit] = this.makeCFG('else body', statement.else, context);
-            this.link(lastCondBlock, elseEntry);
-            this.link(elseExit, joinBlock);
-        } else {
-            this.link(lastCondBlock, joinBlock);
-        }
+        if (statement.else) {
+            let elseStmt = statement.else as ast.IElse;
+            if (elseStmt.code && elseStmt.code.length) {
+                // XXX: 'Else' isn't *really* a condition, though we're treating it like it is
+                // so we can mark a dependence between the body of the else and its header.
+                const elseCondBlock = this.makeBlock('else cond', [elseStmt]);
+                this.link(lastCondBlock, elseCondBlock);
+                const [elseEntry, elseExit] = this.makeCFG('else body', elseStmt.code, context);
+                this.link(elseCondBlock, elseEntry);
+                this.link(elseExit, joinBlock);
+                lastCondBlock = elseCondBlock;
+            }
+        } 
+        this.link(lastCondBlock, joinBlock);
         return joinBlock;
     }
 
@@ -257,7 +264,6 @@ export class ControlFlowGraph {
         let dependencies = [];
         let blocks = this.blocks;
         
-        // Compute data structures for control flow analysis.
         this.postdominators = this.findPostdominators(blocks);
         this.immediatePostdominators = this.getImmediatePostdominators(this.postdominators.items);
         this.reverseDominanceFrontiers = this.buildReverseDominanceFrontiers(blocks);

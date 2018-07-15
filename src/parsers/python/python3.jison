@@ -612,17 +612,17 @@ compound_stmt:  if_stmt | while_stmt | for_stmt | try_stmt | with_stmt |
 if_stmt
     : 'if' test ':' suite
         { $$ = { type: 'if',  cond: $2, code: $4, location: @$ } }
-    | 'if' test ':' suite 'else' ':' suite
+    | 'if' test ':' suite else_part
         { 
-            $$ = { type: 'if', cond: $2, code: $4, else: $7, location: @$ }
+            $$ = { type: 'if', cond: $2, code: $4, else: $5, location: @$ }
         }
     | 'if' test ':' suite if_stmt0
         {
-            $$ = { type: 'if', cond: $2, code: $4, elif: $5 }
+            $$ = { type: 'if', cond: $2, code: $4, elif: $5, location: @$ }
         }
-    | 'if' test ':' suite if_stmt0 'else' ':' suite
+    | 'if' test ':' suite if_stmt0 else_part
         {
-            $$ = { type: 'if', cond: $2, code: $4, elif: $5, else: $8 }
+            $$ = { type: 'if', cond: $2, code: $4, elif: $5, else: $6, location: @$ }
         }
     ;
 
@@ -631,6 +631,11 @@ if_stmt0
         { $$ = [ { cond: $2, code: $4 } ] }
     | 'elif' test ':' suite if_stmt0
         { $$ = [ { cond: $2, code: $4 } ].concat( $5 ) }
+    ;
+
+else_part
+    : 'else' ':' suite
+        { $$ = { type: 'else', code: $3, location: @$ } }
     ;
 
 // while_stmt: 'while' test ':' suite ['else' ':' suite]
