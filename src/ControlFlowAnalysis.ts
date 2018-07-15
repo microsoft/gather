@@ -1,5 +1,6 @@
 import * as ast from './parsers/python/python_parser';
 import { Set } from './Set';
+import { IDataflow } from './DataflowAnalysis';
 
 
 export class Block {
@@ -49,8 +50,10 @@ export class ControlFlowGraph {
     private loopVariables: ast.ISyntaxNode[][] = [];
 
     constructor(module: ast.IModule) {
+        let statements = module.code;
+        if (!(statements instanceof Array)) statements = [statements]; 
         [this.entry, this.exit] = this.makeCFG(
-            'entry', module.code, new Context(null, null, this.makeBlock('exceptional exit')));
+            'entry', statements, new Context(null, null, this.makeBlock('exceptional exit')));
     }
 
     private makeBlock(hint: string, statements: ast.ISyntaxNode[] = []) {
@@ -241,5 +244,167 @@ export class ControlFlowGraph {
             }
         });
         return [entry, last];
+    }
+
+    /**
+     * Based on the algorithm in "Engineering a Compiler", 2nd ed., Cooper and Torczon:
+     * - p479: computing dominance
+     * - p498-500: dominator trees and frontiers
+     * - p544: postdominance and reverse dominance frontier
+     */
+    public getControlDependencies(): IDataflow[] {
+        
+        let dependencies = [];
+        let blocks = this.blocks;
+        
+        // Compute data structures for control flow analysis.
+        this.postdominators = this.findPostdominators(blocks);
+        this.immediatePostdominators = this.getImmediatePostdominators(this.postdominators.items);
+        this.reverseDominanceFrontiers = this.buildReverseDominanceFrontiers(blocks);
+
+        // Mine the dependencies.
+        for (let block of blocks) {
+            if (this.reverseDominanceFrontiers.hasOwnProperty(block.id)) {
+                let frontier = this.reverseDominanceFrontiers[block.id];
+                for (let frontierBlock of frontier.items) {
+                    for (let controlStmt of frontierBlock.statements) {
+                        for (let stmt of block.statements) {
+                            dependencies.push({ fromNode: controlStmt, toNode: stmt });
+                        }
+                    }
+                }
+            }
+        }
+        return dependencies;
+    }
+
+    private postdominators = new PostdominatorSet();
+    private immediatePostdominators: PostdominatorSet;
+    private reverseDominanceFrontiers: { [blockId: string]: BlockSet };
+
+    private getImmediatePostdominator(block: Block): Postdominator {
+        let immediatePostdominators = this.immediatePostdominators.items.filter((p) => p.block == block);
+        return immediatePostdominators[0]
+    }
+
+    private findPostdominators(blocks: Block[]) {
+
+        // Initially, every block has itself and the end of the program (null) as a postdominator.
+        let postdominators = new PostdominatorSet();
+        for (let block of blocks) {
+            postdominators.add(new Postdominator(0, block, block));
+            postdominators.add(new Postdominator(Infinity, block, new Block(-1, "", [])));
+        }
+
+        let changed = true;
+        while (changed == true) {
+            let oldPostdominatorsSize = postdominators.size;
+            for (let block of blocks) {
+                // Merge postdominators that appear in all of a block's successors.
+                let successors = this.getSuccessors(block);
+                postdominators = postdominators.union(
+                    new PostdominatorSet(...[].concat(
+                        ...successors.map((s) => {
+                            return postdominators.items
+                            .filter((p) => p.block == s)
+                        }))
+                        .reduce((pCounts: { p: Postdominator, count: number }[], p) => {
+                            let countIndex = pCounts.findIndex(record => {
+                                return record.p.postdominator == p.postdominator;
+                            });
+                            let countRecord;
+                            if (countIndex == -1) {
+                                countRecord = {
+                                    p: new Postdominator(p.distance + 1, block, p.postdominator),
+                                    count: 0
+                                };
+                                pCounts.push(countRecord);
+                            } else {
+                                countRecord = pCounts[countIndex];
+                                // Update postdominator with longest distance.
+                                pCounts[countIndex].p.distance = Math.max(pCounts[countIndex].p.distance, p.distance + 1);
+                            }
+                            countRecord.count++;
+                            return pCounts;
+                        }, [])
+                        .filter((p: { p: Postdominator, count: number }) => {
+                            return p.count == successors.length;
+                        })
+                        .map((p: { p: Postdominator, count: number }) => {
+                            return p.p
+                        })));
+            }
+            changed = (postdominators.size > oldPostdominatorsSize);
+        }
+        return postdominators;
+    }
+
+    private getImmediatePostdominators(postdominators: Postdominator[]) {
+        let postdominatorsByBlock = postdominators
+            .filter((p) => p.block != p.postdominator)
+            .reduce((dict: { [id: number]: Postdominator[] }, postdominator) => {
+                if (!dict.hasOwnProperty(postdominator.block.id)) {
+                    dict[postdominator.block.id] = [];
+                }
+                dict[postdominator.block.id].push(postdominator);
+                return dict;
+            }, {});
+        let immediatePostdominators = [];
+        for (let blockId in postdominatorsByBlock) {
+            if (postdominatorsByBlock.hasOwnProperty(blockId)) {
+                immediatePostdominators.push(
+                    postdominatorsByBlock[blockId].sort(
+                        (a, b) => { return a.distance - b.distance })[0]);
+            }
+        }
+        return new PostdominatorSet(...immediatePostdominators);
+    }
+
+    private buildReverseDominanceFrontiers(blocks: Block[]) {
+        let frontiers: { [blockId: string]: BlockSet } = {};
+        for (let block of blocks) {
+            let successors = this.getSuccessors(block);
+            if (successors.length > 1) {
+                let workQueue = successors;
+                let blockImmediatePostdominator = this.getImmediatePostdominator(block);
+                while (workQueue.length > 0) {
+                    let item = workQueue.pop();
+                    if (!frontiers.hasOwnProperty(item.id)) {
+                        frontiers[item.id] = new BlockSet();
+                    }
+                    let frontier = frontiers[item.id];
+                    frontier.add(block);
+                    let immediatePostdominator = this.getImmediatePostdominator(item);
+                    if (immediatePostdominator.postdominator != blockImmediatePostdominator.postdominator) {
+                        this.getSuccessors(item).forEach((b) => { workQueue.push(b) });
+                    }
+                }
+            }
+        }
+        return frontiers;
+    }
+}
+
+/**
+ * A block and another block that postdominates it. Distance is the length of the longest path
+ * from the block to its postdominator.
+ */
+class Postdominator {
+    constructor(distance: number, block: Block, postdominator: Block) {
+        this.distance = distance;
+        this.block = block;
+        this.postdominator = postdominator;
+    }
+    distance: number;
+    block: Block;
+    postdominator: Block;
+}
+
+/**
+ * A set of postdominators
+ */
+class PostdominatorSet extends Set<Postdominator> {
+    constructor(...items: Postdominator[]) {
+        super((p) => p.block.id + ',' + p.postdominator.id, ...items);
     }
 }

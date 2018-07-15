@@ -1,6 +1,6 @@
 import * as fs from 'fs';
 import * as python3 from '../python3'
-import { ControlFlowGraph } from '../../../ControlFlowGraph';
+import { ControlFlowGraph } from '../../../ControlFlowAnalysis';
 import { dataflowAnalysis } from '../../../DataflowAnalysis';
 
 let printCfg = false;

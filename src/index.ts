@@ -15,7 +15,7 @@ import { RenderMimeRegistry, standardRendererFactories as initialFactories } fro
 
 import * as python3 from './parsers/python/python3';
 import { ILocation } from './parsers/python/python_parser';
-import { ControlFlowGraph } from './ControlFlowGraph';
+import { ControlFlowGraph } from './ControlFlowAnalysis';
 import { dataflowAnalysis } from './DataflowAnalysis';
 import { NumberSet, range } from './Set';
 import { ToolbarCheckbox } from './ToolboxCheckbox';
@@ -23,7 +23,7 @@ import { getDifferences } from './EditDistance';
 import { HistoryModel, HistoryViewer, NotebookSnapshot, CellSnapshot, buildHistoryModel, SlicedNotebookSnapshot } from './packages/history';
 
 import '../style/index.css';
-import { CommandRegistry } from '../node_modules/@phosphor/commands';
+import { CommandRegistry } from '@phosphor/commands';
 import { CodeEditor } from '@jupyterlab/codeeditor';
 
 const extension: JupyterLabPlugin<void> = {
@@ -87,6 +87,7 @@ class CellProgram {
         const ast = python3.parse(this.code);
         const cfg = new ControlFlowGraph(ast);
         const dfa = dataflowAnalysis(cfg);
+        dfa.add(...cfg.getControlDependencies());
 
         const forwardDirection = direction === DataflowDirection.Forward;
         let relevantLineNumbers = new NumberSet();

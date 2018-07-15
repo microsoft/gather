@@ -4,7 +4,7 @@ import { RevisionModel } from '../revision';
 import { CharacterRange, CodeDiffModel, CodeVersionModel } from '../codeversion';
 import { SlicedCellModel } from '../slicedcell';
 import { NumberSet } from '../../Set';
-import { IOutputAreaModel } from '../../../node_modules/@jupyterlab/outputarea';
+import { IOutputAreaModel } from '@jupyterlab/outputarea';
 let diff_match_patch = require('./diff-match-patch').diff_match_patch;
 
 export class CellSnapshot {

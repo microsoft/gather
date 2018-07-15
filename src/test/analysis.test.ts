@@ -1,12 +1,12 @@
 import { dataflowAnalysis, getDefsUses } from "../DataflowAnalysis";
 import * as python3 from '../parsers/python/python3';
-import { ControlFlowGraph } from '../ControlFlowGraph';
+import { ControlFlowGraph } from '../ControlFlowAnalysis';
 import { expect } from "chai";
 import { StringSet } from "../Set";
 
 
 // High-level tests on dataflow as a sanity check.
-describe('dataflow detects dependencies', () => {
+describe('detects dataflow dependencies', () => {
 
     function analyze(...codeLines: string[]): [number, number][] {
         let code = codeLines.concat("").join("\n");  // add newlines to end of every line.
@@ -16,12 +16,32 @@ describe('dataflow detects dependencies', () => {
         });
     }
 
-    it('between variable name defs and uses', () => {
+    it('from variable uses to names', () => {
         let deps = analyze(
             "a = 1",
             "b = a"
         );
         expect(deps).to.deep.include([2, 1]);
+    });
+
+});
+
+describe('detects control dependencies', () => {
+
+    function analyze(...codeLines: string[]): [number, number][] {
+        let code = codeLines.concat("").join("\n");  // add newlines to end of every line.
+        let deps = (new ControlFlowGraph(python3.parse(code))).getControlDependencies();
+        return deps.map(function(dep): [number, number] { 
+            return [dep.toNode.location.first_line, dep.fromNode.location.first_line]
+        });
+    }
+
+    it('to an if-statement', () => {
+        let deps = analyze(
+            "if cond:",
+            "    print(a)"
+        );
+        expect(deps).to.deep.equal([[2, 1]]);
     });
 
 });

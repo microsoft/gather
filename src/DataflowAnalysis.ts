@@ -1,5 +1,5 @@
 import * as ast from './parsers/python/python_parser';
-import { Block, ControlFlowGraph } from './ControlFlowGraph';
+import { Block, ControlFlowGraph } from './ControlFlowAnalysis';
 import { Set, StringSet } from './Set';
 import { ILocation } from './parsers/python/python_parser';
 

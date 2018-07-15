@@ -86,7 +86,6 @@ export class SlicedCell extends Widget {
         // Add a class to all text that doesn't belong in the slice.
         let codeMirrorDoc = (this._editor.editor as CodeMirrorEditor).doc;
         let rangeStart = 0;
-        console.log("Startin");
         this.model.sliceRanges.forEach(function(sliceRange: CharacterRange) {
             if (sliceRange.start > rangeStart) {
                 codeMirrorDoc.markText(
