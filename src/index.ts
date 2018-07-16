@@ -1,30 +1,31 @@
+import { toArray } from '@phosphor/algorithm';
+import { CommandRegistry } from '@phosphor/commands';
 import { IDisposable, DisposableDelegate } from '@phosphor/disposable';
 import { Widget, PanelLayout } from '@phosphor/widgets';
+
 import { JupyterLab, JupyterLabPlugin } from '@jupyterlab/application';
-import { Clipboard } from '@jupyterlab/apputils';
-import { DocumentRegistry } from '@jupyterlab/docregistry';
-import { NotebookPanel, INotebookModel, Notebook, INotebookTracker, NotebookModel } from '@jupyterlab/notebook';
-import { IObservableList } from '@jupyterlab/observables';
-import { ICellModel, CodeCell, ICodeCellModel } from '@jupyterlab/cells';
 import { IClientSession, ICommandPalette } from '@jupyterlab/apputils';
+import { Clipboard } from '@jupyterlab/apputils';
+import { ICellModel, CodeCell, ICodeCellModel, CodeCellModel } from '@jupyterlab/cells';
+import { CodeEditor } from '@jupyterlab/codeeditor';
 import { IDocumentManager } from '@jupyterlab/docmanager';
+import { DocumentRegistry } from '@jupyterlab/docregistry';
 import { FileEditor } from '@jupyterlab/fileeditor';
-import { nbformat } from '@jupyterlab/coreutils';
-import { toArray } from '@phosphor/algorithm';
+import { NotebookPanel, INotebookModel, Notebook, INotebookTracker } from '@jupyterlab/notebook';
+import { IObservableList } from '@jupyterlab/observables';
 import { RenderMimeRegistry, standardRendererFactories as initialFactories } from '@jupyterlab/rendermime';
 
-import * as python3 from './parsers/python/python3';
-import { ILocation } from './parsers/python/python_parser';
 import { ControlFlowGraph } from './ControlFlowAnalysis';
 import { dataflowAnalysis } from './DataflowAnalysis';
 import { NumberSet, range } from './Set';
 import { ToolbarCheckbox } from './ToolboxCheckbox';
-import { getDifferences } from './EditDistance';
-import { HistoryModel, HistoryViewer, NotebookSnapshot, CellSnapshot, buildHistoryModel, SlicedNotebookSnapshot } from './packages/history';
+import { ProgramBuilder } from './ProgramBuilder';
+import * as python3 from './parsers/python/python3';
+import { ILocation } from './parsers/python/python_parser';
+import { HistoryModel, HistoryViewer, buildHistoryModel, SlicedExecution, CellExecution } from './packages/history';
 
 import '../style/index.css';
-import { CommandRegistry } from '@phosphor/commands';
-import { CodeEditor } from '@jupyterlab/codeeditor';
+
 
 const extension: JupyterLabPlugin<void> = {
     activate: activateExtension,
@@ -53,6 +54,31 @@ function copyCellsToClipboard(cellModels: Array<ICellModel>) {
 
     const data = cellModels.map(cellModel => cellModel.toJSON());
     clipboard.setData(JUPYTER_CELL_MIME, data);
+}
+
+function slice(code: string, relevantLineNumbers: NumberSet) {
+    const ast = python3.parse(code);
+    const cfg = new ControlFlowGraph(ast);
+    const dfa = dataflowAnalysis(cfg);
+    dfa.add(...cfg.getControlDependencies());
+
+    const forwardDirection = false;
+
+    let lastSize: number;
+    do {
+        lastSize = relevantLineNumbers.size;
+        for (let flow of dfa.items) {
+            const fromLines = lineRange(flow.fromNode.location);
+            const toLines = lineRange(flow.toNode.location);
+            const startLines = forwardDirection ? fromLines : toLines;
+            const endLines = forwardDirection ? toLines : fromLines;
+            if (!relevantLineNumbers.intersect(startLines).empty) {
+                relevantLineNumbers = relevantLineNumbers.union(endLines);
+            }
+        }
+    } while (relevantLineNumbers.size > lastSize);
+
+    return relevantLineNumbers;
 }
 
 class CellProgram {
@@ -235,7 +261,9 @@ export class LiveCheckboxExtension implements DocumentRegistry.IWidgetExtension<
 }
 
 class ExecutionLoggerExtension implements DocumentRegistry.IWidgetExtension<NotebookPanel, INotebookModel> {
-    private executionHistoryPerCell: { [cellId: string]: NotebookSnapshot[] } = {};
+
+    private executionLog = new Array<CellExecution>();
+    private programBuilder = new ProgramBuilder();
 
     createNew(panel: NotebookPanel, context: DocumentRegistry.IContext<INotebookModel>): IDisposable {
         panel.notebook.model.cells.changed.connect(
@@ -245,25 +273,6 @@ class ExecutionLoggerExtension implements DocumentRegistry.IWidgetExtension<Note
 
         return new DisposableDelegate(() => {
         });
-    }
-
-    private copyNotebook(notebookModel: INotebookModel): NotebookSnapshot {
-        const cells: CellSnapshot[] = [];
-        const snapshotToLiveIdMap: { [id: string]: string } = {};
-        const nbmodel = new NotebookModel();
-        // When loading back from JSON, the cell IDs get changed. Make a mapping from new cell
-        // IDs to old ones so we can align the changes elsewhere in the code.
-        nbmodel.fromJSON(notebookModel.toJSON() as nbformat.INotebookContent);
-        for (let i = 0; i < notebookModel.cells.length; i++) {
-            const cell = notebookModel.cells.get(i) as ICodeCellModel;
-            if (cell) {
-                const clone = nbmodel.cells.get(i) as ICodeCellModel;
-                snapshotToLiveIdMap[clone.id] = cell.id;
-                cells.push(new CellSnapshot(cell.id, clone));
-            }
-        }
-        const copy: NotebookSnapshot = new NotebookSnapshot(cells, snapshotToLiveIdMap, new Date());
-        return copy;
     }
 
     public onCellsChanged(
@@ -278,57 +287,65 @@ class ExecutionLoggerExtension implements DocumentRegistry.IWidgetExtension<Note
             cell.stateChanged.connect((changedCell, cellStateChange) => {
                 // If cell has been executed
                 if (cellStateChange.name === 'executionCount' && cellStateChange.newValue) {
-                    const codeCell = notebook.widgets.find(c => c.model.id === cell.id) as CodeCell;
-                    const cellid = codeCell.model.id;
-                    let history = this.executionHistoryPerCell[cellid];
-                    if (!history) {
-                        history = this.executionHistoryPerCell[cellid] = [];
-                    };
-                    history.push(this.copyNotebook(notebook.model));
+                    // Clone the cell so we can track its older versions.
+                    // This includes manually cloning the executionCount, as it won't be set yet
+                    // (that's the even that's happening in this handler).
+                    let cellData = cell.toJSON();
+                    let cellClone = new CodeCellModel({ id: cell.id, cell: cellData });
+                    cellClone.executionCount = cellStateChange.newValue;
+                    this.programBuilder.add(cellClone);
+                    this.executionLog.push(new CellExecution(
+                        cell.id, cellStateChange.newValue, new Date()));
                 }
             });
         }
     }
 
-    public snapshots(cell: ICellModel) {
-        let notebookVersions = this.executionHistoryPerCell[cell.id];
-        return notebookVersions.map(notebookVersion =>
-            new SlicedNotebookSnapshot(
-                notebookVersion,
-                new CellProgram(
-                    notebookVersion.cells.find(c => c.id === cell.id).cellModel,
-                    notebookVersion.cells.map(c => c.cellModel))
-                    .getDataflowCells(DataflowDirection.Backward)
-            ));
+    /**
+     * Get slice for the latest execution of a cell.
+     */
+    public sliceForLatestExecution(cell: ICellModel) {
+        // XXX: This computes more than it has to, performing a slice on each execution of a cell
+        // instead of just its latest computation. Optimize later if necessary.
+        return this.slicedExecutions(cell).pop();
     }
 
-    public versions(cell: ICellModel) {
-        let notebookVersions = this.executionHistoryPerCell[cell.id];
-        let slices = notebookVersions.map(notebookVersion =>
-            new CellProgram(
-                notebookVersion.cells.find(c => c.id === cell.id).cellModel,
-                notebookVersion.cells.map(c => c.cellModel))
-                .getDataflowCells(DataflowDirection.Backward).map(r => r[0]));
-        const foils = slices.slice(1).concat([slices[0]]);
+    /**
+     * Get slices of the necessary code for all executions of a cell.
+     */
+    public slicedExecutions(cell: ICellModel) {
+        
+        return this.executionLog
+        .filter((execution) => execution.cellId == cell.id)
+        .map((execution) => {
 
-        function sameCodeCells(cm1: ICodeCellModel, cm2: ICodeCellModel) {
-            if (cm1.value.text !== cm2.value.text) return false;
-            if (cm1.outputs.length !== cm2.outputs.length) return false;
-            for (let i = 0; i < cm1.outputs.length; i++) {
-                const out1 = cm1.outputs.get(i);
-                const out2 = cm2.outputs.get(i);
-                if (out1.type !== out2.type) return false;
-                if (JSON.stringify(out1.data) !== JSON.stringify(out2.data)) return false;
-            }
-            return true;
-        }
+            // Slice the program leading up to that cell.
+            let program = this.programBuilder.buildTo(execution.cellId, execution.executionCount);
+            let cellLines = program.cellToLineMap[execution.cellId][execution.executionCount];
+            let sliceLines = slice(program.code, cellLines);
 
-        const diffed = slices.map((slice, i) =>
-            getDifferences(slice, foils[i], sameCodeCells)
-                .filter(d => d.kind !== 'same')
-                .map(d => d.source)
-                .filter(s => s));
-        console.log(diffed);
+            // Get the relative offsets of slice lines in each cell.
+            let relativeSliceLines: { [ cellId: string ]: { [ executionCount: number ] : NumberSet }} = {};
+            let cellOrder = new Array<ICodeCellModel>();
+            sliceLines.items.forEach((lineNumber) => {
+                let sliceCell = program.lineToCellMap[lineNumber];
+                let sliceCellLines = program.cellToLineMap[sliceCell.id][sliceCell.executionCount];
+                let sliceCellStart = Math.min(...sliceCellLines.items);
+                if (cellOrder.indexOf(sliceCell) == -1) {
+                    cellOrder.push(sliceCell);
+                }
+                if (!relativeSliceLines[sliceCell.id]) relativeSliceLines[sliceCell.id] = {};
+                if (!relativeSliceLines[sliceCell.id][sliceCell.executionCount]) {
+                    relativeSliceLines[sliceCell.id][sliceCell.executionCount] = new NumberSet();
+                }
+                relativeSliceLines[sliceCell.id][sliceCell.executionCount].add(lineNumber - sliceCellStart);
+            });
+
+            let cellSlices = cellOrder.map((sliceCell): [ICodeCellModel, NumberSet] => {
+                return [sliceCell, relativeSliceLines[sliceCell.id][sliceCell.executionCount]];
+            });
+            return new SlicedExecution(execution.executionTime, cellSlices);
+        })
     }
 }
 
@@ -486,32 +503,33 @@ function activateExtension(app: JupyterLab, palette: ICommandPalette, notebooks:
         palette.addItem({ command, category: 'Clean Up' });
     }
 
+    addCommand('livecells:gatherToClipboard', 'Gather this result to the clipboard', () => {
+        const panel = notebooks.currentWidget;
+        if (panel && panel.notebook && panel.notebook.activeCell.model.type === 'code') {
+            const activeCell = panel.notebook.activeCell;
+            let slicedExecutions: SlicedExecution[] = executionLogger.slicedExecutions(activeCell.model);
+            let latestSlicedExecution = slicedExecutions.pop();
+            let cells = latestSlicedExecution.cellSlices.map(([cell, lines]) => cell);
+            copyCellsToClipboard(cells);
+            notificationExtension.showMessage("Copied cells to clipboard. Right-click or type 'V' to paste.");
+        }
+    });
+
     addCommand('livecells:gatherToNotebook', 'Gather this result into a new notebook', () => {
         const panel = notebooks.currentWidget;
         if (panel && panel.notebook && panel.notebook.activeCell.model.type === 'code') {
             const activeCell = panel.notebook.activeCell;
-            const program = new CellProgram(activeCell.model, toArray(panel.notebook.model.cells));
-            const sliceCells = program.getDataflowCells(DataflowDirection.Backward).map(r => r[0]);
+            let slice = executionLogger.sliceForLatestExecution(activeCell.model);
+            let cells = slice.cellSlices.map(([cell, _]) => cell);
 
             docManager.newUntitled({ ext: 'ipynb' }).then(model => {
                 const widget = docManager.open(model.path, undefined, panel.session.kernel.model) as NotebookPanel;
                 const newModel = widget.notebook.model;
                 setTimeout(() => {
                     newModel.cells.remove(0); // remote the default blank cell                        
-                    newModel.cells.pushAll(sliceCells);
+                    newModel.cells.pushAll(cells);
                 }, 100);
             });
-        }
-    });
-
-    addCommand('livecells:gatherToClipboard', 'Gather this result to the clipboard', () => {
-        const panel = notebooks.currentWidget;
-        if (panel && panel.notebook && panel.notebook.activeCell.model.type === 'code') {
-            const activeCell = panel.notebook.activeCell;
-            const program = new CellProgram(activeCell.model, toArray(panel.notebook.model.cells));
-            const sliceCells = program.getDataflowCells(DataflowDirection.Backward).map(r => r[0]);
-            copyCellsToClipboard(sliceCells);
-            notificationExtension.showMessage("Copied cells to clipboard. Right-click or type 'V' to paste.");
         }
     });
 
@@ -519,15 +537,22 @@ function activateExtension(app: JupyterLab, palette: ICommandPalette, notebooks:
         const panel = notebooks.currentWidget;
         if (panel && panel.notebook && panel.notebook.activeCell.model.type === 'code') {
             const activeCell = panel.notebook.activeCell;
+
+            let slice = executionLogger.sliceForLatestExecution(activeCell.model);
+            let cells = slice.cellSlices.map(([cell, _]) => cell);
+            let scriptText = cells
+                .map((cell) => cell.value.text)
+                .reduce((buffer, cellText) => { return buffer + cellText + "\n" }, "");
+
+            // TODO: Add back in slice based on fine-grained selection within the cell:
             const selection = getSelectedLines(activeCell.editor);
-            console.log('selection', selection);
-            const program = new CellProgram(activeCell.model, toArray(panel.notebook.model.cells), selection);
-            const text = program.getDataflowText(DataflowDirection.Backward);
+            console.log(selection);
+            // const program = new CellProgram(activeCell.model, toArray(panel.notebook.model.cells), selection);
 
             docManager.newUntitled({ ext: 'py' }).then(model => {
                 const editor = docManager.open(model.path, undefined, panel.session.kernel.model) as FileEditor;
                 setTimeout(() => {
-                    editor.model.value.text = text;
+                    editor.model.value.text = scriptText;
                 }, 100);
             });
         }
@@ -538,8 +563,8 @@ function activateExtension(app: JupyterLab, palette: ICommandPalette, notebooks:
         const panel = notebooks.currentWidget;
         if (panel && panel.notebook && panel.notebook.activeCell.model.type === 'code') {
             const activeCell = panel.notebook.activeCell;
-            let snapshots: SlicedNotebookSnapshot[] = executionLogger.snapshots(activeCell.model);
-            let historyModel: HistoryModel = buildHistoryModel(activeCell.model.id, snapshots);
+            let slicedExecutions: SlicedExecution[] = executionLogger.slicedExecutions(activeCell.model);
+            let historyModel: HistoryModel = buildHistoryModel(activeCell.model.id, slicedExecutions);
 
             let widget: HistoryViewer = new HistoryViewer({
                 model: historyModel,

@@ -7,39 +7,31 @@ import { NumberSet } from '../../Set';
 import { IOutputAreaModel } from '@jupyterlab/outputarea';
 let diff_match_patch = require('./diff-match-patch').diff_match_patch;
 
-export class CellSnapshot {
+/**
+ * A record of when a cell was executed.
+ */
+export class CellExecution {
     constructor(
-        public id: string,
-        public cellModel: ICodeCellModel) {
-    }
-}
-
-export class NotebookSnapshot {
-    constructor(
-        public cells: CellSnapshot[],
-        public liveToSnapshotIdMap: { [id: string]: string },
-        public timeCreated: Date
-    ) { }
-}
-
-export class SlicedNotebookSnapshot {
-    constructor(
-        public notebookSnapshot: NotebookSnapshot,
-        public cellSlices: [ICodeCellModel, NumberSet][]
+        public cellId: string,
+        public executionCount: number,
+        public executionTime: Date
     ) { }
 }
 
 /**
- * Get in-order listing of the executed source code from this notebook snapshot.
- * TODO(andrewhead): this should add cell content in the order cells were executed.
+ * A slice over a version of executed code.
  */
-export function getExecutedSource(notebookSnapshot: NotebookSnapshot) {
-    let sourceCode: string = "";
-    notebookSnapshot.cells.forEach(function(cellRevision) {
-        sourceCode += (cellRevision.cellModel.value.text + "\n");
-    });
-    return sourceCode;
+export class SlicedExecution {
+    constructor(
+        public executionTime: Date,
+        public cellSlices: Array<[ICodeCellModel, NumberSet]>
+    ) { }
 }
+
+/**
+ * Object instance for text diffing library.
+ */
+let diffMatchPatch = new diff_match_patch();
 
 /**
  * Convert diff returned by diff_match_patch algorithm to code diff model.
@@ -83,61 +75,44 @@ export function diffMatchPatchDiffToCodeDiff(diffMatchPatchDiff: Array<[number, 
  */
 export function buildHistoryModel(
     selectedCellId: string,
-    slicedNotebookSnapshots: SlicedNotebookSnapshot[]
+    executionVersions: SlicedExecution[]
 ): HistoryModel {
     
     // All cells in past revisions will be compared to those in the current revision. For the most
     // recent version, save a mapping from cells' IDs to their content, so we can look them up to
     // make comparisons between versions of cells.
-    let recentSnapshot: SlicedNotebookSnapshot = slicedNotebookSnapshots[slicedNotebookSnapshots.length - 1];
-    let recentSnapshotToLiveIdMap = recentSnapshot.notebookSnapshot.liveToSnapshotIdMap;
-    let recentCellSnapshots: { [cellId: string]: ICodeCellModel } = {};
-    recentSnapshot.cellSlices.map(cs => cs[0]).forEach(function(cellModel) {
-        recentCellSnapshots[recentSnapshotToLiveIdMap[cellModel.id]] = cellModel;
+    let lastestVersion = executionVersions[executionVersions.length - 1];
+    let latestCellVersions: { [ cellId: string ]: ICodeCellModel } = {};
+    lastestVersion.cellSlices.forEach(([cellModel, _]) => {
+        latestCellVersions[cellModel.id] = cellModel;
     });
-
-    // Get all the source code that was executed in the most recent version of the notebook.
-    // TODO(andrewhead): this should instead add cell content in the order they were executed.
-    let recentExecutedSource: string = getExecutedSource(recentSnapshot.notebookSnapshot);
-
-    let diffMatchPatch = new diff_match_patch();
 
     // Compute diffs between each of the previous revisions and the current revision.
     let revisions = new Array<RevisionModel>();
-    slicedNotebookSnapshots.forEach(function(slicedNotebookSnapshot: SlicedNotebookSnapshot, snapshotIndex: number) {
-
-        let notebookSnapshot = slicedNotebookSnapshot.notebookSnapshot;
-        let snapshotToLiveIdMap = notebookSnapshot.liveToSnapshotIdMap;
-
-        // Difference the entire source of both versions.
-        // Use the two-step diffing process of `diff_main` and `diff_cleanupSemantic` as the
-        // second method will clean up the diffs to be more readable.
-        let snapshotExecutedSource: string = getExecutedSource(notebookSnapshot);
-        let sourceDiff: Array<[number, string]> = diffMatchPatch.diff_main(recentExecutedSource, snapshotExecutedSource);
-        diffMatchPatch.diff_cleanupSemantic(sourceDiff);
-        let sourceDiffModel: CodeDiffModel = diffMatchPatchDiffToCodeDiff(sourceDiff);
+    executionVersions.forEach(function(executionVersion, versionIndex) {
 
         // Then difference the code in each cell.
+        // Use the two-step diffing process of `diff_main` and `diff_cleanupSemantic` as the
+        // second method will clean up the diffs to be more readable.
         let slicedCellModels:Array<SlicedCellModel> = new Array<SlicedCellModel>();
-        slicedNotebookSnapshot.cellSlices.forEach(function(cellSlice) {
+        executionVersion.cellSlices.forEach(function(cellSlice) {
             
             let cellModel = cellSlice[0];
-            let liveCellId = snapshotToLiveIdMap[cellModel.id];
             let sliceLines = cellSlice[1].items.sort((a, b) => (a - b));
 
-            let recentCellVersion = recentCellSnapshots[liveCellId];
-            let recentText: string = "";
+            let recentCellVersion = latestCellVersions[cellModel.id];
+            let latestText: string = "";
             if (recentCellVersion) {
-                recentText = recentCellVersion.value.text;
+                latestText = recentCellVersion.value.text;
             }
 
-            let snapshotText: string = cellModel.value.text;
-            let cellDiff: Array<[number, string]> = diffMatchPatch.diff_main(recentText, snapshotText);
-            diffMatchPatch.diff_cleanupSemantic(cellDiff);
-            let cellDiffModel: CodeDiffModel = diffMatchPatchDiffToCodeDiff(cellDiff);
+            let thisVersionText: string = cellModel.value.text;
+            let diff: Array<[number, string]> = diffMatchPatch.diff_main(latestText, thisVersionText);
+            diffMatchPatch.diff_cleanupSemantic(diff);
+            let cellDiffModel: CodeDiffModel = diffMatchPatchDiffToCodeDiff(diff);
             
             let sliceRanges = [];
-            let cellLines = snapshotText.split('\n')
+            let cellLines = thisVersionText.split('\n')
             let lineFirstCharIndex = 0;
             for (let lineNumber = 0; lineNumber < cellLines.length; lineNumber++) {
                 let lineLength = cellLines[lineNumber].length + 1;
@@ -148,9 +123,9 @@ export function buildHistoryModel(
             }
 
             let slicedCellModel: SlicedCellModel  = new SlicedCellModel({
-                cellId: liveCellId,
+                cellId: cellModel.id,
                 executionCount: cellModel.executionCount,
-                sourceCode: snapshotText,
+                sourceCode: thisVersionText,
                 diff: cellDiffModel,
                 cellInSlice: (sliceLines.length > 0),
                 sliceRanges: sliceRanges
@@ -160,8 +135,8 @@ export function buildHistoryModel(
 
         let results: IOutputAreaModel = null;
         let selectedCellModel:ICodeCellModel = null;
-        slicedNotebookSnapshot.cellSlices.map(cs => cs[0]).forEach(function(cellModel) {
-            if (snapshotToLiveIdMap[cellModel.id] == selectedCellId) {
+        executionVersion.cellSlices.map(cs => cs[0]).forEach(function(cellModel) {
+            if (cellModel.id == selectedCellId) {
                 selectedCellModel = cellModel;
             }
         });
@@ -172,21 +147,17 @@ export function buildHistoryModel(
             }
         }
 
-        let isLatestVersion =  (snapshotIndex == slicedNotebookSnapshots.length - 1);
+        let isLatestVersion =  (versionIndex == executionVersions.length - 1);
         let codeVersionModel:CodeVersionModel = new CodeVersionModel({
-            sourceCode: snapshotExecutedSource,
-            // TODO(andrewhead): update with slice information.
-            codeSlice: "",
-            sliceDiff: sourceDiffModel,
             cells: slicedCellModels,
             isLatest: isLatestVersion
         });
         let revisionModel:RevisionModel = new RevisionModel({
-            versionIndex: snapshotIndex + 1,  // Version index should start at 1
+            versionIndex: versionIndex + 1,  // Version index should start at 1
             source: codeVersionModel,
             results: results,
             isLatest: isLatestVersion,
-            timeCreated: notebookSnapshot.timeCreated
+            timeCreated: executionVersion.executionTime
         });
         revisions.push(revisionModel);
     });

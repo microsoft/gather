@@ -12,6 +12,13 @@ function editCost(e: DifferenceKind): number {
 
 
 // Levenshtein distance (http://http://en.wikipedia.org/wiki/Levenshtein_distance)
+/* Here's an example of using it to diff cells:
+ * const diffed = slices.map((slice, i) =>
+ * getDifferences(slice, foils[i], sameCodeCells)
+ *     .filter(d => d.kind !== 'same')
+ *     .map(d => d.source)
+ *     .filter(s => s));
+ */
 export function getDifferences<T>(sourceList: T[], targetList: T[], same?: (a: T, b: T) => boolean): Difference<T>[] {
     if (!same) { same = (a, b) => a === b; }
 
