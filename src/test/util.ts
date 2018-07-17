@@ -2,7 +2,7 @@ import { ICodeCellModel } from "@jupyterlab/cells";
 import { nbformat } from "@jupyterlab/coreutils";
 import { IObservableString } from "@jupyterlab/observables";
 import { IOutputAreaModel } from "@jupyterlab/outputarea";
-import { IOutputModel } from "../../node_modules/@jupyterlab/rendermime";
+import { IOutputModel } from "@jupyterlab/rendermime";
 
 /**
  * IMPLEMENTATIONS OF JUPYTER INTERFACES.

@@ -3,6 +3,7 @@ import * as python3 from '../parsers/python/python3';
 import { ControlFlowGraph } from '../ControlFlowAnalysis';
 import { expect } from "chai";
 import { StringSet } from "../Set";
+import { SlicerConfig, FunctionConfig } from "../SlicerConfig";
 
 
 // High-level tests on dataflow as a sanity check.
@@ -114,10 +115,10 @@ describe('detects control dependencies', () => {
 
 describe('getDefsUses', () => {
 
-    function getDefsUsesInStatement(code: string) {
+    function getDefsUsesInStatement(code: string, slicerConfig?: SlicerConfig) {
         code = code + "\n";  // programs need to end with newline
         let module = python3.parse(code);
-        let defsUses = getDefsUses(module.code, { moduleNames: new StringSet() });
+        let defsUses = getDefsUses(module.code, { moduleNames: new StringSet() }, slicerConfig);
         return { defs: defsUses.defs.items, uses: defsUses.uses.items };
     }
 
@@ -127,22 +128,44 @@ describe('getDefsUses', () => {
             let defs = getDefsUsesInStatement("a = 1").defs;
             expect(defs).to.include("a");
         })
+
+        describe('when given a slice config', () => {
+
+            it('for instances that functions mutate', () => {
+                let defs = getDefsUsesInStatement("obj.func()", new SlicerConfig([
+                    new FunctionConfig({ functionName: "func", mutatesInstance: true })
+                ])).defs;
+                expect(defs).to.include("obj");
+            });
+
+            it('for positional arguments that functions mutate', () => {
+                let defs = getDefsUsesInStatement("func(a)", new SlicerConfig([
+                    new FunctionConfig({ functionName: "func", positionalArgumentsMutated: [0] })
+                ])).defs;
+                expect(defs).to.include("a");
+            });
+
+            it('for keyword variables that functions mutate', () => {
+                let defs = getDefsUsesInStatement("func(a=var)", new SlicerConfig([
+                    new FunctionConfig({ functionName: "func", keywordArgumentsMutated: ["a"] })
+                ])).defs;
+                expect(defs).to.include("var");
+            });
+
+        });
         
-        /* TODO(andrewhead): we should filter dynamically to only mutable types */
-        it('for function arguments', () => {
-            let defs = getDefsUsesInStatement("func(a)").defs;
-            expect(defs).to.include("a");
-        });
+        describe('ignoring by default', () => {
 
-        it('for object a function is called on', () => {
-            let defs = getDefsUsesInStatement("obj.func()").defs;
-            expect(defs).to.include("obj");
-        });
+            it('function arguments', () => {
+                let defs = getDefsUsesInStatement("func(a)").defs;
+                expect(defs).to.deep.equal([]);
+            });
+    
+            it('the object a function is called on', () => {
+                let defs = getDefsUsesInStatement("obj.func()").defs;
+                expect(defs).to.deep.equal([]);
+            });
 
-        it('for function arguments nested in tuples and lists', () => {
-            let defs = getDefsUsesInStatement("func((a,), [b,])").defs;
-            expect(defs).to.include("a");
-            expect(defs).to.include("b");
         });
 
     });

@@ -2,6 +2,7 @@ import * as ast from './parsers/python/python_parser';
 import { Block, ControlFlowGraph } from './ControlFlowAnalysis';
 import { Set, StringSet } from './Set';
 import { ILocation } from './parsers/python/python_parser';
+import { SlicerConfig } from './SlicerConfig';
 
 
 
@@ -33,17 +34,42 @@ interface SymbolTable {
  */
 class CallNamesListener implements ast.IWalkListener {
 
+    constructor(slicerConfig: SlicerConfig) {
+        this._slicerConfig = slicerConfig;
+    }
+
     onEnterNode(node: ast.ISyntaxNode, type: string, ancestors: ast.ISyntaxNode[]) {
         if (type == ast.CALL) {
             let callNode = node as ast.ICall;
-            this._parentsOfRelevantNames.push(...callNode.args.map(arg => arg.actual));
+            let name: string;
             if (callNode.func.type == ast.DOT) {
-                this._parentsOfRelevantNames.push(callNode.func.value);
+                name = callNode.func.name.toString();
+            } else {
+                name = (callNode.func as ast.IName).id;
             }
+            this._slicerConfig.functionConfigs
+            .filter((config) => config.functionName == name)
+            .forEach((config) => {
+                if (config.mutatesInstance && callNode.func.type == ast.DOT) {
+                    this._parentsOfRelevantNames.push(callNode.func.value);
+                }
+                config.positionalArgumentsMutated.forEach((position) => {
+                    this._parentsOfRelevantNames.push(callNode.args[position].actual);
+                });
+                config.keywordArgumentsMutated.forEach((keyword) => {
+                    callNode.args.forEach((arg) => {
+                        console.log("arg", arg);
+                        if (arg.keyword && (arg.keyword as ast.IName).id == keyword) {
+                            this._parentsOfRelevantNames.push(arg.actual);       
+                        }
+                    });
+                });
+            });
         }
         if (type == ast.NAME) {
             for (let ancestor of ancestors) {
                 if (this._parentsOfRelevantNames.indexOf(ancestor) != -1) {
+                    console.log("Found relevant name");
                     this.names.push((node as ast.IName).id);
                     break;
                 }
@@ -51,11 +77,16 @@ class CallNamesListener implements ast.IWalkListener {
         }
     }
 
+    private _slicerConfig: SlicerConfig;
     private _parentsOfRelevantNames: ast.ISyntaxNode[] = [];
     readonly names: string[] = [];
 }
 
-export function getDefsUses(statement: ast.ISyntaxNode, symbolTable: SymbolTable): IDefUseInfo {
+export function getDefsUses(
+    statement: ast.ISyntaxNode, symbolTable: SymbolTable, slicerConfig?: SlicerConfig): IDefUseInfo {
+
+    slicerConfig = slicerConfig || new SlicerConfig();
+
     // ️⚠️ The following is heuristic and unsound, but works for many scripts.
     // Grabs *all names* referred to within the call arguments, even those nested within
     // operations. This is because operators could be overloaded to return the same object. We
@@ -63,9 +94,10 @@ export function getDefsUses(statement: ast.ISyntaxNode, symbolTable: SymbolTable
     // floats, strings, etc.) during the code's execution.
     // XXX: we don't consider that the callable is getting def'd, but maybe we should: if you override
     // __call__ on an object, a call on an object can change that object.
-    let callNamesListener = new CallNamesListener();
+    let callNamesListener = new CallNamesListener(slicerConfig);
     ast.walk(statement, callNamesListener);
     const funcArgs = new StringSet(...callNamesListener.names);
+    // const funcArgs = new StringSet();
 
     switch (statement.type) {
         case ast.IMPORT: {
