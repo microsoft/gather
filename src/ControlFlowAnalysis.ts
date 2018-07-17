@@ -288,6 +288,12 @@ export class ControlFlowGraph {
     private immediatePostdominators: PostdominatorSet;
     private reverseDominanceFrontiers: { [blockId: string]: BlockSet };
 
+    private postdominatorExists(block: Block, postdominator: Block) {
+        return this.postdominators.filter(
+            (p) => (p.block == block && p.postdominator == postdominator)
+        ).size > 0;
+    }
+
     private getImmediatePostdominator(block: Block): Postdominator {
         let immediatePostdominators = this.immediatePostdominators.items.filter((p) => p.block == block);
         return immediatePostdominators[0]
@@ -295,54 +301,68 @@ export class ControlFlowGraph {
 
     private findPostdominators(blocks: Block[]) {
 
-        // Initially, every block has itself and the end of the program (null) as a postdominator.
-        let postdominators = new PostdominatorSet();
+        // Initially, every block has every other block as a postdominator, except for the last block.
+        let postdominators: { [ blockId: number ]: PostdominatorSet } = {};
         for (let block of blocks) {
-            postdominators.add(new Postdominator(0, block, block));
-            postdominators.add(new Postdominator(Infinity, block, new Block(-1, "", [])));
+            postdominators[block.id] = new PostdominatorSet();
+            for (let otherBlock of blocks) {
+                let distance = (block.id == otherBlock.id) ? 0 : Infinity;
+                postdominators[block.id].add(new Postdominator(distance, block, otherBlock));
+            }
         }
+        let lastBlock = blocks.filter((b) => this.getSuccessors(b).length == 0)[0];
+        postdominators[lastBlock.id] = new PostdominatorSet(
+            new Postdominator(0, lastBlock, lastBlock),
+        );
 
         let changed = true;
         while (changed == true) {
-            let oldPostdominatorsSize = postdominators.size;
+            changed = false;
             for (let block of blocks) {
-                // Merge postdominators that appear in all of a block's successors.
+                if (block == lastBlock) continue;
+                let oldPostdominators = postdominators[block.id];
                 let successors = this.getSuccessors(block);
-                postdominators = postdominators.union(
-                    new PostdominatorSet(...[].concat(
-                        ...successors.map((s) => {
-                            return postdominators.items
-                            .filter((p) => p.block == s)
-                        }))
-                        .reduce((pCounts: { p: Postdominator, count: number }[], p) => {
-                            let countIndex = pCounts.findIndex(record => {
-                                return record.p.postdominator == p.postdominator;
-                            });
-                            let countRecord;
-                            if (countIndex == -1) {
-                                countRecord = {
-                                    p: new Postdominator(p.distance + 1, block, p.postdominator),
-                                    count: 0
-                                };
-                                pCounts.push(countRecord);
-                            } else {
-                                countRecord = pCounts[countIndex];
-                                // Update postdominator with longest distance.
-                                pCounts[countIndex].p.distance = Math.max(pCounts[countIndex].p.distance, p.distance + 1);
-                            }
-                            countRecord.count++;
-                            return pCounts;
-                        }, [])
-                        .filter((p: { p: Postdominator, count: number }) => {
-                            return p.count == successors.length;
-                        })
-                        .map((p: { p: Postdominator, count: number }) => {
-                            return p.p
-                        })));
+                // Merge postdominators that appear in all of a block's successors.
+                let newPostdominators = new PostdominatorSet(...[].concat(
+                    ...successors.map((s) => postdominators[s.id].items ))
+                    .reduce((pCounts: { p: Postdominator, count: number }[], p) => {
+                        let countIndex = pCounts.findIndex(record => {
+                            return record.p.postdominator == p.postdominator;
+                        });
+                        let countRecord;
+                        if (countIndex == -1) {
+                            countRecord = {
+                                p: new Postdominator(p.distance + 1, block, p.postdominator),
+                                count: 0
+                            };
+                            pCounts.push(countRecord);
+                        } else {
+                            countRecord = pCounts[countIndex];
+                            pCounts[countIndex].p.distance = Math.min(pCounts[countIndex].p.distance, p.distance + 1);
+                        }
+                        countRecord.count++;
+                        return pCounts;
+                    }, [])
+                    .filter((p: { p: Postdominator, count: number }) => {
+                        return p.count == successors.length;
+                    })
+                    .map((p: { p: Postdominator, count: number }) => {
+                        return p.p
+                    }));
+
+                if (!oldPostdominators.equals(newPostdominators)) {
+                    postdominators[block.id] = newPostdominators;
+                    changed = true;
+                }
             }
-            changed = (postdominators.size > oldPostdominatorsSize);
         }
-        return postdominators;
+        let result = new PostdominatorSet();
+        for (let blockId in postdominators) {
+            if (postdominators.hasOwnProperty(blockId)) {
+                result = result.union(postdominators[blockId]);
+            }
+        }
+        return result;
     }
 
     private getImmediatePostdominators(postdominators: Postdominator[]) {
@@ -376,6 +396,8 @@ export class ControlFlowGraph {
                 let blockImmediatePostdominator = this.getImmediatePostdominator(block);
                 while (workQueue.length > 0) {
                     let item = workQueue.pop();
+                    // A branch's successor might be a join point. These aren't dependencies.
+                    if (this.postdominatorExists(block, item)) continue;
                     if (!frontiers.hasOwnProperty(item.id)) {
                         frontiers[item.id] = new BlockSet();
                     }

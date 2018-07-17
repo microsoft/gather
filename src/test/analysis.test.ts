@@ -24,6 +24,16 @@ describe('detects dataflow dependencies', () => {
         expect(deps).to.deep.include([2, 1]);
     });
 
+    it('only links from a use to its most recent def', () => {
+        let deps = analyze(
+            "a = 2",
+            "a.prop = 3",
+            "a = 4",
+            "b = a"
+        );
+        expect(deps).to.deep.equal([[4, 3]]);
+    });
+
 });
 
 describe('detects control dependencies', () => {
@@ -64,6 +74,24 @@ describe('detects control dependencies', () => {
         );
         expect(deps).to.deep.include([3, 1]);
         expect(deps).to.deep.include([5, 3]);
+    });
+
+    it('not from a join to an if-condition', () => {
+        let deps = analyze(
+            "if cond:",
+            "    print(a)",
+            "print(b)"
+        );
+        expect(deps).to.deep.equal([[2, 1]]);
+    });
+
+    it('not from a join to a for-loop', () => {
+        let deps = analyze(
+            "for i in range(10):",
+            "    print(a)",
+            "print(b)"
+        );
+        expect(deps).to.deep.equal([[2, 1]]);
     });
 
     it('to a for-loop', () => {
