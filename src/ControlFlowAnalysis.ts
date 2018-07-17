@@ -113,7 +113,8 @@ export class ControlFlowGraph {
     private handleIf(statement: ast.IIf, last: Block, context: Context): Block {
         const ifCondBlock = this.makeBlock('if cond', [statement.cond]);
         const [bodyEntry, bodyExit] = this.makeCFG('if body', statement.code, context);
-        this.link(last, ifCondBlock, bodyEntry);
+        this.link(last, ifCondBlock);
+        this.link(ifCondBlock, bodyEntry);
         const joinBlock = this.makeBlock('conditional join');
         this.link(bodyExit, joinBlock);
         let lastCondBlock: Block = ifCondBlock;
@@ -324,7 +325,7 @@ export class ControlFlowGraph {
                 let successors = this.getSuccessors(block);
                 // Merge postdominators that appear in all of a block's successors.
                 let newPostdominators = new PostdominatorSet(...[].concat(
-                    ...successors.map((s) => postdominators[s.id].items ))
+                    ...successors.map((s) => postdominators[s.id].items))
                     .reduce((pCounts: { p: Postdominator, count: number }[], p) => {
                         let countIndex = pCounts.findIndex(record => {
                             return record.p.postdominator == p.postdominator;
@@ -350,6 +351,9 @@ export class ControlFlowGraph {
                         return p.p
                     }));
 
+                // A block always postdominates itself.
+                newPostdominators.add(new Postdominator(0, block, block));
+
                 if (!oldPostdominators.equals(newPostdominators)) {
                     postdominators[block.id] = newPostdominators;
                     changed = true;
@@ -366,7 +370,7 @@ export class ControlFlowGraph {
     }
 
     private getImmediatePostdominators(postdominators: Postdominator[]) {
-        let postdominatorsByBlock = postdominators
+        let postdominatorsByBlock: { [id: number ] : Postdominator[] } = postdominators
             .filter((p) => p.block != p.postdominator)
             .reduce((dict: { [id: number]: Postdominator[] }, postdominator) => {
                 if (!dict.hasOwnProperty(postdominator.block.id)) {

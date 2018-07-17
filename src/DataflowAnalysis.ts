@@ -58,7 +58,6 @@ class CallNamesListener implements ast.IWalkListener {
                 });
                 config.keywordArgumentsMutated.forEach((keyword) => {
                     callNode.args.forEach((arg) => {
-                        console.log("arg", arg);
                         if (arg.keyword && (arg.keyword as ast.IName).id == keyword) {
                             this._parentsOfRelevantNames.push(arg.actual);       
                         }
@@ -69,7 +68,6 @@ class CallNamesListener implements ast.IWalkListener {
         if (type == ast.NAME) {
             for (let ancestor of ancestors) {
                 if (this._parentsOfRelevantNames.indexOf(ancestor) != -1) {
-                    console.log("Found relevant name");
                     this.names.push((node as ast.IName).id);
                     break;
                 }

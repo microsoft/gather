@@ -86,7 +86,7 @@ describe('detects control dependencies', () => {
         expect(deps).to.deep.equal([[2, 1]]);
     });
 
-    it('not from a join to a for-loop', () => {
+    it.only('not from a join to a for-loop', () => {
         let deps = analyze(
             "for i in range(10):",
             "    print(a)",
