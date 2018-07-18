@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import { ProgramBuilder } from "../ProgramBuilder";
+import { ProgramBuilder } from "../lab/ProgramBuilder";
 import { SimpleCodeCellModel, SimpleOutputAreaModel, SimpleOutputModel } from "./util";
 
 

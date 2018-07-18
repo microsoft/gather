@@ -1,9 +1,9 @@
-import { dataflowAnalysis, getDefs, Def, DefType } from "../DataflowAnalysis";
+import { dataflowAnalysis, getDefs, Def, DefType } from "../slicing/DataflowAnalysis";
 import * as python3 from '../parsers/python/python3';
-import { ControlFlowGraph } from '../ControlFlowAnalysis';
+import { ControlFlowGraph } from '../slicing/ControlFlowAnalysis';
 import { expect } from "chai";
-import { StringSet } from "../Set";
-import { SlicerConfig, FunctionConfig } from "../SlicerConfig";
+import { StringSet } from "../slicing/Set";
+import { SlicerConfig, FunctionConfig } from "../slicing/SlicerConfig";
 
 
 // High-level tests on dataflow as a sanity check.

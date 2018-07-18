@@ -16,18 +16,18 @@ import { NotebookPanel, INotebookModel, Notebook, INotebookTracker } from '@jupy
 import { IObservableList } from '@jupyterlab/observables';
 import { RenderMimeRegistry, standardRendererFactories as initialFactories } from '@jupyterlab/rendermime';
 
-import { ControlFlowGraph } from './ControlFlowAnalysis';
-import { dataflowAnalysis, getDefs, DefType } from './DataflowAnalysis';
-import { NumberSet, range, StringSet } from './Set';
+import { ControlFlowGraph } from '../slicing/ControlFlowAnalysis';
+import { dataflowAnalysis, getDefs, DefType } from '../slicing/DataflowAnalysis';
+import { NumberSet, range, StringSet } from '../slicing/Set';
 import { ToolbarCheckbox } from './ToolboxCheckbox';
 import { ProgramBuilder } from './ProgramBuilder';
-import * as python3 from './parsers/python/python3';
-import { ILocation, ISyntaxNode } from './parsers/python/python_parser';
-import { HistoryModel, HistoryViewer, buildHistoryModel, SlicedExecution, CellExecution } from './packages/history';
+import * as python3 from '../parsers/python/python3';
+import { ILocation, ISyntaxNode } from '../parsers/python/python_parser';
+import { HistoryModel, HistoryViewer, buildHistoryModel, SlicedExecution, CellExecution } from '../packages/history';
 
 import '../style/index.css';
-import { SlicerConfig } from './SlicerConfig';
-import { JSONObject } from '../node_modules/@phosphor/coreutils';
+import { SlicerConfig } from '../slicing/SlicerConfig';
+import { JSONObject } from '../../node_modules/@phosphor/coreutils';
 
 
 const extension: JupyterLabPlugin<void> = {

@@ -3,7 +3,7 @@ import { HistoryModel } from './model';
 import { RevisionModel } from '../revision';
 import { CharacterRange, CodeDiffModel, CodeVersionModel } from '../codeversion';
 import { SlicedCellModel } from '../slicedcell';
-import { NumberSet } from '../../Set';
+import { NumberSet } from '../../slicing/Set';
 import { IOutputAreaModel } from '@jupyterlab/outputarea';
 let diff_match_patch = require('./diff-match-patch').diff_match_patch;
 

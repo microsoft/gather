@@ -1,0 +1,8 @@
+*.bundle.*
+lib/
+node_modules/
+*.egg-info/
+.ipynb_checkpoints
+.vscode/
+.vs/
+package-lock.json

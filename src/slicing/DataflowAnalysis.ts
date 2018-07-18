@@ -1,7 +1,6 @@
-import * as ast from './parsers/python/python_parser';
+import * as ast from '../parsers/python/python_parser';
 import { Block, ControlFlowGraph } from './ControlFlowAnalysis';
 import { Set, StringSet } from './Set';
-import { ILocation } from './parsers/python/python_parser';
 import { SlicerConfig } from './SlicerConfig';
 
 
@@ -20,7 +19,7 @@ export enum DefType {
 export type Def = {
     type: DefType;
     name: string;
-    location: ILocation;
+    location: ast.ILocation;
 };
 
 export class DefSet extends Set<Def> {
@@ -29,7 +28,7 @@ export class DefSet extends Set<Def> {
     }
 };
 
-function locString(loc: ILocation): string {
+function locString(loc: ast.ILocation): string {
     return loc.first_line + ':' + loc.first_column + '-' + loc.last_line + ':' + loc.last_column;
 }
 

@@ -1,4 +1,4 @@
-import { getDifferences } from "../EditDistance";
+import { getDifferences } from "../slicing/EditDistance";
 import { expect } from "chai";
 
 

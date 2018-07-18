@@ -1,4 +1,4 @@
-import * as ast from './parsers/python/python_parser';
+import * as ast from '../parsers/python/python_parser';
 import { Set } from './Set';
 import { IDataflow } from './DataflowAnalysis';
 

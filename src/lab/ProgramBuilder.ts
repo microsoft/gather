@@ -1,5 +1,5 @@
 import { ICodeCellModel } from "@jupyterlab/cells";
-import { NumberSet } from "./Set";
+import { NumberSet } from "../slicing/Set";
 
 /**
  * Maps to find out what line numbers over a program correspond to what cells.
