@@ -260,6 +260,13 @@ export class LiveCheckboxExtension implements DocumentRegistry.IWidgetExtension<
     }
 }
 
+/**
+ * Create a new cell with the same ID and content.
+ */
+function cloneCell(cell: ICellModel) {
+    return new CodeCellModel({ id: cell.id, cell: cell.toJSON() });
+}
+
 class ExecutionLoggerExtension implements DocumentRegistry.IWidgetExtension<NotebookPanel, INotebookModel> {
 
     private executionLog = new Array<CellExecution>();
@@ -290,8 +297,7 @@ class ExecutionLoggerExtension implements DocumentRegistry.IWidgetExtension<Note
                     // Clone the cell so we can track its older versions.
                     // This includes manually cloning the executionCount, as it won't be set yet
                     // (that's the even that's happening in this handler).
-                    let cellData = cell.toJSON();
-                    let cellClone = new CodeCellModel({ id: cell.id, cell: cellData });
+                    let cellClone = cloneCell(cell);
                     cellClone.executionCount = cellStateChange.newValue;
                     this.programBuilder.add(cellClone);
                     this.executionLog.push(new CellExecution(
@@ -505,11 +511,23 @@ function activateExtension(app: JupyterLab, palette: ICommandPalette, notebooks:
 
     addCommand('livecells:gatherToClipboard', 'Gather this result to the clipboard', () => {
         const panel = notebooks.currentWidget;
+        const SHOULD_SLICE_CELLS = true;
         if (panel && panel.notebook && panel.notebook.activeCell.model.type === 'code') {
             const activeCell = panel.notebook.activeCell;
             let slicedExecutions: SlicedExecution[] = executionLogger.slicedExecutions(activeCell.model);
             let latestSlicedExecution = slicedExecutions.pop();
-            let cells = latestSlicedExecution.cellSlices.map(([cell, lines]) => cell);
+            let cells = latestSlicedExecution.cellSlices
+            .map(([cell, lines]) => {
+                let slicedCell = cell;
+                if (SHOULD_SLICE_CELLS) {
+                    slicedCell = cloneCell(cell);
+                    slicedCell.value.text = 
+                        slicedCell.value.text.split("\n")
+                        .filter((_, i) => lines.contains(i))
+                        .join("\n");
+                }
+                return slicedCell;
+            });
             copyCellsToClipboard(cells);
             notificationExtension.showMessage("Copied cells to clipboard. Right-click or type 'V' to paste.");
         }
