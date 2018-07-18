@@ -502,17 +502,17 @@ import_from_tail
 // import_as_name: NAME ['as' NAME]
 import_as_name
     : NAME
-        { $$ = { path: $1 } }
+        { $$ = { path: $1, location: @$ } }
     | NAME 'as' NAME
-        { $$ = { path: $1, name: $3 } }
+        { $$ = { path: $1, name: $3, location: @$ } }
     ;
 
 // dotted_as_name: dotted_name ['as' NAME]
 dotted_as_name
     : dotted_name
-        { $$ = { path: $1 } }
+        { $$ = { path: $1, location: @$ } }
     | dotted_name 'as' NAME
-        { $$ = { path: $1, name: $3 } }
+        { $$ = { path: $1, name: $3, location: @$ } }
     ;
 
 // import_as_names: import_as_name (',' import_as_name)* [',']

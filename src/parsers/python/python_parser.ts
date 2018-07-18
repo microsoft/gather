@@ -60,14 +60,14 @@ export const IMPORT = 'import';
 
 export interface IImport extends ILocatable {
     type: typeof IMPORT;
-    names: { path: string, name?: string }[];
+    names: { path: string, name?: string, location: ILocation }[];
 }
 
 export const FROM = 'from';
 
 export interface IFrom extends ILocatable {
     type: typeof FROM;
-    imports: { path: string; name: string }[];
+    imports: { path: string; name: string, location: ILocation }[];
 }
 
 export const DECORATOR = 'decorator';

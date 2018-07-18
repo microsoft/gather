@@ -11,14 +11,46 @@ export interface IDataflow {
     toNode: ast.ISyntaxNode;
 }
 
+export enum DefType {
+    ASSIGN,
+    IMPORT,
+    MUTATION
+};
 
-function gatherNames(node: ast.ISyntaxNode | ast.ISyntaxNode[]): StringSet {
+export type Def = {
+    type: DefType;
+    name: string;
+    location: ILocation;
+};
+
+export class DefSet extends Set<Def> {
+    constructor(...items: Def[]) {
+        super(d => d.name + d.location.toString(), ...items);
+    }
+};
+
+function locString(loc: ILocation): string {
+    return loc.first_line + ':' + loc.first_column + '-' + loc.last_line + ':' + loc.last_column;
+}
+
+function getNameSetId([name, node]: [string, ast.ISyntaxNode]) {
+    if (!node.location) console.error('***', node);
+    return name + '@' + locString(node.location);
+}
+
+class NameSet extends Set<[string, ast.ISyntaxNode]> {
+    constructor(...items: [string, ast.ISyntaxNode][]) {
+        super(getNameSetId, ...items);
+    }
+}
+
+function gatherNames(node: ast.ISyntaxNode | ast.ISyntaxNode[]): NameSet {
     if (Array.isArray(node)) {
-        return new StringSet().union(...node.map(gatherNames));
+        return new NameSet().union(...node.map(gatherNames));
     } else {
-        return new StringSet(...ast.walk(node)
+        return new NameSet(...ast.walk(node)
             .filter(e => e.type == ast.NAME)
-            .map((e: ast.IName) => e.id));
+            .map((e: ast.IName): [ string, ast.ISyntaxNode ] => [ e.id, e ]));
     }
 }
 
@@ -68,7 +100,7 @@ class CallNamesListener implements ast.IWalkListener {
         if (type == ast.NAME) {
             for (let ancestor of ancestors) {
                 if (this._parentsOfRelevantNames.indexOf(ancestor) != -1) {
-                    this.names.push((node as ast.IName).id);
+                    this.names.add([(node as ast.IName).id, node]);
                     break;
                 }
             }
@@ -77,34 +109,40 @@ class CallNamesListener implements ast.IWalkListener {
 
     private _slicerConfig: SlicerConfig;
     private _parentsOfRelevantNames: ast.ISyntaxNode[] = [];
-    readonly names: string[] = [];
+    readonly names: NameSet = new NameSet();
 }
 
-export function getDefsUses(
-    statement: ast.ISyntaxNode, symbolTable: SymbolTable, slicerConfig?: SlicerConfig): IDefUseInfo {
+export function getDefs(
+    statement: ast.ISyntaxNode, symbolTable: SymbolTable, slicerConfig?: SlicerConfig): DefSet {
 
     slicerConfig = slicerConfig || new SlicerConfig();
+    let defs = new DefSet();
 
-    // ️⚠️ The following is heuristic and unsound, but works for many scripts.
-    // Grabs *all names* referred to within the call arguments, even those nested within
-    // operations. This is because operators could be overloaded to return the same object. We
-    // could filter this list later by inspecting which variables are immutable (e.g., ints,
-    // floats, strings, etc.) during the code's execution.
-    // XXX: we don't consider that the callable is getting def'd, but maybe we should: if you override
-    // __call__ on an object, a call on an object can change that object.
+    // ️⚠️ The following is heuristic and unsound, but works for many scripts:
+    // Unless noted in the `slicerConfig`, assume that no instances or arguments are changed
+    // by a function call.
     let callNamesListener = new CallNamesListener(slicerConfig);
     ast.walk(statement, callNamesListener);
-    const funcArgs = new StringSet(...callNamesListener.names);
-    // const funcArgs = new StringSet();
+    defs.add(...callNamesListener.names.items.map(([name, node]) => {
+        return {
+            type: DefType.MUTATION,
+            name: name,
+            location: node.location
+        }
+    }));
 
     switch (statement.type) {
         case ast.IMPORT: {
             const modnames = statement.names.map(i => i.name || i.path);
             symbolTable.moduleNames.add(...modnames);
-            return {
-                defs: new StringSet(...modnames),
-                uses: new StringSet()
-            };
+            defs.add(...statement.names.map((nameNode) => {
+                    return {
+                        type: DefType.IMPORT,
+                        name: nameNode.name || nameNode.path,
+                        location: nameNode.location
+                    };
+                }));
+            break;
         }
         case ast.FROM: {
             // ⚠️ Doesn't handle 'from <pkg> import *'
@@ -112,37 +150,60 @@ export function getDefsUses(
             if (statement.imports.constructor === Array) {
                 modnames = statement.imports.map(i => i.name || i.path);
                 symbolTable.moduleNames.add(...modnames);
+                defs.add(...statement.imports.map((i) => {
+                    return {
+                        type: DefType.IMPORT,
+                        name: i.name || i.path,
+                        location: i.location
+                    }
+                }));
             }
-            return {
-                defs: new StringSet(...modnames),
-                uses: new StringSet()
-            };
+            break;
         }
-        case ast.ASSIGN:
+        case ast.ASSIGN: {
             const targetNames = gatherNames(statement.targets);
-            return {
-                defs: targetNames,
-                // in x+=1, x is both a source and target
-                uses: gatherNames(statement.sources).union(funcArgs).union(statement.op ? targetNames : new StringSet())
-            };
-        default:
-            return { defs: funcArgs, uses: gatherNames(statement) };
+            defs.add(...targetNames.items.map(([name, node]) => {
+                return {
+                    type: DefType.ASSIGN,
+                    name: name,
+                    location: node.location
+                };
+            }));
+            break;
+        }
     }
+    return defs;
 }
 
-function getUses(statement: ast.ISyntaxNode, symbolTable: SymbolTable): StringSet {
-    return getDefsUses(statement, symbolTable).uses;
+export function getUses(statement: ast.ISyntaxNode, symbolTable: SymbolTable): NameSet {
+
+    let uses = new NameSet();
+
+    switch (statement.type) {
+        // TODO: should we collect when importing with FROM from something else that was already imported...
+        case ast.ASSIGN: {
+            // XXX: Is this supposed to union with funcArgs?
+            const targetNames = gatherNames(statement.targets);
+            uses = uses.union(gatherNames(statement.sources)).union(statement.op ? targetNames : new NameSet());
+            break;
+        }
+        default: {
+            uses = uses.union(gatherNames(statement));
+            break;
+        }
+    }
+
+    return uses;
 }
 
-function locString(loc: ILocation): string {
-    return loc.first_line + ':' + loc.first_column + '-' + loc.last_line + ':' + loc.last_column;
-}
-
-type DefSet = Set<[string, ast.ISyntaxNode]>;
-
-function getDefSetId([name, node]: [string, ast.ISyntaxNode]) {
-    if (!node.location) console.error('***', node);
-    return name + '@' + locString(node.location);
+export function getDefsUses(
+    statement: ast.ISyntaxNode, symbolTable: SymbolTable, slicerConfig?: SlicerConfig): IDefUseInfo {
+    let defSet = getDefs(statement, symbolTable, slicerConfig);
+    let useSet = getUses(statement, symbolTable);
+    return {
+        defs: new StringSet(...defSet.items.map((def) => def.name)),
+        uses: new StringSet(...useSet.items.map((use) => use[0]))
+    };
 }
 
 function getDataflowId(df: IDataflow) {
@@ -154,8 +215,8 @@ function getDataflowId(df: IDataflow) {
 export function dataflowAnalysis(cfg: ControlFlowGraph): Set<IDataflow> {
     const workQueue: Block[] = cfg.blocks.reverse();
 
-    const definitionsForBlock = new Map(workQueue.map<[number, DefSet]>(block =>
-        ([block.id, new Set(getDefSetId)])));
+    const definitionsForBlock = new Map(workQueue.map<[number, NameSet]>(block =>
+        ([block.id, new Set(getNameSetId)])));
 
     let dataflows = new Set<IDataflow>(getDataflowId);
 
@@ -169,7 +230,9 @@ export function dataflowAnalysis(cfg: ControlFlowGraph): Set<IDataflow> {
         let defs = oldDefs.union(...cfg.getPredecessors(block)
             .map(block => definitionsForBlock.get(block.id)));
 
-        const loopUses = new StringSet().union(...block.loopVariables.map(s => getUses(s, symbolTable)));
+        const loopUses = new StringSet(...[].concat(block.loopVariables.map(s => 
+                { return getUses(s, symbolTable).items.map((u) => u[0]); }
+            )));
 
         for (let statement of block.statements) {
             let { defs: definedHere, uses: usedHere } = getDefsUses(statement, symbolTable);
@@ -184,7 +247,7 @@ export function dataflowAnalysis(cfg: ControlFlowGraph): Set<IDataflow> {
 
             dataflows = dataflows.union(newFlows);
 
-            const genSet = definedHere.map(getDefSetId, name => [name, statement]) as Set<[string, ast.ISyntaxNode]>;
+            const genSet = definedHere.map(getNameSetId, name => [name, statement]) as Set<[string, ast.ISyntaxNode]>;
             const killSet = defs.filter(([name, _]) => definedHere.contains(name));
             defs = defs.minus(killSet).union(genSet);
         }

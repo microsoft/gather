@@ -1,4 +1,4 @@
-import { dataflowAnalysis, getDefsUses } from "../DataflowAnalysis";
+import { dataflowAnalysis, getDefs, Def, DefType } from "../DataflowAnalysis";
 import * as python3 from '../parsers/python/python3';
 import { ControlFlowGraph } from '../ControlFlowAnalysis';
 import { expect } from "chai";
@@ -86,7 +86,7 @@ describe('detects control dependencies', () => {
         expect(deps).to.deep.equal([[2, 1]]);
     });
 
-    it.only('not from a join to a for-loop', () => {
+    it('not from a join to a for-loop', () => {
         let deps = analyze(
             "for i in range(10):",
             "    print(a)",
@@ -113,42 +113,57 @@ describe('detects control dependencies', () => {
 
 });
 
-describe('getDefsUses', () => {
 
-    function getDefsUsesInStatement(code: string, slicerConfig?: SlicerConfig) {
+describe('getDefs', () => {
+
+    function getDefsFromStatement(code: string, slicerConfig?: SlicerConfig): Def[] {
         code = code + "\n";  // programs need to end with newline
         let module = python3.parse(code);
-        let defsUses = getDefsUses(module.code, { moduleNames: new StringSet() }, slicerConfig);
-        return { defs: defsUses.defs.items, uses: defsUses.uses.items };
+        return getDefs(module.code, { moduleNames: new StringSet() }, slicerConfig).items;
+    }
+
+    function getDefNamesFromStatement(code: string, slicerConfig?: SlicerConfig) {
+        return getDefsFromStatement(code, slicerConfig)
+        .map((def) => def.name);
     }
 
     describe('detects definitions', () => {
         
         it('for assignments', () => {
-            let defs = getDefsUsesInStatement("a = 1").defs;
-            expect(defs).to.include("a");
+            let defs = getDefsFromStatement("a = 1");
+            expect(defs[0]).to.include({ type: DefType.ASSIGN, name: "a" });
+        })
+
+        it('for imports', () => {
+            let defs = getDefsFromStatement("import lib");
+            expect(defs[0]).to.include({ type: DefType.IMPORT, name: "lib" });
+        });
+
+        it('for from-imports', () => {
+            let defs = getDefsFromStatement("from mod import func");
+            expect(defs[0]).to.include({ type: DefType.IMPORT, name: "func" });    
         })
 
         describe('when given a slice config', () => {
 
             it('for instances that functions mutate', () => {
-                let defs = getDefsUsesInStatement("obj.func()", new SlicerConfig([
+                let defs = getDefsFromStatement("obj.func()", new SlicerConfig([
                     new FunctionConfig({ functionName: "func", mutatesInstance: true })
-                ])).defs;
-                expect(defs).to.include("obj");
+                ]));
+                expect(defs[0]).to.include({ type: DefType.MUTATION, name: "obj" });
             });
 
             it('for positional arguments that functions mutate', () => {
-                let defs = getDefsUsesInStatement("func(a)", new SlicerConfig([
+                let defs = getDefNamesFromStatement("func(a)", new SlicerConfig([
                     new FunctionConfig({ functionName: "func", positionalArgumentsMutated: [0] })
-                ])).defs;
+                ]));
                 expect(defs).to.include("a");
             });
 
             it('for keyword variables that functions mutate', () => {
-                let defs = getDefsUsesInStatement("func(a=var)", new SlicerConfig([
+                let defs = getDefNamesFromStatement("func(a=var)", new SlicerConfig([
                     new FunctionConfig({ functionName: "func", keywordArgumentsMutated: ["a"] })
-                ])).defs;
+                ]));
                 expect(defs).to.include("var");
             });
 
@@ -157,12 +172,12 @@ describe('getDefsUses', () => {
         describe('ignoring by default', () => {
 
             it('function arguments', () => {
-                let defs = getDefsUsesInStatement("func(a)").defs;
+                let defs = getDefNamesFromStatement("func(a)");
                 expect(defs).to.deep.equal([]);
             });
     
             it('the object a function is called on', () => {
-                let defs = getDefsUsesInStatement("obj.func()").defs;
+                let defs = getDefNamesFromStatement("obj.func()");
                 expect(defs).to.deep.equal([]);
             });
 
@@ -173,7 +188,7 @@ describe('getDefsUses', () => {
     describe('doesn\'t detect definitions', () => {
 
         it('for names used outside a function call', () => {
-            let defs = getDefsUsesInStatement("a + func()").defs;
+            let defs = getDefNamesFromStatement("a + func()");
             expect(defs).to.deep.equal([]);
         });
 
