@@ -8,6 +8,7 @@ import { IClientSession, ICommandPalette } from '@jupyterlab/apputils';
 import { Clipboard } from '@jupyterlab/apputils';
 import { ICellModel, CodeCell, ICodeCellModel, CodeCellModel } from '@jupyterlab/cells';
 import { CodeEditor } from '@jupyterlab/codeeditor';
+import { CodeMirrorEditor } from '@jupyterlab/codemirror';
 import { IDocumentManager } from '@jupyterlab/docmanager';
 import { DocumentRegistry } from '@jupyterlab/docregistry';
 import { FileEditor } from '@jupyterlab/fileeditor';
@@ -16,15 +17,17 @@ import { IObservableList } from '@jupyterlab/observables';
 import { RenderMimeRegistry, standardRendererFactories as initialFactories } from '@jupyterlab/rendermime';
 
 import { ControlFlowGraph } from './ControlFlowAnalysis';
-import { dataflowAnalysis } from './DataflowAnalysis';
-import { NumberSet, range } from './Set';
+import { dataflowAnalysis, getDefs, DefType } from './DataflowAnalysis';
+import { NumberSet, range, StringSet } from './Set';
 import { ToolbarCheckbox } from './ToolboxCheckbox';
 import { ProgramBuilder } from './ProgramBuilder';
 import * as python3 from './parsers/python/python3';
-import { ILocation } from './parsers/python/python_parser';
+import { ILocation, ISyntaxNode } from './parsers/python/python_parser';
 import { HistoryModel, HistoryViewer, buildHistoryModel, SlicedExecution, CellExecution } from './packages/history';
 
 import '../style/index.css';
+import { SlicerConfig } from './SlicerConfig';
+import { JSONObject } from '../node_modules/@phosphor/coreutils';
 
 
 const extension: JupyterLabPlugin<void> = {
@@ -267,10 +270,25 @@ function cloneCell(cell: ICellModel) {
     return new CodeCellModel({ id: cell.id, cell: cell.toJSON() });
 }
 
+/**
+ * Marker for a variable definition.
+ */
+type DefMarker = {
+    marker: CodeMirror.TextMarker,
+    editor: CodeMirror.Editor,
+    cellId: string
+};
+
 class ExecutionLoggerExtension implements DocumentRegistry.IWidgetExtension<NotebookPanel, INotebookModel> {
 
     private executionLog = new Array<CellExecution>();
     private programBuilder = new ProgramBuilder();
+    private _commands: CommandRegistry;
+    private _defMarkers: DefMarker[] = [];
+
+    constructor(commands: CommandRegistry) {
+        this._commands = commands;
+    }
 
     createNew(panel: NotebookPanel, context: DocumentRegistry.IContext<INotebookModel>): IDisposable {
         panel.notebook.model.cells.changed.connect(
@@ -278,6 +296,25 @@ class ExecutionLoggerExtension implements DocumentRegistry.IWidgetExtension<Note
                 this.onCellsChanged(panel.notebook, panel.session, cells, value),
             this);
 
+        // Listen for all clicks on definition markers to trigger gathering.
+        // XXX: For some reason (tested in both Chrome and Edge), "click" events get dropped
+        // sometimes when you're clicking on a cell. Mouseup doesn't. Eventually should find
+        // the solution to supporting clicks.
+        panel.notebook.node.addEventListener("mouseup", (event: MouseEvent) => {
+            this._defMarkers.forEach((marker) => {
+                let editor = marker.editor;
+                if (editor.getWrapperElement().contains(event.target as Node)) {
+                    let clickPosition: CodeMirror.Position = editor.coordsChar(
+                        { left: event.clientX, top: event.clientY });
+                    let editorMarkers = editor.getDoc().findMarksAt(clickPosition);
+                    if (editorMarkers.indexOf(marker.marker) != -1) {
+                        this._commands.execute("livecells:gatherToClipboard", { cellId: marker.cellId });
+                        event.preventDefault();
+                    }
+                }
+            });
+        });
+        
         return new DisposableDelegate(() => {
         });
     }
@@ -289,19 +326,54 @@ class ExecutionLoggerExtension implements DocumentRegistry.IWidgetExtension<Note
         cellListChange: IObservableList.IChangedArgs<ICellModel>
     ): void {
         if (cellListChange.type === 'add') {
-            const cell = cellListChange.newValues[0] as ICellModel;
+            const cellModel = cellListChange.newValues[0] as ICellModel;
             // When a cell is added, register for its state changes.
-            cell.stateChanged.connect((changedCell, cellStateChange) => {
+            cellModel.stateChanged.connect((changedCell, cellStateChange) => {
+                
                 // If cell has been executed
                 if (cellStateChange.name === 'executionCount' && cellStateChange.newValue) {
-                    // Clone the cell so we can track its older versions.
-                    // This includes manually cloning the executionCount, as it won't be set yet
-                    // (that's the even that's happening in this handler).
-                    let cellClone = cloneCell(cell);
+                
+                    // Clone the cell to take a snapshot of the text..
+                    // executionCount may need to be cloned manually, as it won't be set yet
+                    // (that's the event that's happening in this handler).
+                    let cellClone = cloneCell(cellModel);
                     cellClone.executionCount = cellStateChange.newValue;
                     this.programBuilder.add(cellClone);
                     this.executionLog.push(new CellExecution(
-                        cell.id, cellStateChange.newValue, new Date()));
+                        cellModel.id, cellStateChange.newValue, new Date()));
+
+                    // Get the editor instance for the cell.
+                    let cell = notebook.widgets.filter((c) => c.model.id == cellModel.id).pop();
+                    let editor = (cell.editor as CodeMirrorEditor).editor;
+                    let doc = editor.getDoc();
+
+                    // Highlight all the definitions in the cell
+                    let code = cellModel.value.text;
+                    const ast = python3.parse(code + "\n");
+                    let statements = [];
+                    if (ast && ast.code && ast.code.length) {
+                        statements = ast.code;
+                    } else {
+                        statements = [ ast.code ];
+                    }
+                    // Remove all the old definition markers for this cell.
+                    this._defMarkers = this._defMarkers.filter((dm) => dm.cellId != cell.model.id);
+                    statements.forEach((statement: ISyntaxNode) => {
+                        let defs = getDefs(statement, { moduleNames: new StringSet() }, new SlicerConfig());
+                        defs.items.filter((d) => [DefType.ASSIGN, DefType.MUTATION].indexOf(d.type) != -1)
+                        .forEach((d) => {
+                            let defMarker = doc.markText(
+                                { line: d.location.first_line - 1, ch: d.location.first_column },
+                                { line: d.location.last_line - 1, ch: d.location.last_column },
+                                { className: "jp-InputArea-editor-nametext" }
+                            );
+                            this._defMarkers.push({
+                                marker: defMarker,
+                                cellId: cell.model.id,
+                                editor: editor
+                            });
+                        });
+                    });
                 }
             });
         }
@@ -473,7 +545,7 @@ function activateExtension(app: JupyterLab, palette: ICommandPalette, notebooks:
     console.log('livecells start');
     // Disable live programming feature for now
     // app.docRegistry.addWidgetExtension('Notebook', new LiveCheckboxExtension());
-    const executionLogger = new ExecutionLoggerExtension();
+    const executionLogger = new ExecutionLoggerExtension(app.commands);
     app.docRegistry.addWidgetExtension('Notebook', executionLogger);
     const notificationExtension = new NotifactionExtension();
     app.docRegistry.addWidgetExtension('Notebook', notificationExtension);
@@ -504,17 +576,26 @@ function activateExtension(app: JupyterLab, palette: ICommandPalette, notebooks:
         return undefined;
     }
 
-    function addCommand(command: string, label: string, execute: () => void) {
+    function addCommand(command: string, label: string, execute: (options?: JSONObject) => void) {
         app.commands.addCommand(command, { label, execute });
         palette.addItem({ command, category: 'Clean Up' });
     }
 
-    addCommand('livecells:gatherToClipboard', 'Gather this result to the clipboard', () => {
+    addCommand('livecells:gatherToClipboard', 'Gather this result to the clipboard', (options: JSONObject) => {
         const panel = notebooks.currentWidget;
         const SHOULD_SLICE_CELLS = true;
-        if (panel && panel.notebook && panel.notebook.activeCell.model.type === 'code') {
-            const activeCell = panel.notebook.activeCell;
-            let slicedExecutions: SlicedExecution[] = executionLogger.slicedExecutions(activeCell.model);
+        let chosenCell;
+        if (options.cellId) {
+            let cells = notebooks.currentWidget.notebook.widgets.filter((cell) => cell.model.id == options.cellId);
+            if (cells.length > 0) {
+                chosenCell = cells.pop();
+            }
+        }
+        if (!chosenCell && panel && panel.notebook && panel.notebook.activeCell && panel.notebook.activeCell.model.type === 'code') {
+            chosenCell = panel.notebook.activeCell;
+        }
+        if (chosenCell) {
+            let slicedExecutions: SlicedExecution[] = executionLogger.slicedExecutions(chosenCell.model);
             let latestSlicedExecution = slicedExecutions.pop();
             let cells = latestSlicedExecution.cellSlices
             .map(([cell, lines]) => {

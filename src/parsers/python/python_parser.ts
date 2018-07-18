@@ -401,7 +401,7 @@ function walkRecursive(node: ISyntaxNode, ancestors?: ISyntaxNode[], walkListene
         case IF:
             children = [node.cond].concat(node.code)
                 .concat(node.elif ? flatten(node.elif.map(e => [e.cond].concat(e.code))) : [])
-                .concat([node.else]);
+                .concat(node.else ? [ node.else ] : []);
             break;
         case ELSE:
             children = node.code;
