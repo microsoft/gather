@@ -276,6 +276,7 @@ function cloneCell(cell: ICellModel) {
 type DefMarker = {
     marker: CodeMirror.TextMarker,
     editor: CodeMirror.Editor,
+    statement: ISyntaxNode,
     cellId: string
 };
 
@@ -308,7 +309,10 @@ class ExecutionLoggerExtension implements DocumentRegistry.IWidgetExtension<Note
                         { left: event.clientX, top: event.clientY });
                     let editorMarkers = editor.getDoc().findMarksAt(clickPosition);
                     if (editorMarkers.indexOf(marker.marker) != -1) {
-                        this._commands.execute("livecells:gatherToClipboard", { cellId: marker.cellId });
+                        this._commands.execute("livecells:gatherToClipboard", {
+                            cellId: marker.cellId,
+                            selection: [marker.statement.location.first_line - 1, marker.statement.location.last_line - 1]
+                        });
                         event.preventDefault();
                     }
                 }
@@ -347,6 +351,9 @@ class ExecutionLoggerExtension implements DocumentRegistry.IWidgetExtension<Note
                     let editor = (cell.editor as CodeMirrorEditor).editor;
                     let doc = editor.getDoc();
 
+                    // Remove all the old definition markers for this cell.
+                    this._defMarkers = this._defMarkers.filter((dm) => dm.cellId != cell.model.id);
+
                     // Highlight all the definitions in the cell
                     let code = cellModel.value.text;
                     const ast = python3.parse(code + "\n");
@@ -356,8 +363,6 @@ class ExecutionLoggerExtension implements DocumentRegistry.IWidgetExtension<Note
                     } else {
                         statements = [ ast.code ];
                     }
-                    // Remove all the old definition markers for this cell.
-                    this._defMarkers = this._defMarkers.filter((dm) => dm.cellId != cell.model.id);
                     statements.forEach((statement: ISyntaxNode) => {
                         let defs = getDefs(statement, { moduleNames: new StringSet() }, new SlicerConfig());
                         defs.items.filter((d) => [DefType.ASSIGN, DefType.MUTATION].indexOf(d.type) != -1)
@@ -369,8 +374,9 @@ class ExecutionLoggerExtension implements DocumentRegistry.IWidgetExtension<Note
                             );
                             this._defMarkers.push({
                                 marker: defMarker,
+                                editor: editor,
+                                statement: statement,
                                 cellId: cell.model.id,
-                                editor: editor
                             });
                         });
                     });
@@ -390,8 +396,9 @@ class ExecutionLoggerExtension implements DocumentRegistry.IWidgetExtension<Note
 
     /**
      * Get slices of the necessary code for all executions of a cell.
+     * Relevant line numbers are relative to the cell's start line (starting at first line = 0).
      */
-    public slicedExecutions(cell: ICellModel) {
+    public slicedExecutions(cell: ICellModel, relevantLineNumbers?: NumberSet) {
         
         return this.executionLog
         .filter((execution) => execution.cellId == cell.id)
@@ -399,8 +406,15 @@ class ExecutionLoggerExtension implements DocumentRegistry.IWidgetExtension<Note
 
             // Slice the program leading up to that cell.
             let program = this.programBuilder.buildTo(execution.cellId, execution.executionCount);
+            let sliceStartLines = new NumberSet();
             let cellLines = program.cellToLineMap[execution.cellId][execution.executionCount];
-            let sliceLines = slice(program.code, cellLines);
+            let cellFirstLine = Math.min(...cellLines.items);
+            if (relevantLineNumbers) {
+                sliceStartLines.add(...relevantLineNumbers.items.map((l) => l + cellFirstLine));
+            } else {
+                sliceStartLines = sliceStartLines.union(cellLines);
+            }
+            let sliceLines = slice(program.code, sliceStartLines);
 
             // Get the relative offsets of slice lines in each cell.
             let relativeSliceLines: { [ cellId: string ]: { [ executionCount: number ] : NumberSet }} = {};
@@ -582,8 +596,11 @@ function activateExtension(app: JupyterLab, palette: ICommandPalette, notebooks:
     }
 
     addCommand('livecells:gatherToClipboard', 'Gather this result to the clipboard', (options: JSONObject) => {
+        
         const panel = notebooks.currentWidget;
         const SHOULD_SLICE_CELLS = true;
+        
+        // Choose cell from options or the active cell.
         let chosenCell;
         if (options.cellId) {
             let cells = notebooks.currentWidget.notebook.widgets.filter((cell) => cell.model.id == options.cellId);
@@ -594,24 +611,37 @@ function activateExtension(app: JupyterLab, palette: ICommandPalette, notebooks:
         if (!chosenCell && panel && panel.notebook && panel.notebook.activeCell && panel.notebook.activeCell.model.type === 'code') {
             chosenCell = panel.notebook.activeCell;
         }
-        if (chosenCell) {
-            let slicedExecutions: SlicedExecution[] = executionLogger.slicedExecutions(chosenCell.model);
-            let latestSlicedExecution = slicedExecutions.pop();
-            let cells = latestSlicedExecution.cellSlices
-            .map(([cell, lines]) => {
-                let slicedCell = cell;
-                if (SHOULD_SLICE_CELLS) {
-                    slicedCell = cloneCell(cell);
-                    slicedCell.value.text = 
-                        slicedCell.value.text.split("\n")
-                        .filter((_, i) => lines.contains(i))
-                        .join("\n");
-                }
-                return slicedCell;
-            });
-            copyCellsToClipboard(cells);
-            notificationExtension.showMessage("Copied cells to clipboard. Right-click or type 'V' to paste.");
+
+        if (!chosenCell) return;
+
+        // If lines were selected from the cell, only gather on those lines. Otherwise, gather whole cell.
+        let relevantLineNumbers = new NumberSet();
+        if (options.selection && options.selection instanceof Array) {
+            let selection = options.selection as Array<number>;
+            for (let i = selection[0]; i <= selection[1]; i++) relevantLineNumbers.add(i);
+        } else {
+            let cellLength = chosenCell.model.value.text.split("\n").length;
+            for (let i = 0; i < cellLength; i++) relevantLineNumbers.add(i);
         }
+
+        let slicedExecutions: SlicedExecution[] = executionLogger.slicedExecutions(
+            chosenCell.model, relevantLineNumbers);
+        let latestSlicedExecution = slicedExecutions.pop();
+        let cells = latestSlicedExecution.cellSlices
+        .map(([cell, lines]) => {
+            let slicedCell = cell;
+            if (SHOULD_SLICE_CELLS) {
+                slicedCell = cloneCell(cell);
+                slicedCell.value.text = 
+                    slicedCell.value.text.split("\n")
+                    .filter((_, i) => lines.contains(i))
+                    .join("\n");
+            }
+            return slicedCell;
+        });
+        copyCellsToClipboard(cells);
+        notificationExtension.showMessage("Copied cells to clipboard. Right-click or type 'V' to paste.");
+
     });
 
     addCommand('livecells:gatherToNotebook', 'Gather this result into a new notebook', () => {
