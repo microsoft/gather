@@ -25,7 +25,7 @@ import * as python3 from '../parsers/python/python3';
 import { ILocation, ISyntaxNode } from '../parsers/python/python_parser';
 import { HistoryModel, HistoryViewer, buildHistoryModel, SlicedExecution, CellExecution } from '../packages/history';
 
-import '../style/index.css';
+import '../../style/index.css';
 import { SlicerConfig } from '../slicing/SlicerConfig';
 import { JSONObject } from '../../node_modules/@phosphor/coreutils';
 
