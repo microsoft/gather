@@ -182,12 +182,18 @@ export class TimeLineMagicRewriter implements LineMagicRewriter {
 export class PylabLineMagicRewriter implements LineMagicRewriter {
     commandName: string = "time";
     rewrite(matchedText: string, magicStmt: string, position: MatchPosition): Rewrite {
-        let positionString = "((" + position[0].line + "," + position[0].col + "),(" +
-            position[1].line + "," + position[1].col + "))";
+        let defData = 
+            ["numpy", "matplotlib", "pylab", "mlab", "pyplot", "np", "plt", "display",
+            "figsize", "getfigs"]
+            .map((symbolName) => {
+                return {
+                    name: symbolName,
+                    pos: [[position[0].line, position[0].col], [position[1].line, position[1].col]]
+                };
+            });
         return {
             annotations: [
-                { key: "position", value: positionString },
-                { key: "defs", value: "numpy,matplotlib,pylab,mlab,pyplot,np,plt,display,figsize,getfigs" }
+                { key: "defs", value: JSON.stringify(defData) }
             ]
         };
     }

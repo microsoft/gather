@@ -91,9 +91,19 @@ describe('MagicsRewriter', () => {
             );
             expect(rewrite.text).to.be.undefined;
             expect(rewrite.annotations).to.deep.equal([
-                { key: "position", value: "((0,0),(0,10))" },
-                { key: "defs", value: "numpy,matplotlib,pylab,mlab,pyplot,np,plt,display,figsize,getfigs" }
-            ])
+                { key: "defs", value: JSON.stringify([
+                    { name: "numpy", pos: [[0, 0], [0, 10]] },
+                    { name: "matplotlib", pos: [[0, 0], [0, 10]] },
+                    { name: "pylab", pos: [[0, 0], [0, 10]] },
+                    { name: "mlab", pos: [[0, 0], [0, 10]] },
+                    { name: "pyplot", pos: [[0, 0], [0, 10]] },
+                    { name: "np", pos: [[0, 0], [0, 10]] },
+                    { name: "plt", pos: [[0, 0], [0, 10]] },
+                    { name: "display", pos: [[0, 0], [0, 10]] },
+                    { name: "figsize", pos: [[0, 0], [0, 10]] },
+                    { name: "getfigs", pos: [[0, 0], [0, 10]] },
+                ])}
+            ]);
         });
     });
 });
