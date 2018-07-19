@@ -154,8 +154,10 @@ class CallNamesListener implements ast.IWalkListener {
 export function getDefs(
     statement: ast.ISyntaxNode, symbolTable: SymbolTable, slicerConfig?: SlicerConfig): DefSet {
 
-    slicerConfig = slicerConfig || new SlicerConfig();
     let defs = new DefSet();
+    if (!statement) return defs;
+
+    slicerConfig = slicerConfig || new SlicerConfig();
 
     // ️⚠️ The following is heuristic and unsound, but works for many scripts:
     // Unless noted in the `slicerConfig`, assume that no instances or arguments are changed

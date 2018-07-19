@@ -27,7 +27,8 @@ import { HistoryModel, HistoryViewer, buildHistoryModel, SlicedExecution, CellEx
 
 import '../../style/index.css';
 import { SlicerConfig } from '../slicing/SlicerConfig';
-import { JSONObject } from '../../node_modules/@phosphor/coreutils';
+import { JSONObject } from '@phosphor/coreutils';
+import { MagicsRewriter } from '../slicing/MagicsRewriter';
 
 
 const extension: JupyterLabPlugin<void> = {
@@ -356,7 +357,9 @@ class ExecutionLoggerExtension implements DocumentRegistry.IWidgetExtension<Note
 
                     // Highlight all the definitions in the cell
                     let code = cellModel.value.text;
-                    const ast = python3.parse(code + "\n");
+                    let rewriter = new MagicsRewriter();
+                    let cleanedCode = rewriter.rewrite(code);
+                    const ast = python3.parse(cleanedCode + "\n");
                     let statements = [];
                     if (ast && ast.code && ast.code.length) {
                         statements = ast.code;

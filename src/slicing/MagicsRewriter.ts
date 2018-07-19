@@ -42,8 +42,11 @@ export interface LineMagicRewriter {
 };
 
 /**
- * Utility to rewrite IPython code to not contain magics.
+ * Utility to rewrite IPython code to remove magics.
  * Should be applied at to cells, not the entire program, to properly handle cell magics.
+ * One of the most important aspects of the rewriter is that it shouldn't change the line number
+ * of any of the statements in the program. If it does, this will make it impossible to
+ * map back from the results of code analysis to the relevant code in the editor.
  */
 export class MagicsRewriter {
     /**
@@ -158,7 +161,8 @@ export class MagicsRewriter {
 
     private _lineMagicRewriters: LineMagicRewriter[];
     private _defaultLineMagicRewriters = [
-        new TimeLineMagicRewriter()
+        new TimeLineMagicRewriter(),
+        new PylabLineMagicRewriter()
     ];
 }
 
@@ -180,7 +184,7 @@ export class TimeLineMagicRewriter implements LineMagicRewriter {
  * Line magic rewriter for the "pylab" magic.
  */
 export class PylabLineMagicRewriter implements LineMagicRewriter {
-    commandName: string = "time";
+    commandName: string = "pylab";
     rewrite(matchedText: string, magicStmt: string, position: MatchPosition): Rewrite {
         let defData = 
             ["numpy", "matplotlib", "pylab", "mlab", "pyplot", "np", "plt", "display",

@@ -1,5 +1,6 @@
 import { ICodeCellModel } from "@jupyterlab/cells";
 import { NumberSet } from "../slicing/Set";
+import { MagicsRewriter } from "../slicing/MagicsRewriter";
 
 /**
  * Maps to find out what line numbers over a program correspond to what cells.
@@ -98,7 +99,8 @@ export class ProgramBuilder {
             });
 
             // Accumulate the code.
-            code += (cell.value.text + "\n");
+            let cellText = this._magicsRewriter.rewrite(cell.value.text);
+            code += (cellText + "\n");
             currentLine += cellLength;
         });
         
@@ -113,4 +115,5 @@ export class ProgramBuilder {
     }
 
     private _cells: ICodeCellModel[];
+    private _magicsRewriter: MagicsRewriter = new MagicsRewriter();
 }
