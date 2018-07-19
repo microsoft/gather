@@ -124,7 +124,6 @@ export class MagicsRewriter {
                 let command = commandMatch[1];
                 if (lineMagicRewriters) {
                     for (let lineMagicRewriter of lineMagicRewriters) {
-                        console.log(lineMagicRewriter.commandName, command);
                         if (lineMagicRewriter.commandName == command) {
                             let rewrite = lineMagicRewriter.rewrite(match, magicStmtCleaned, position);
                             if (rewrite.text) {

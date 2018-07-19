@@ -1,9 +1,10 @@
-import { dataflowAnalysis, getDefs, Def, DefType } from "../slicing/DataflowAnalysis";
+import { dataflowAnalysis, getDefs, Def, DefType, DefSet } from "../slicing/DataflowAnalysis";
 import * as python3 from '../parsers/python/python3';
 import { ControlFlowGraph } from '../slicing/ControlFlowAnalysis';
 import { expect } from "chai";
 import { StringSet } from "../slicing/Set";
 import { SlicerConfig, FunctionConfig } from "../slicing/SlicerConfig";
+import { ISyntaxNode } from "../parsers/python/python_parser";
 
 
 // High-level tests on dataflow as a sanity check.
@@ -116,6 +117,14 @@ describe('detects control dependencies', () => {
 
 describe('getDefs', () => {
 
+    function getDefsFromStatements(...codeLines: string[]): Def[] {
+        let code = codeLines.concat("").join("\n");
+        let module = python3.parse(code);
+        return new DefSet().union(...module.code.map((stmt: ISyntaxNode) => {
+            return getDefs(stmt, { moduleNames: new StringSet() });
+        })).items;
+    }
+
     function getDefsFromStatement(code: string, slicerConfig?: SlicerConfig): Def[] {
         code = code + "\n";  // programs need to end with newline
         let module = python3.parse(code);
@@ -143,6 +152,30 @@ describe('getDefs', () => {
             let defs = getDefsFromStatement("from mod import func");
             expect(defs[0]).to.include({ type: DefType.IMPORT, name: "func" });    
         })
+
+        describe('from annotations', () => {
+
+            it('from our def annotations', () => {
+                let defs = getDefsFromStatement(
+                    '"""defs: [{ "name": "a", "pos": [[0, 0], [0, 11]] }]"""%some_magic'
+                );
+                expect(defs[0]).to.deep.equal({
+                    type: DefType.MAGIC,
+                    name: "a",
+                    location: { first_line: 1, first_column: 0, last_line: 1, last_column: 11 }
+                });
+            });
+
+            it('computing the def location relative to the line it appears on', () => {
+                let defs = getDefsFromStatements([
+                    'print(a)',
+                    '"""defs: [{ "name": "a", "pos": [[0, 0], [0, 11]] }]"""%some_magic'
+                ].join("\n"));
+                expect(defs[0]).to.deep.include({
+                    location: { first_line: 2, first_column: 0, last_line: 2, last_column: 11 }
+                });
+            });
+        });
 
         describe('when given a slice config', () => {
 

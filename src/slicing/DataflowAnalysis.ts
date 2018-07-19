@@ -13,7 +13,8 @@ export interface IDataflow {
 export enum DefType {
     ASSIGN,
     IMPORT,
-    MUTATION
+    MUTATION,
+    MAGIC
 };
 
 export type Def = {
@@ -58,6 +59,45 @@ interface IDefUseInfo { defs: StringSet, uses: StringSet };
 interface SymbolTable {
     // ⚠️ We should be doing full-blown symbol resolution, but meh 🙄
     moduleNames: StringSet;
+}
+
+/**
+ * Tree walk listener for collecting manual def annotations.
+ */
+class DefAnnotationListener implements ast.IWalkListener {
+    onEnterNode(node: ast.ISyntaxNode, type: string) {
+        
+        if (type == ast.LITERAL) {
+            let literal = node as ast.ILiteral;
+
+            // If this is a string, try to parse a def annotation from it
+            if (typeof(literal.value) == 'string' || literal.value instanceof String) {
+                let string = literal.value;
+                let jsonMatch = string.match(/"defs: (.*)"/);
+                if (jsonMatch && jsonMatch.length >= 2) {
+                    let jsonString = jsonMatch[1];
+                    let jsonStringUnescaped = jsonString.replace(/\\"/g, "\"");
+                    try {
+                        let defSpecs = JSON.parse(jsonStringUnescaped);
+                        for (let defSpec of defSpecs) {
+                            this.defs.add({
+                                type: DefType.MAGIC,
+                                name: defSpec.name,
+                                location: {
+                                    first_line: defSpec.pos[0][0] + node.location.first_line,
+                                    first_column: defSpec.pos[0][1],
+                                    last_line: defSpec.pos[1][0] + node.location.first_line,
+                                    last_column: defSpec.pos[1][1]
+                                },
+                            });
+                        }
+                    } catch(e) {}
+                }
+            }
+        }
+    }
+
+    readonly defs: DefSet = new DefSet();
 }
 
 /**
@@ -129,6 +169,10 @@ export function getDefs(
             location: node.location
         }
     }));
+
+    let defAnnotationsListener = new DefAnnotationListener();
+    ast.walk(statement, defAnnotationsListener);
+    defs = defs.union(defAnnotationsListener.defs);
 
     switch (statement.type) {
         case ast.IMPORT: {
