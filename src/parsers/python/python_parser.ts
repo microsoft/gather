@@ -25,6 +25,7 @@ export type ISyntaxNode =
     | ISlice
     | IDot
     | IIfExpr
+    | ICompFor
     | ILambda
     | IUnaryOperator
     | IBinaryOperator
@@ -199,6 +200,14 @@ export interface IFor extends ILocatable {
     code: ISyntaxNode[];
 }
 
+export const COMPFOR = 'comp_for';
+
+export interface ICompFor extends ILocatable {
+    type: typeof COMPFOR;
+    for: ISyntaxNode[];
+    in: ISyntaxNode;
+}
+
 export const TRY = 'try';
 
 export interface ITry extends ILocatable {
@@ -318,14 +327,16 @@ export const SET = 'set';
 
 export interface ISet extends ILocatable {
     type: typeof SET;
-    items: ISyntaxNode[]
+    entries: ISyntaxNode[];
+    comp_for?: ISyntaxNode[];
 }
 
 export const DICT = 'dict';
 
 export interface IDict extends ILocatable {
     type: typeof DICT;
-    pairs: { k: ISyntaxNode; v: ISyntaxNode }[];
+    entries: { k: ISyntaxNode; v: ISyntaxNode }[];
+    comp_for?: ISyntaxNode[];
 }
 
 export const NAME = 'name';
@@ -385,6 +396,10 @@ export function walk(node: ISyntaxNode, walkListener?: IWalkListener): ISyntaxNo
  */
 function walkRecursive(node: ISyntaxNode, ancestors?: ISyntaxNode[], walkListener?: IWalkListener): ISyntaxNode[] {
 
+    if(!node) {
+        console.error("Node undefined. Ancestors:", ancestors);
+    }
+
     ancestors.push(node);
 
     if (walkListener && walkListener.onEnterNode) {
@@ -425,13 +440,21 @@ function walkRecursive(node: ISyntaxNode, ancestors?: ISyntaxNode[], walkListene
         case LAMBDA: children = [node.code]; break;
         case CALL: children = [node.func].concat(node.args.map(a => a.actual)); break;
         case IFEXPR: children = [node.test, node.then, node.else]; break;
+        case COMPFOR:
+            children = node.for.concat([node.in]);
+            break;
         case UNOP: children = [node.operand]; break;
         case BINOP: children = [node.left, node.right]; break;
         case STARRED: children = [node.value]; break;
         case SET:
+            children = node.entries.concat(node.comp_for ? node.comp_for: []);
+            break;
         case LIST: children = node.items; break;
         case TUPLE: children = node.items; break;
-        case DICT: children = flatten(node.pairs.map(p => [p.k, p.v])); break;
+        case DICT:
+            children = flatten(node.entries.map(p => [p.k, p.v]))
+                .concat(node.comp_for ? node.comp_for: []);
+            break;
         case ASSIGN: children = node.sources.concat(node.targets); break;
         case ASSERT: children = [node.cond].concat([node.err] || []); break;
         case DOT: children = [node.value, node.name]; break;

@@ -973,13 +973,9 @@ atom
     | '[' testlist_comp ']'
         { $$ = { type: 'list',  items: $2, location: @$ } }
     | '{' '}'
-        { $$ = { type: 'dict',  pairs: [], location: @$ } }
+        { $$ = { type: 'dict',  entries: [], location: @$ } }
     | '{' dictorsetmaker '}'
-        {
-            $$ = ( $2[ 0 ].k )
-                ? { type: 'dict',  pairs: $2, location: @$ }
-                : { type: 'set',  items: $2, location: @$ };
-        }
+        { $$ = { type: $2.type, entries: $2.entries, comp_for: $2.comp_for, location: @$ } }
     | NAME
         { $$ = { type: 'name', id: $1, location: @$ } }
     | NUMBER
@@ -1147,21 +1143,21 @@ testlist0
 //   (test (comp_for | (',' test)* [','])) )
 dictorsetmaker
     : test ':' test
-        { $$ = [{ k: $1, v: $3 }] }
+        { $$ = { type: 'dict', entries: [{ k: $1, v: $3 }] } }
     | test ':' test ','
-        { $$ = [{ k: $1, v: $3 }] }
+        { $$ = { type: 'dict', entries: [{ k: $1, v: $3 }] } }
     | test ':' test comp_for
-        { $$ = [{ k: $1, v: $3 }].concat( $4 ) }
+        { $$ = { type: 'dict', entries: [{ k: $1, v: $3 }], comp_for: $4 } }
     | test ':' test dictmaker
-        { $$ = [{ k: $1, v: $3 }].concat( $4 ) }
+        { $$ = { type: 'dict', entries: [{ k: $1, v: $3 }].concat( $4 ) } }
     | test
-            { $$ = [ $1 ] }
+        { $$ = { type: 'set', entries: [ $1 ] } }
     | test ','
-        { $$ = [ $1 ] }
+        { $$ = { type: 'set', entries: [ $1 ] } }
     | test comp_for
-        { $$ = [ $1 ].concat( $2 ) }
+        { $$ = { type: 'set', entries: [ $1 ], comp_for: $2 } }
     | test setmaker
-        { $$ = [ $1 ].concat( $2 ) }
+        { $$ = { type: 'set', entries: [ $1 ].concat( $2 ) } }
     ;
 
 dictmaker
@@ -1230,9 +1226,9 @@ comp_iter: comp_for | comp_if ;
 // comp_for: 'for' exprlist 'in' or_test [comp_iter]
 comp_for
     : 'for' exprlist 'in' or_test
-        { $$ = [{ type: 'for', for: $2, in: $4, location: @$ }] }
+        { $$ = [{ type: 'comp_for', for: $2, in: $4, location: @$ }] }
     | 'for' exprlist 'in' or_test comp_iter
-        { $$ = [{ type: 'for', for: $2, in: $4, location: @$ }].concat( $5 ) }
+        { $$ = [{ type: 'comp_for', for: $2, in: $4, location: @$ }].concat( $5 ) }
     ;
 
 // comp_if: 'if' test_nocond [comp_iter]
