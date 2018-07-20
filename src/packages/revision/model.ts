@@ -1,10 +1,9 @@
-import { IOutputAreaModel } from '@jupyterlab/outputarea';
 import { ICodeVersionModel } from '../codeversion';
 
 /**
  * The definition of a model object for a code version.
  */
-export interface IRevisionModel {
+export interface IRevisionModel<TOutputModel> {
     /**
      * A unique index for this code version---lower indexes were are for earlier versions.
      */
@@ -18,7 +17,7 @@ export interface IRevisionModel {
     /**
      * The result of the computation.
      */
-    readonly results: IOutputAreaModel;
+    readonly results: TOutputModel[];
 
     /**
      * Whether this revision is the latest revision.
@@ -34,11 +33,11 @@ export interface IRevisionModel {
 /**
  * An implementation of the code version model.
  */
-export class RevisionModel implements IRevisionModel {
+export class RevisionModel<TOutputModel> implements IRevisionModel<TOutputModel> {
     /**
      * Construct a code version model.
      */
-    constructor(options: RevisionModel.IOptions) {
+    constructor(options: RevisionModel.IOptions<TOutputModel>) {
         this.versionIndex = options.versionIndex;
         this._source = options.source;
         this._results = options.results;
@@ -59,7 +58,7 @@ export class RevisionModel implements IRevisionModel {
     /**
      * Get the result of this computation.
      */
-    get results(): IOutputAreaModel {
+    get results(): TOutputModel[] {
         return this._results;
     }
 
@@ -71,7 +70,7 @@ export class RevisionModel implements IRevisionModel {
     }
 
     private _source: ICodeVersionModel;
-    private _results: IOutputAreaModel;
+    private _results: TOutputModel[];
     private _timeCreated: Date;
 }
 
@@ -82,7 +81,7 @@ export namespace RevisionModel {
     /**
      * The options used to initialize a `CodeVerionModel`.
      */
-    export interface IOptions {
+    export interface IOptions<TOutputModel> {
         /**
          * A slice of the source code for this revision.
          */
@@ -96,7 +95,7 @@ export namespace RevisionModel {
         /**
          * The display data for the result at this version.
          */
-        results?: IOutputAreaModel;
+        results?: TOutputModel[];
 
         /**
          * Whether this revision is the latest revision.

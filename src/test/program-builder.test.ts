@@ -1,16 +1,15 @@
 import { expect } from "chai";
-import { ProgramBuilder } from "../lab/ProgramBuilder";
-import { SimpleCodeCellModel, SimpleOutputAreaModel, SimpleOutputModel } from "./util";
+import { ProgramBuilder, SliceableCell } from "../lab/ProgramBuilder";
 
 
 describe('program builder', () => {
 
-    function createCell(id: string, executionCount: number, ...codeLines: string[]) {
-        let code = codeLines.join("\n");
-        return new SimpleCodeCellModel(id, executionCount, code);
+    function createCell(id: string, executionCount: number, ...codeLines: string[]): SliceableCell<{}, {}> {
+        let text = codeLines.join("\n");
+        return { id, executionCount, text: text, hasError: false, model: {}, outputs: [] };
     }
 
-    let programBuilder: ProgramBuilder;
+    let programBuilder: ProgramBuilder<{}, {}>;
     beforeEach(() => {
         programBuilder = new ProgramBuilder();
     });
@@ -32,7 +31,7 @@ describe('program builder', () => {
         expect(lineToCellMap[1]).to.equal(cell1);
         expect(lineToCellMap[2]).to.equal(cell2);
     });
-    
+
     it('builds a map from cells to lines', () => {
         let cell1 = createCell("id1", 1, "print(1)");
         let cell2 = createCell("id2", 2, "print(2)");
@@ -75,7 +74,7 @@ describe('program builder', () => {
      * error, though this will probably require us to rewrite the code. */
     it('skips cells with errors', () => {
         let badCell = createCell("idE", 2, "print(bad_name)");
-        badCell.outputs = new SimpleOutputAreaModel(new SimpleOutputModel("error", null));
+        badCell.outputs = [{}];
         programBuilder.add(
             createCell("id1", 1, "print(1)"),
             badCell,

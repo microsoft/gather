@@ -1,10 +1,9 @@
-import { ICodeCellModel } from '@jupyterlab/cells';
 import { HistoryModel } from './model';
 import { RevisionModel } from '../revision';
 import { CharacterRange, CodeDiffModel, CodeVersionModel } from '../codeversion';
 import { SlicedCellModel } from '../slicedcell';
 import { NumberSet } from '../../slicing/Set';
-import { IOutputAreaModel } from '@jupyterlab/outputarea';
+import { SliceableCell } from '../../lab/ProgramBuilder';
 let diff_match_patch = require('./diff-match-patch').diff_match_patch;
 
 /**
@@ -21,10 +20,10 @@ export class CellExecution {
 /**
  * A slice over a version of executed code.
  */
-export class SlicedExecution {
+export class SlicedExecution<TCellModel, TOutputModel> {
     constructor(
         public executionTime: Date,
-        public cellSlices: Array<[ICodeCellModel, NumberSet]>
+        public cellSlices: Array<[SliceableCell<TCellModel, TOutputModel>, NumberSet]>
     ) { }
 }
 
@@ -37,16 +36,16 @@ let diffMatchPatch = new diff_match_patch();
  * Convert diff returned by diff_match_patch algorithm to code diff model.
  */
 export function diffMatchPatchDiffToCodeDiff(diffMatchPatchDiff: Array<[number, string]>) {
-    
+
     let text1: string = "";
     let text2: string = "";
     let updatedRanges: Array<CharacterRange> = new Array<CharacterRange>();
     let sameRanges: Array<CharacterRange> = new Array<CharacterRange>();
-    
+
     // Iterate through the list of diff chunks to:
     // 1. Rebuild versions 1 and 2 of the string.
     // 2. Mark which positions in version 1 are the same and different from version 2.
-    diffMatchPatchDiff.forEach(function(tuple: [number,string]) {
+    diffMatchPatchDiff.forEach(function (tuple: [number, string]) {
 
         let action: number = tuple[0];
         let substring: string = tuple[1];
@@ -73,44 +72,44 @@ export function diffMatchPatchDiffToCodeDiff(diffMatchPatchDiff: Array<[number, 
 /**
  * Build a history model of how a cell was computed across notebook snapshots.
  */
-export function buildHistoryModel(
+export function buildHistoryModel<TCellModel, TOutputModel>(
     selectedCellId: string,
-    executionVersions: SlicedExecution[]
-): HistoryModel {
-    
+    executionVersions: SlicedExecution<TCellModel, TOutputModel>[]
+): HistoryModel<TOutputModel> {
+
     // All cells in past revisions will be compared to those in the current revision. For the most
     // recent version, save a mapping from cells' IDs to their content, so we can look them up to
     // make comparisons between versions of cells.
     let lastestVersion = executionVersions[executionVersions.length - 1];
-    let latestCellVersions: { [ cellId: string ]: ICodeCellModel } = {};
+    let latestCellVersions: { [cellId: string]: SliceableCell<TCellModel, TOutputModel> } = {};
     lastestVersion.cellSlices.forEach(([cellModel, _]) => {
         latestCellVersions[cellModel.id] = cellModel;
     });
 
     // Compute diffs between each of the previous revisions and the current revision.
-    let revisions = new Array<RevisionModel>();
-    executionVersions.forEach(function(executionVersion, versionIndex) {
+    let revisions = new Array<RevisionModel<TOutputModel>>();
+    executionVersions.forEach(function (executionVersion, versionIndex) {
 
         // Then difference the code in each cell.
         // Use the two-step diffing process of `diff_main` and `diff_cleanupSemantic` as the
         // second method will clean up the diffs to be more readable.
-        let slicedCellModels:Array<SlicedCellModel> = new Array<SlicedCellModel>();
-        executionVersion.cellSlices.forEach(function(cellSlice) {
-            
+        let slicedCellModels: Array<SlicedCellModel> = new Array<SlicedCellModel>();
+        executionVersion.cellSlices.forEach(function (cellSlice) {
+
             let cellModel = cellSlice[0];
             let sliceLines = cellSlice[1].items.sort((a, b) => (a - b));
 
             let recentCellVersion = latestCellVersions[cellModel.id];
             let latestText: string = "";
             if (recentCellVersion) {
-                latestText = recentCellVersion.value.text;
+                latestText = recentCellVersion.text;
             }
 
-            let thisVersionText: string = cellModel.value.text;
+            let thisVersionText: string = cellModel.text;
             let diff: Array<[number, string]> = diffMatchPatch.diff_main(latestText, thisVersionText);
             diffMatchPatch.diff_cleanupSemantic(diff);
             let cellDiffModel: CodeDiffModel = diffMatchPatchDiffToCodeDiff(diff);
-            
+
             let sliceRanges = [];
             let cellLines = thisVersionText.split('\n')
             let lineFirstCharIndex = 0;
@@ -122,7 +121,7 @@ export function buildHistoryModel(
                 lineFirstCharIndex += lineLength;
             }
 
-            let slicedCellModel: SlicedCellModel  = new SlicedCellModel({
+            let slicedCellModel: SlicedCellModel = new SlicedCellModel({
                 cellId: cellModel.id,
                 executionCount: cellModel.executionCount,
                 sourceCode: thisVersionText,
@@ -133,9 +132,9 @@ export function buildHistoryModel(
             slicedCellModels.push(slicedCellModel);
         })
 
-        let results: IOutputAreaModel = null;
-        let selectedCellModel:ICodeCellModel = null;
-        executionVersion.cellSlices.map(cs => cs[0]).forEach(function(cellModel) {
+        let results: TOutputModel[] = null;
+        let selectedCellModel: SliceableCell<TCellModel, TOutputModel> = null;
+        executionVersion.cellSlices.map(cs => cs[0]).forEach(function (cellModel) {
             if (cellModel.id == selectedCellId) {
                 selectedCellModel = cellModel;
             }
@@ -147,12 +146,12 @@ export function buildHistoryModel(
             }
         }
 
-        let isLatestVersion =  (versionIndex == executionVersions.length - 1);
-        let codeVersionModel:CodeVersionModel = new CodeVersionModel({
+        let isLatestVersion = (versionIndex == executionVersions.length - 1);
+        let codeVersionModel: CodeVersionModel = new CodeVersionModel({
             cells: slicedCellModels,
             isLatest: isLatestVersion
         });
-        let revisionModel:RevisionModel = new RevisionModel({
+        let revisionModel = new RevisionModel<TOutputModel>({
             versionIndex: versionIndex + 1,  // Version index should start at 1
             source: codeVersionModel,
             results: results,

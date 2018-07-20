@@ -5,7 +5,7 @@
     "module": "amd",
     "moduleResolution": "classic",
     "target": "es5",
-    "outDir": "./gather",
+    "outDir": "../../gather",
     "lib": ["es6", "dom"],
     "allowJs": true,
     "typeRoots": ["./node_modules/@types"]

@@ -1,4 +1,4 @@
-import { RenderMimeRegistry } from '@jupyterlab/rendermime';
+import { RenderMimeRegistry, IOutputModel } from '@jupyterlab/rendermime';
 import { PanelLayout } from '@phosphor/widgets';
 import { Widget } from '@phosphor/widgets';
 import { IHistoryModel } from './model';
@@ -48,7 +48,7 @@ export class HistoryViewer extends Widget {
     /**
      * Get the model used by the history viewer.
      */
-    get model(): IHistoryModel {
+    get model(): IHistoryModel<IOutputModel> {
         return this._model;
     }
 
@@ -73,7 +73,7 @@ export class HistoryViewer extends Widget {
         super.dispose();
     }
 
-    private _model: IHistoryModel = null;
+    private _model: IHistoryModel<IOutputModel> = null;
 
 }
 
@@ -88,7 +88,7 @@ export namespace HistoryViewer {
         /**
          * The model used by the history viewer.
          */
-        model: IHistoryModel;
+        model: IHistoryModel<IOutputModel>;
 
         /**
          * The mime renderer for this widget.

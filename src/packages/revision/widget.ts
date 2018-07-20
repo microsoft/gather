@@ -2,7 +2,7 @@ import { PanelLayout } from '@phosphor/widgets';
 import { Widget } from '@phosphor/widgets';
 import { CodeEditor } from '@jupyterlab/codeeditor';
 import { OutputArea } from '@jupyterlab/outputarea';
-import { RenderMimeRegistry } from '@jupyterlab/rendermime';
+import { RenderMimeRegistry, IOutputModel } from '@jupyterlab/rendermime';
 import { IRevisionModel } from './model';
 import { CodeVersion } from '../codeversion';
 
@@ -71,7 +71,7 @@ export class Revision extends Widget {
     /**
      * The model used by the widget.
      */
-    readonly model: IRevisionModel;
+    readonly model: IRevisionModel<IOutputModel>;
 
     /**
      * The rendermime instance used by the widget.
@@ -95,7 +95,7 @@ export namespace Revision {
         /**
          * The model used by the widget.
          */
-        model: IRevisionModel;
+        model: IRevisionModel<IOutputModel>;
 
         /**
          * The mime renderer for this widget.

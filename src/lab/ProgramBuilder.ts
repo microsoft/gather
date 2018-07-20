@@ -1,21 +1,20 @@
-import { ICodeCellModel } from "@jupyterlab/cells";
 import { NumberSet } from "../slicing/Set";
 
 /**
  * Maps to find out what line numbers over a program correspond to what cells.
  */
-export type CellToLineMap = { [ cellId: string ]: { [ executionCount: number ]: NumberSet } };
-export type LineToCellMap = { [ line: number ]: ICodeCellModel };
+export type CellToLineMap = { [cellId: string]: { [executionCount: number]: NumberSet } };
+export type LineToCellMap<TCellModel, TOutputModel> = { [line: number]: SliceableCell<TCellModel, TOutputModel> };
 
 /**
  * A program built from cells.
  */
-export class Program {
+export class Program<TCellModel, TOutputModel> {
 
     /**
      * Construct a program.
      */
-    constructor(code: string, cellToLineMap: CellToLineMap, lineToCellMap: LineToCellMap) {
+    constructor(code: string, cellToLineMap: CellToLineMap, lineToCellMap: LineToCellMap<TCellModel, TOutputModel>) {
         this.code = code;
         this.cellToLineMap = cellToLineMap;
         this.lineToCellMap = lineToCellMap;
@@ -23,13 +22,22 @@ export class Program {
 
     readonly code: string;
     readonly cellToLineMap: CellToLineMap;
-    readonly lineToCellMap: LineToCellMap;
+    readonly lineToCellMap: LineToCellMap<TCellModel, TOutputModel>;
+}
+
+export interface SliceableCell<TCellModel, TOutputModel> {
+    id: string;
+    executionCount: number;
+    hasError: boolean;
+    text: string;
+    model: TCellModel;
+    outputs: TOutputModel[];
 }
 
 /**
  * Builds programs from a list of executed cells.
  */
-export class ProgramBuilder {
+export class ProgramBuilder<TCellModel, TOutputModel> {
 
     /**
      * Construct a program builder.
@@ -41,7 +49,7 @@ export class ProgramBuilder {
     /**
      * Add cells to the program builder.
      */
-    add(...cells: ICodeCellModel[]) {
+    add(...cells: SliceableCell<TCellModel, TOutputModel>[]) {
         this._cells.push(...cells);
     }
 
@@ -49,10 +57,10 @@ export class ProgramBuilder {
      * Build a program from the list of cells. Program will include the cells' contents in
      * execution order. It will omit cells that raised errors (syntax or runtime).
      */
-    buildTo(cellId: string, executionCount?: number): Program {
+    buildTo(cellId: string, executionCount?: number): Program<TCellModel, TOutputModel> {
 
         let cellVersions = this._cells.filter((cell) => cell.id == cellId);
-        let lastCell: ICodeCellModel;
+        let lastCell: SliceableCell<TCellModel, TOutputModel>;
         if (executionCount) {
             lastCell = cellVersions.filter((cell) => cell.executionCount == executionCount)[0];
         } else {
@@ -62,27 +70,18 @@ export class ProgramBuilder {
         }
 
         let sortedCells = this._cells
-        .filter((cell) => cell.executionCount != null && cell.executionCount <= lastCell.executionCount)
-        .filter((cell) => {
-            // Don't include any cells that have caused an error.
-            if (cell.outputs) {
-                for (let outputIndex = 0; outputIndex < cell.outputs.length; outputIndex++) {
-                    let output = cell.outputs.get(outputIndex);
-                    if (output.type == "error") return false;
-                }
-            }
-            return true;
-        })
-        .sort((cell1, cell2) => cell1.executionCount - cell2.executionCount);
+            .filter(cell => cell.executionCount != null && cell.executionCount <= lastCell.executionCount)
+            .filter(cell => !cell.hasError)
+            .sort((cell1, cell2) => cell1.executionCount - cell2.executionCount);
 
         let code = "";
         let currentLine = 1;
-        let lineToCellMap: LineToCellMap = {};
+        let lineToCellMap: LineToCellMap<TCellModel, TOutputModel> = {};
         let cellToLineMap: CellToLineMap = {};
 
         sortedCells.forEach((cell) => {
 
-            let cellCode = cell.value.text;
+            let cellCode = cell.text;
 
             // Build a mapping from the cells to their lines.
             let cellLength = cellCode.split("\n").length;
@@ -98,19 +97,19 @@ export class ProgramBuilder {
             });
 
             // Accumulate the code.
-            code += (cell.value.text + "\n");
+            code += (cell.text + "\n");
             currentLine += cellLength;
         });
-        
+
         return new Program(code, cellToLineMap, lineToCellMap);
     }
 
-    build(): Program {
+    build(): Program<TCellModel, TOutputModel> {
         let lastCell = this._cells
-        .filter((cell) => cell.executionCount != null)
-        .sort((cell1, cell2) => cell1.executionCount - cell2.executionCount).pop();
+            .filter((cell) => cell.executionCount != null)
+            .sort((cell1, cell2) => cell1.executionCount - cell2.executionCount).pop();
         return this.buildTo(lastCell.id);
     }
 
-    private _cells: ICodeCellModel[];
+    private _cells: SliceableCell<TCellModel, TOutputModel>[];
 }

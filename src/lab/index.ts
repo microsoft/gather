@@ -6,7 +6,7 @@ import { Widget, PanelLayout } from '@phosphor/widgets';
 import { JupyterLab, JupyterLabPlugin } from '@jupyterlab/application';
 import { IClientSession, ICommandPalette } from '@jupyterlab/apputils';
 import { Clipboard } from '@jupyterlab/apputils';
-import { ICellModel, CodeCell, ICodeCellModel, CodeCellModel } from '@jupyterlab/cells';
+import { ICellModel, CodeCell, ICodeCellModel } from '@jupyterlab/cells';
 import { CodeEditor } from '@jupyterlab/codeeditor';
 import { CodeMirrorEditor } from '@jupyterlab/codemirror';
 import { IDocumentManager } from '@jupyterlab/docmanager';
@@ -14,16 +14,16 @@ import { DocumentRegistry } from '@jupyterlab/docregistry';
 import { FileEditor } from '@jupyterlab/fileeditor';
 import { NotebookPanel, INotebookModel, Notebook, INotebookTracker } from '@jupyterlab/notebook';
 import { IObservableList } from '@jupyterlab/observables';
-import { RenderMimeRegistry, standardRendererFactories as initialFactories } from '@jupyterlab/rendermime';
+import { RenderMimeRegistry, standardRendererFactories as initialFactories, IOutputModel } from '@jupyterlab/rendermime';
 
 import { ControlFlowGraph } from '../slicing/ControlFlowAnalysis';
 import { dataflowAnalysis, getDefs, DefType } from '../slicing/DataflowAnalysis';
 import { NumberSet, range, StringSet } from '../slicing/Set';
 import { ToolbarCheckbox } from './ToolboxCheckbox';
-import { ProgramBuilder } from './ProgramBuilder';
+import { ProgramBuilder, SliceableCell } from './ProgramBuilder';
 import * as python3 from '../parsers/python/python3';
 import { ILocation, ISyntaxNode } from '../parsers/python/python_parser';
-import { HistoryModel, HistoryViewer, buildHistoryModel, SlicedExecution, CellExecution } from '../packages/history';
+import { HistoryViewer, buildHistoryModel, SlicedExecution, CellExecution } from '../packages/history';
 
 import '../style/index.css';
 import { SlicerConfig } from '../slicing/SlicerConfig';
@@ -266,8 +266,22 @@ export class LiveCheckboxExtension implements DocumentRegistry.IWidgetExtension<
 /**
  * Create a new cell with the same ID and content.
  */
-function cloneCell(cell: ICellModel) {
-    return new CodeCellModel({ id: cell.id, cell: cell.toJSON() });
+function cloneCell(cell: ICodeCellModel): SliceableCell<ICodeCellModel, IOutputModel> {
+    const outputs: IOutputModel[] = [];
+    if (cell.outputs) {
+        for (let i = 0; i < cell.outputs.length; i++) {
+            outputs.push(cell.outputs.get(i));
+        }
+    }
+    return {
+        id: cell.id,
+        text: cell.value.text,
+        executionCount: cell.executionCount,
+        hasError: outputs.some(o => o.type === 'error'),
+        model: cell,
+        outputs: outputs
+    };
+    // return new CodeCellModel({ id: cell.id, cell: cell.toJSON() });
 }
 
 /**
@@ -283,7 +297,7 @@ type DefMarker = {
 class ExecutionLoggerExtension implements DocumentRegistry.IWidgetExtension<NotebookPanel, INotebookModel> {
 
     private executionLog = new Array<CellExecution>();
-    private programBuilder = new ProgramBuilder();
+    private programBuilder = new ProgramBuilder<ICodeCellModel, IOutputModel>();
     private _commands: CommandRegistry;
     private _defMarkers: DefMarker[] = [];
 
@@ -318,7 +332,7 @@ class ExecutionLoggerExtension implements DocumentRegistry.IWidgetExtension<Note
                 }
             });
         });
-        
+
         return new DisposableDelegate(() => {
         });
     }
@@ -331,16 +345,18 @@ class ExecutionLoggerExtension implements DocumentRegistry.IWidgetExtension<Note
     ): void {
         if (cellListChange.type === 'add') {
             const cellModel = cellListChange.newValues[0] as ICellModel;
+            if (cellModel.type !== 'code') { return; }
+            const codeCellModel = cellModel as ICodeCellModel;
             // When a cell is added, register for its state changes.
             cellModel.stateChanged.connect((changedCell, cellStateChange) => {
-                
+
                 // If cell has been executed
                 if (cellStateChange.name === 'executionCount' && cellStateChange.newValue) {
-                
+
                     // Clone the cell to take a snapshot of the text..
                     // executionCount may need to be cloned manually, as it won't be set yet
                     // (that's the event that's happening in this handler).
-                    let cellClone = cloneCell(cellModel);
+                    let cellClone = cloneCell(codeCellModel);
                     cellClone.executionCount = cellStateChange.newValue;
                     this.programBuilder.add(cellClone);
                     this.executionLog.push(new CellExecution(
@@ -361,24 +377,24 @@ class ExecutionLoggerExtension implements DocumentRegistry.IWidgetExtension<Note
                     if (ast && ast.code && ast.code.length) {
                         statements = ast.code;
                     } else {
-                        statements = [ ast.code ];
+                        statements = [ast.code];
                     }
                     statements.forEach((statement: ISyntaxNode) => {
                         let defs = getDefs(statement, { moduleNames: new StringSet() }, new SlicerConfig());
                         defs.items.filter((d) => [DefType.ASSIGN, DefType.MUTATION].indexOf(d.type) != -1)
-                        .forEach((d) => {
-                            let defMarker = doc.markText(
-                                { line: d.location.first_line - 1, ch: d.location.first_column },
-                                { line: d.location.last_line - 1, ch: d.location.last_column },
-                                { className: "jp-InputArea-editor-nametext" }
-                            );
-                            this._defMarkers.push({
-                                marker: defMarker,
-                                editor: editor,
-                                statement: statement,
-                                cellId: cell.model.id,
+                            .forEach((d) => {
+                                let defMarker = doc.markText(
+                                    { line: d.location.first_line - 1, ch: d.location.first_column },
+                                    { line: d.location.last_line - 1, ch: d.location.last_column },
+                                    { className: "jp-InputArea-editor-nametext" }
+                                );
+                                this._defMarkers.push({
+                                    marker: defMarker,
+                                    editor: editor,
+                                    statement: statement,
+                                    cellId: cell.model.id,
+                                });
                             });
-                        });
                     });
                 }
             });
@@ -399,45 +415,45 @@ class ExecutionLoggerExtension implements DocumentRegistry.IWidgetExtension<Note
      * Relevant line numbers are relative to the cell's start line (starting at first line = 0).
      */
     public slicedExecutions(cell: ICellModel, relevantLineNumbers?: NumberSet) {
-        
+
         return this.executionLog
-        .filter((execution) => execution.cellId == cell.id)
-        .map((execution) => {
+            .filter((execution) => execution.cellId == cell.id)
+            .map((execution) => {
 
-            // Slice the program leading up to that cell.
-            let program = this.programBuilder.buildTo(execution.cellId, execution.executionCount);
-            let sliceStartLines = new NumberSet();
-            let cellLines = program.cellToLineMap[execution.cellId][execution.executionCount];
-            let cellFirstLine = Math.min(...cellLines.items);
-            if (relevantLineNumbers) {
-                sliceStartLines.add(...relevantLineNumbers.items.map((l) => l + cellFirstLine));
-            } else {
-                sliceStartLines = sliceStartLines.union(cellLines);
-            }
-            let sliceLines = slice(program.code, sliceStartLines);
-
-            // Get the relative offsets of slice lines in each cell.
-            let relativeSliceLines: { [ cellId: string ]: { [ executionCount: number ] : NumberSet }} = {};
-            let cellOrder = new Array<ICodeCellModel>();
-            sliceLines.items.forEach((lineNumber) => {
-                let sliceCell = program.lineToCellMap[lineNumber];
-                let sliceCellLines = program.cellToLineMap[sliceCell.id][sliceCell.executionCount];
-                let sliceCellStart = Math.min(...sliceCellLines.items);
-                if (cellOrder.indexOf(sliceCell) == -1) {
-                    cellOrder.push(sliceCell);
+                // Slice the program leading up to that cell.
+                let program = this.programBuilder.buildTo(execution.cellId, execution.executionCount);
+                let sliceStartLines = new NumberSet();
+                let cellLines = program.cellToLineMap[execution.cellId][execution.executionCount];
+                let cellFirstLine = Math.min(...cellLines.items);
+                if (relevantLineNumbers) {
+                    sliceStartLines.add(...relevantLineNumbers.items.map((l) => l + cellFirstLine));
+                } else {
+                    sliceStartLines = sliceStartLines.union(cellLines);
                 }
-                if (!relativeSliceLines[sliceCell.id]) relativeSliceLines[sliceCell.id] = {};
-                if (!relativeSliceLines[sliceCell.id][sliceCell.executionCount]) {
-                    relativeSliceLines[sliceCell.id][sliceCell.executionCount] = new NumberSet();
-                }
-                relativeSliceLines[sliceCell.id][sliceCell.executionCount].add(lineNumber - sliceCellStart);
-            });
+                let sliceLines = slice(program.code, sliceStartLines);
 
-            let cellSlices = cellOrder.map((sliceCell): [ICodeCellModel, NumberSet] => {
-                return [sliceCell, relativeSliceLines[sliceCell.id][sliceCell.executionCount]];
-            });
-            return new SlicedExecution(execution.executionTime, cellSlices);
-        })
+                // Get the relative offsets of slice lines in each cell.
+                let relativeSliceLines: { [cellId: string]: { [executionCount: number]: NumberSet } } = {};
+                let cellOrder = new Array<SliceableCell<ICodeCellModel, IOutputModel>>();
+                sliceLines.items.forEach((lineNumber) => {
+                    let sliceCell = program.lineToCellMap[lineNumber];
+                    let sliceCellLines = program.cellToLineMap[sliceCell.id][sliceCell.executionCount];
+                    let sliceCellStart = Math.min(...sliceCellLines.items);
+                    if (cellOrder.indexOf(sliceCell) == -1) {
+                        cellOrder.push(sliceCell);
+                    }
+                    if (!relativeSliceLines[sliceCell.id]) relativeSliceLines[sliceCell.id] = {};
+                    if (!relativeSliceLines[sliceCell.id][sliceCell.executionCount]) {
+                        relativeSliceLines[sliceCell.id][sliceCell.executionCount] = new NumberSet();
+                    }
+                    relativeSliceLines[sliceCell.id][sliceCell.executionCount].add(lineNumber - sliceCellStart);
+                });
+
+                let cellSlices = cellOrder.map((sliceCell): [SliceableCell<ICodeCellModel, IOutputModel>, NumberSet] => {
+                    return [sliceCell, relativeSliceLines[sliceCell.id][sliceCell.executionCount]];
+                });
+                return new SlicedExecution(execution.executionTime, cellSlices);
+            })
     }
 }
 
@@ -596,10 +612,10 @@ function activateExtension(app: JupyterLab, palette: ICommandPalette, notebooks:
     }
 
     addCommand('livecells:gatherToClipboard', 'Gather this result to the clipboard', (options: JSONObject) => {
-        
+
         const panel = notebooks.currentWidget;
         const SHOULD_SLICE_CELLS = true;
-        
+
         // Choose cell from options or the active cell.
         let chosenCell;
         if (options.cellId) {
@@ -624,22 +640,21 @@ function activateExtension(app: JupyterLab, palette: ICommandPalette, notebooks:
             for (let i = 0; i < cellLength; i++) relevantLineNumbers.add(i);
         }
 
-        let slicedExecutions: SlicedExecution[] = executionLogger.slicedExecutions(
-            chosenCell.model, relevantLineNumbers);
+        let slicedExecutions = executionLogger.slicedExecutions(chosenCell.model, relevantLineNumbers);
         let latestSlicedExecution = slicedExecutions.pop();
         let cells = latestSlicedExecution.cellSlices
-        .map(([cell, lines]) => {
-            let slicedCell = cell;
-            if (SHOULD_SLICE_CELLS) {
-                slicedCell = cloneCell(cell);
-                slicedCell.value.text = 
-                    slicedCell.value.text.split("\n")
-                    .filter((_, i) => lines.contains(i))
-                    .join("\n");
-            }
-            return slicedCell;
-        });
-        copyCellsToClipboard(cells);
+            .map(([cell, lines]) => {
+                let slicedCell = cell;
+                if (SHOULD_SLICE_CELLS) {
+                    slicedCell = cloneCell(cell.model);
+                    slicedCell.text =
+                        slicedCell.text.split("\n")
+                            .filter((_, i) => lines.contains(i))
+                            .join("\n");
+                }
+                return slicedCell;
+            });
+        copyCellsToClipboard(cells.map(c => c.model));
         notificationExtension.showMessage("Copied cells to clipboard. Right-click or type 'V' to paste.");
 
     });
@@ -656,7 +671,7 @@ function activateExtension(app: JupyterLab, palette: ICommandPalette, notebooks:
                 const newModel = widget.notebook.model;
                 setTimeout(() => {
                     newModel.cells.remove(0); // remote the default blank cell                        
-                    newModel.cells.pushAll(cells);
+                    newModel.cells.pushAll(cells.map(c => c.model));
                 }, 100);
             });
         }
@@ -670,7 +685,7 @@ function activateExtension(app: JupyterLab, palette: ICommandPalette, notebooks:
             let slice = executionLogger.sliceForLatestExecution(activeCell.model);
             let cells = slice.cellSlices.map(([cell, _]) => cell);
             let scriptText = cells
-                .map((cell) => cell.value.text)
+                .map((cell) => cell.text)
                 .reduce((buffer, cellText) => { return buffer + cellText + "\n" }, "");
 
             // TODO: Add back in slice based on fine-grained selection within the cell:
@@ -692,10 +707,10 @@ function activateExtension(app: JupyterLab, palette: ICommandPalette, notebooks:
         const panel = notebooks.currentWidget;
         if (panel && panel.notebook && panel.notebook.activeCell.model.type === 'code') {
             const activeCell = panel.notebook.activeCell;
-            let slicedExecutions: SlicedExecution[] = executionLogger.slicedExecutions(activeCell.model);
-            let historyModel: HistoryModel = buildHistoryModel(activeCell.model.id, slicedExecutions);
+            let slicedExecutions = executionLogger.slicedExecutions(activeCell.model);
+            let historyModel = buildHistoryModel(activeCell.model.id, slicedExecutions);
 
-            let widget: HistoryViewer = new HistoryViewer({
+            let widget = new HistoryViewer({
                 model: historyModel,
                 rendermime: new RenderMimeRegistry({ initialFactories }),
                 editorFactory: notebooks.activeCell.contentFactory.editorFactory
