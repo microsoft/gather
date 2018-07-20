@@ -1,9 +1,12 @@
+declare var require: any
 import { HistoryModel } from './model';
-import { RevisionModel } from '../revision';
-import { CharacterRange, CodeDiffModel, CodeVersionModel } from '../codeversion';
-import { SlicedCellModel } from '../slicedcell';
+import { RevisionModel } from '../revision/model';
+import { CodeVersionModel } from '../codeversion/model';
+import { CharacterRange } from '../codeversion/characterrange';
+import { CodeDiffModel } from '../codeversion/codediff';
+import { SlicedCellModel } from '../slicedcell/model';
 import { NumberSet } from '../../slicing/Set';
-import { SliceableCell } from '../../lab/ProgramBuilder';
+import { ICell, IOutputterCell, instanceOfIOutputterCell } from '../cell/model';
 let diff_match_patch = require('./diff-match-patch').diff_match_patch;
 
 /**
@@ -20,10 +23,10 @@ export class CellExecution {
 /**
  * A slice over a version of executed code.
  */
-export class SlicedExecution<TCellModel, TOutputModel> {
+export class SlicedExecution {
     constructor(
         public executionTime: Date,
-        public cellSlices: Array<[SliceableCell<TCellModel, TOutputModel>, NumberSet]>
+        public cellSlices: Array<[ICell, NumberSet]>
     ) { }
 }
 
@@ -72,16 +75,16 @@ export function diffMatchPatchDiffToCodeDiff(diffMatchPatchDiff: Array<[number, 
 /**
  * Build a history model of how a cell was computed across notebook snapshots.
  */
-export function buildHistoryModel<TCellModel, TOutputModel>(
+export function buildHistoryModel<TOutputModel>(
     selectedCellId: string,
-    executionVersions: SlicedExecution<TCellModel, TOutputModel>[]
+    executionVersions: SlicedExecution[]
 ): HistoryModel<TOutputModel> {
 
     // All cells in past revisions will be compared to those in the current revision. For the most
     // recent version, save a mapping from cells' IDs to their content, so we can look them up to
     // make comparisons between versions of cells.
     let lastestVersion = executionVersions[executionVersions.length - 1];
-    let latestCellVersions: { [cellId: string]: SliceableCell<TCellModel, TOutputModel> } = {};
+    let latestCellVersions: { [cellId: string]: ICell } = {};
     lastestVersion.cellSlices.forEach(([cellModel, _]) => {
         latestCellVersions[cellModel.id] = cellModel;
     });
@@ -96,19 +99,19 @@ export function buildHistoryModel<TCellModel, TOutputModel>(
         let slicedCellModels: Array<SlicedCellModel> = new Array<SlicedCellModel>();
         executionVersion.cellSlices.forEach(function (cellSlice) {
 
-            let cellModel = cellSlice[0];
+            let cell = cellSlice[0];
             let sliceLines = cellSlice[1].items.sort((a, b) => (a - b));
 
-            let recentCellVersion = latestCellVersions[cellModel.id];
+            let recentCellVersion = latestCellVersions[cell.id];
             let latestText: string = "";
             if (recentCellVersion) {
                 latestText = recentCellVersion.text;
             }
 
-            let thisVersionText: string = cellModel.text;
+            let thisVersionText: string = cell.text;
             let diff: Array<[number, string]> = diffMatchPatch.diff_main(latestText, thisVersionText);
             diffMatchPatch.diff_cleanupSemantic(diff);
-            let cellDiffModel: CodeDiffModel = diffMatchPatchDiffToCodeDiff(diff);
+            let cellDiff: CodeDiffModel = diffMatchPatchDiffToCodeDiff(diff);
 
             let sliceRanges = [];
             let cellLines = thisVersionText.split('\n')
@@ -121,28 +124,29 @@ export function buildHistoryModel<TCellModel, TOutputModel>(
                 lineFirstCharIndex += lineLength;
             }
 
-            let slicedCellModel: SlicedCellModel = new SlicedCellModel({
-                cellId: cellModel.id,
-                executionCount: cellModel.executionCount,
+            let slicedCell: SlicedCellModel = new SlicedCellModel({
+                cellId: cell.id,
+                executionCount: cell.executionCount,
                 sourceCode: thisVersionText,
-                diff: cellDiffModel,
+                diff: cellDiff,
                 cellInSlice: (sliceLines.length > 0),
                 sliceRanges: sliceRanges
             });
-            slicedCellModels.push(slicedCellModel);
+            slicedCellModels.push(slicedCell);
         })
 
         let results: TOutputModel[] = null;
-        let selectedCellModel: SliceableCell<TCellModel, TOutputModel> = null;
+        let selectedCell: ICell = null;
         executionVersion.cellSlices.map(cs => cs[0]).forEach(function (cellModel) {
             if (cellModel.id == selectedCellId) {
-                selectedCellModel = cellModel;
+                selectedCell = cellModel;
             }
         });
-        if (selectedCellModel) {
-            if (selectedCellModel.outputs &&
-                selectedCellModel.outputs.length > 0) {
-                results = selectedCellModel.outputs;
+        if (selectedCell && instanceOfIOutputterCell(selectedCell)) {
+            let selectedOutputterCell = selectedCell as IOutputterCell<TOutputModel>;
+            if (selectedCell.outputs &&
+                selectedCell.outputs.length > 0) {
+                results = selectedOutputterCell.outputs;
             }
         }
 

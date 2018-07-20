@@ -3,11 +3,12 @@ import Jupyter = require('base/js/namespace');
 import { ControlFlowGraph } from "../slicing/ControlFlowAnalysis";
 import { dataflowAnalysis } from '../slicing/DataflowAnalysis';
 import * as python3 from '../parsers/python/python3';
-import { CodeCell, Output } from 'base/js/namespace';
-import { ProgramBuilder, SliceableCell } from '../lab/ProgramBuilder';
+import { CodeCell } from 'base/js/namespace'; // also import: "Output"
+import { ProgramBuilder } from '../slicing/ProgramBuilder';
 import { NumberSet, range } from '../slicing/Set';
 import { ILocation } from '../parsers/python/python_parser';
 import { SlicedExecution } from '../packages/history/compute';
+import { ICell } from '../packages/cell/model';
 
 
 export function small_test(code: string) {
@@ -62,7 +63,7 @@ function slice(code: string, relevantLineNumbers: NumberSet) {
 
 class ExecutionLogger {
     private executionLog = new Array<CellExecution>();
-    private programBuilder = new ProgramBuilder<CodeCell, Jupyter.Output>();
+    private programBuilder = new ProgramBuilder();
 
     constructor() {
         Jupyter.notebook.events.on('execute.CodeCell', (evt: Jupyter.Event, data: { cell: CodeCell }) => {
@@ -71,9 +72,9 @@ class ExecutionLogger {
                 id: cell.cell_id,
                 executionCount: cell.input_prompt_number,
                 text: cell.code_mirror.getValue(),
+                isCode: true,
                 hasError: false, // 💩 FIXME
-                model: cell,
-                outputs: cell.output_area.outputs
+                copy: () => null
             });
             this.executionLog.push(new CellExecution(
                 cell.cell_id, cell.input_prompt_number, new Date()));
@@ -113,7 +114,7 @@ class ExecutionLogger {
 
                 // Get the relative offsets of slice lines in each cell.
                 let relativeSliceLines: { [cellId: string]: { [executionCount: number]: NumberSet } } = {};
-                let cellOrder = new Array<SliceableCell<CodeCell, Output>>();
+                let cellOrder = new Array<ICell>();
                 sliceLines.items.forEach(lineNumber => {
                     let sliceCell = program.lineToCellMap[lineNumber];
                     let sliceCellLines = program.cellToLineMap[sliceCell.id][sliceCell.executionCount];
@@ -128,7 +129,7 @@ class ExecutionLogger {
                     relativeSliceLines[sliceCell.id][sliceCell.executionCount].add(lineNumber - sliceCellStart);
                 });
 
-                let cellSlices = cellOrder.map((sliceCell): [SliceableCell<CodeCell, Output>, NumberSet] => {
+                let cellSlices = cellOrder.map((sliceCell): [ICell, NumberSet] => {
                     return [sliceCell, relativeSliceLines[sliceCell.id][sliceCell.executionCount]];
                 });
                 return new SlicedExecution(execution.executionTime, cellSlices);

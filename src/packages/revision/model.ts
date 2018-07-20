@@ -1,4 +1,4 @@
-import { ICodeVersionModel } from '../codeversion';
+import { ICodeVersionModel } from '../codeversion/model';
 
 /**
  * The definition of a model object for a code version.

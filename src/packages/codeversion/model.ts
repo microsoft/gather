@@ -1,4 +1,4 @@
-import { ISlicedCellModel } from '../slicedcell';
+import { ISlicedCellModel } from '../slicedcell/model';
 
 /**
  * The definition of a model object for a source code revision.

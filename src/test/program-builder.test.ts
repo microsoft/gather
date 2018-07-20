@@ -1,15 +1,16 @@
 import { expect } from "chai";
-import { ProgramBuilder, SliceableCell } from "../lab/ProgramBuilder";
+import { ProgramBuilder } from "../slicing/ProgramBuilder";
+import { ICell } from '../packages/cell';
 
 
 describe('program builder', () => {
 
-    function createCell(id: string, executionCount: number, ...codeLines: string[]): SliceableCell<{}, {}> {
+    function createCell(id: string, executionCount: number, ...codeLines: string[]): ICell {
         let text = codeLines.join("\n");
-        return { id, executionCount, text: text, hasError: false, model: {}, outputs: [] };
+        return { id, executionCount, text: text, hasError: false, isCode: true, copy: () => null };
     }
 
-    let programBuilder: ProgramBuilder<{}, {}>;
+    let programBuilder: ProgramBuilder;
     beforeEach(() => {
         programBuilder = new ProgramBuilder();
     });
@@ -75,7 +76,6 @@ describe('program builder', () => {
     it('skips cells with errors', () => {
         let badCell = createCell("idE", 2, "print(bad_name)");
         badCell.hasError = true;
-        badCell.outputs = [{}];
         programBuilder.add(
             createCell("id1", 1, "print(1)"),
             badCell,

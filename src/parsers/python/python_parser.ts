@@ -367,7 +367,6 @@ function flatten<T>(arrayArrays: T[][]): T[] {
     return [].concat(...arrayArrays);
 }
 
-
 /**
  * Listener for pre-order traversal of the parse tree.
  */
