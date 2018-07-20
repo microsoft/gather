@@ -74,6 +74,7 @@ describe('program builder', () => {
      * error, though this will probably require us to rewrite the code. */
     it('skips cells with errors', () => {
         let badCell = createCell("idE", 2, "print(bad_name)");
+        badCell.hasError = true;
         badCell.outputs = [{}];
         programBuilder.add(
             createCell("id1", 1, "print(1)"),

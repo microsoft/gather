@@ -98,7 +98,6 @@ export class ProgramBuilder<TCellModel, TOutputModel> {
             });
 
             // Accumulate the code.
-            code += (cell.text + "\n");
             let cellText = this._magicsRewriter.rewrite(cell.text);
             code += (cellText + "\n");
             currentLine += cellLength;
