@@ -1,4 +1,5 @@
 import { NumberSet } from "../slicing/Set";
+import { MagicsRewriter } from "../slicing/MagicsRewriter";
 
 /**
  * Maps to find out what line numbers over a program correspond to what cells.
@@ -98,6 +99,8 @@ export class ProgramBuilder<TCellModel, TOutputModel> {
 
             // Accumulate the code.
             code += (cell.text + "\n");
+            let cellText = this._magicsRewriter.rewrite(cell.text);
+            code += (cellText + "\n");
             currentLine += cellLength;
         });
 
@@ -112,4 +115,5 @@ export class ProgramBuilder<TCellModel, TOutputModel> {
     }
 
     private _cells: SliceableCell<TCellModel, TOutputModel>[];
+    private _magicsRewriter: MagicsRewriter = new MagicsRewriter();
 }
