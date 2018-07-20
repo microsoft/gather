@@ -1,8 +1,8 @@
 import { PanelLayout } from '@phosphor/widgets';
 import { Widget } from '@phosphor/widgets';
 import { CodeEditor } from '@jupyterlab/codeeditor';
-import { OutputArea } from '@jupyterlab/outputarea';
-import { RenderMimeRegistry, IOutputModel } from '@jupyterlab/rendermime';
+import { OutputArea, OutputAreaModel } from '@jupyterlab/outputarea';
+import { RenderMimeRegistry } from '@jupyterlab/rendermime';
 import { IRevisionModel } from './model';
 import { CodeVersion } from '../codeversion';
 
@@ -19,11 +19,11 @@ const REVISION_HEADER_CLASS = 'jp-Revision-header';
 /**
  * A widget for showing revision of an execution.
  */
-export class Revision extends Widget {
+export class Revision<TOutputModel> extends Widget {
     /**
      * Construct a revision.
      */
-    constructor(options: Revision.IOptions) {   
+    constructor(options: Revision.IOptions<TOutputModel>) {   
         super();
         this.addClass(REVISION_CLASS);
         let model = (this.model = options.model);
@@ -62,16 +62,18 @@ export class Revision extends Widget {
             model: model.source,
             editorFactory: editorFactory
         }));
-        layout.addWidget(new OutputArea({
-            model: model.results,
-            rendermime: rendermime
-        }));
+        if (model.results instanceof OutputAreaModel) {
+            layout.addWidget(new OutputArea({
+                model: model.results,
+                rendermime: rendermime
+            }));
+        }
     }
 
     /**
      * The model used by the widget.
      */
-    readonly model: IRevisionModel<IOutputModel>;
+    readonly model: IRevisionModel<TOutputModel>;
 
     /**
      * The rendermime instance used by the widget.
@@ -91,11 +93,11 @@ export namespace Revision {
     /**
      * The options used to create a `Revision`.
      */
-    export interface IOptions {
+    export interface IOptions<TOutputModel> {
         /**
          * The model used by the widget.
          */
-        model: IRevisionModel<IOutputModel>;
+        model: IRevisionModel<TOutputModel>;
 
         /**
          * The mime renderer for this widget.

@@ -7,7 +7,7 @@ import { CodeCell, Output } from 'base/js/namespace';
 import { ProgramBuilder, SliceableCell } from '../lab/ProgramBuilder';
 import { NumberSet, range } from '../slicing/Set';
 import { ILocation } from '../parsers/python/python_parser';
-import { SlicedExecution } from '../packages/history';
+import { SlicedExecution } from '../packages/history/compute';
 
 
 export function small_test(code: string) {
@@ -152,7 +152,7 @@ function gatherToNotebook() {
                 const url: any = Jupyter.notebook.base_url +
                     "/notebooks/" + encodeURIComponent(data.path) +
                     "/kernel_name=python3";
-                w.location = url;
+                w.location.href = url;
             });
     }
 }
