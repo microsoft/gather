@@ -132,6 +132,15 @@ exponent                [e|E][\+|\-]({digit})+
 
 <INLINE>\#[^\n]*        /* skip comments */
 <INLINE>[\ \t\f]+       /* skip whitespace, separate tokens */
+/* floatnumber rules should go before operators. Otherwise .\d+ will never be read as a floating
+ * point number, the '.' will only be used for property accesses. */
+<INLINE>{floatnumber}   return 'NUMBER'
+<INLINE>{bininteger}    %{  
+                            var i = yytext.substr(2); // binary val
+                            yytext = 'parseInt("'+i+'",2)'
+                            return 'NUMBER'
+                        %}
+<INLINE>{integer}       return 'NUMBER'
 <INLINE>{operators}     %{
                             if ( yytext == '{' || yytext == '[' || yytext == '(' ) {
                                 brackets_count += 1
@@ -140,13 +149,6 @@ exponent                [e|E][\+|\-]({digit})+
                             }
                             return yytext 
                         %}
-<INLINE>{floatnumber}   return 'NUMBER'
-<INLINE>{bininteger}    %{  
-                            var i = yytext.substr(2); // binary val
-                            yytext = 'parseInt("'+i+'",2)'
-                            return 'NUMBER'
-                        %}
-<INLINE>{integer}       return 'NUMBER'
 <INLINE>{longstring}    %{
                             // escape string and convert to double quotes
                             // http://stackoverflow.com/questions/770523/escaping-strings-in-javascript
