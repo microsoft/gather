@@ -17,7 +17,7 @@ export class ExecutionLogSlicer {
      */
     public logExecution(cell: ICell) {
         this.programBuilder.add(cell);
-        this.executionLog.push(new CellExecution(cell.id, cell.executionCount, new Date()));
+        this.executionLog.push(new CellExecution(cell.id, cell.executionCount, new Date(), cell.hasError));
     }
 
     /**
@@ -37,9 +37,10 @@ export class ExecutionLogSlicer {
 
         return this.executionLog
             .filter((execution) => execution.cellId == cell.id)
+            .filter((execution) => !execution.hasError)
             .map((execution) => {
 
-                // Slice the program leading up to that cell.
+                // Slice the program leading up to that cell.)
                 let program = this.programBuilder.buildTo(execution.cellId, execution.executionCount);
                 let sliceStartLines = new NumberSet();
                 let cellLines = program.cellToLineMap[execution.cellId][execution.executionCount];

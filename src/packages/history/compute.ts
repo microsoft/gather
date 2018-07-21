@@ -16,7 +16,8 @@ export class CellExecution {
     constructor(
         public cellId: string,
         public executionCount: number,
-        public executionTime: Date
+        public executionTime: Date,
+        public hasError: boolean
     ) { }
 }
 
