@@ -5,31 +5,9 @@ import { CodeVersionModel } from '../codeversion/model';
 import { CharacterRange } from '../codeversion/characterrange';
 import { CodeDiffModel } from '../codeversion/codediff';
 import { SlicedCellModel } from '../slicedcell/model';
-import { NumberSet } from '../../slicing/Set';
+import { SlicedExecution } from '../../slicing/ExecutionSlicer';
 import { ICell, IOutputterCell, instanceOfIOutputterCell } from '../cell/model';
 let diff_match_patch = require('./diff-match-patch').diff_match_patch;
-
-/**
- * A record of when a cell was executed.
- */
-export class CellExecution {
-    constructor(
-        public cellId: string,
-        public executionCount: number,
-        public executionTime: Date,
-        public hasError: boolean
-    ) { }
-}
-
-/**
- * A slice over a version of executed code.
- */
-export class SlicedExecution {
-    constructor(
-        public executionTime: Date,
-        public cellSlices: Array<[ICell, NumberSet]>
-    ) { }
-}
 
 /**
  * Object instance for text diffing library.

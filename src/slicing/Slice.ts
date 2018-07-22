@@ -7,7 +7,6 @@ import { ICell } from "../packages/cell";
 
 export enum DataflowDirection { Forward, Backward };
 
-
 function lineRange(loc: ILocation): NumberSet {
     return range(loc.first_line, loc.last_line + (loc.last_column ? 1 : 0));
 }

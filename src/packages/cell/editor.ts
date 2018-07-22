@@ -2,7 +2,7 @@
  * Helpers for marking up CodeMirror editors.
  */
 import { ISyntaxNode } from "../../parsers/python/python_parser";
-import * as python3 from '../../parsers/python/python3';
+import { parse } from '../../parsers/python/python3';
 import { DefType, getDefs } from "../../slicing/DataflowAnalysis";
 import { StringSet } from "../../slicing/Set";
 import { SlicerConfig } from "../../slicing/SlicerConfig";
@@ -35,7 +35,7 @@ export class MarkerManager {
         let cleanedCode = rewriter.rewrite(code);
 
         // Parse the code, get the statements.
-        const ast = python3.parse(cleanedCode + "\n");
+        const ast = parse(cleanedCode + "\n");
         let statements = [];
         if (ast && ast.code && ast.code.length) {
             statements = ast.code;

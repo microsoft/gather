@@ -1,8 +1,29 @@
 import { ICell } from "../packages/cell";
 import { NumberSet } from "./Set";
-import { CellExecution, SlicedExecution } from "../packages/history";
 import { ProgramBuilder } from "./ProgramBuilder";
 import { slice } from "./Slice";
+
+/**
+ * A record of when a cell was executed.
+ */
+export class CellExecution {
+    constructor(
+        public cellId: string,
+        public executionCount: number,
+        public executionTime: Date,
+        public hasError: boolean
+    ) { }
+}
+
+/**
+ * A slice over a version of executed code.
+ */
+export class SlicedExecution {
+    constructor(
+        public executionTime: Date,
+        public cellSlices: Array<[ICell, NumberSet]>
+    ) { }
+}
 
 /**
  * Makes slice on a log of executed cells.
@@ -23,7 +44,7 @@ export class ExecutionLogSlicer {
     /**
      * Get slice for the latest execution of a cell.
      */
-    public sliceLatestExecution(cell: ICell) {
+    public sliceLatestExecution(cell: ICell): SlicedExecution {
         // XXX: This computes more than it has to, performing a slice on each execution of a cell
         // instead of just its latest computation. Optimize later if necessary.
         return this.sliceAllExecutions(cell).pop();
@@ -33,7 +54,7 @@ export class ExecutionLogSlicer {
      * Get slices of the necessary code for all executions of a cell.
      * Relevant line numbers are relative to the cell's start line (starting at first line = 0).
      */
-    public sliceAllExecutions(cell: ICell, relevantLineNumbers?: NumberSet) {
+    public sliceAllExecutions(cell: ICell, relevantLineNumbers?: NumberSet): SlicedExecution[] {
 
         return this.executionLog
             .filter((execution) => execution.cellId == cell.id)

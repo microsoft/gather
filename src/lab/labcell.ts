@@ -40,7 +40,7 @@ export class LabCell implements IOutputterCell<IOutputModel> {
     }
 
     set executionCount(count: number) {
-        this._model.executionCount = this.executionCount;
+        this._model.executionCount = count;
     }
 
     get isCode(): boolean {
