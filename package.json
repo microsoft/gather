@@ -12,6 +12,7 @@
     "build_parser": "node ./node_modules/jison/lib/cli.js --outfile src/parsers/python/python3.js src/parsers/python/python3.jison",
     "build": "tsc",
     "build_nb_extension": "npm run build && npx webpack",
+    "watch_nb_extension": "npx webpack -w",
     "install_nb_extension": "jupyter nbextension install dist && jupyter nbextension enable dist/gather",
     "prepack": "npm run clean && npm run build_parser && npm run build",
     "clean": "rimraf lib",

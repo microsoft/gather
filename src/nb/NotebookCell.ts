@@ -1,16 +1,21 @@
 import { IOutputterCell } from "../packages/cell";
-// import { ICodeCellModel, CodeCellModel } from "@jupyterlab/cells";
-import { CodeCell, Output } from 'base/js/namespace'; // also import: "Output"
+import { CodeCell, Output, notebook } from 'base/js/namespace';
 
 /**
  * Create a new cell with the same ID and content.
  */
-/*
-export function copyICodeCellModel(cell: ICodeCellModel): ICodeCellModel {
-    // For notebook implementation, replace the LabCell types with NotebookCell types.
-    return new CodeCellModel({ id: cell.id, cell: cell.toJSON() });
+export function copyCodeCell(cell: CodeCell): CodeCell {
+    let cellClone = new CodeCell(cell.kernel, {
+        config: notebook.config,
+        notebook: cell.notebook,
+        events: cell.events,
+        keyboard_manager: cell.keyboard_manager,
+        tooltip: cell.tooltip
+    });
+    cellClone.fromJSON(cell.toJSON());
+    cellClone.cell_id = cell.cell_id;
+    return cellClone;
 }
-*/
 
 /**
  * Implementation of SliceableCell for Jupyter Lab. Wrapper around the ICodeCellModel.
@@ -66,14 +71,7 @@ export class NotebookCell implements IOutputterCell<Output> {
 
     copy(): NotebookCell {
         // TODO: do a better job of this copy. At the list, code mirror shouldn't be shared.
-        return new NotebookCell({
-            cell_id: this._model.cell_id,
-            cell_type: this._model.cell_type,
-            input_prompt_number: this._model.input_prompt_number,
-            code_mirror: this._model.code_mirror,
-            output_area: this._model.output_area,
-            notebook: this._model.notebook
-        });
+        return new NotebookCell(copyCodeCell(this._model));
     }
 
     type: "outputter";

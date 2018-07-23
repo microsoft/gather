@@ -6,7 +6,6 @@ import { IOutputModel } from "@jupyterlab/rendermime";
  * Create a new cell with the same ID and content.
  */
 export function copyICodeCellModel(cell: ICodeCellModel): ICodeCellModel {
-    // For notebook implementation, replace the LabCell types with NotebookCell types.
     return new CodeCellModel({ id: cell.id, cell: cell.toJSON() });
 }
 

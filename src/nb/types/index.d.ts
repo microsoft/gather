@@ -11,6 +11,7 @@ declare namespace Jupyter {
         get_selected_cell(): Cell;
         events: Events;
         contents: Contents;
+        config: Config;
     }
 
     interface Dialog {
@@ -39,6 +40,8 @@ declare namespace Jupyter {
         cell_type: 'code' | 'markdown';
         notebook: Notebook;
         code_mirror: CodeMirror;
+        events: Events;
+        keyboard_manager: KeyboardManager;
     }
 
     interface Output {
@@ -50,9 +53,33 @@ declare namespace Jupyter {
     }
 
     interface CodeCell extends Cell {
+        cell_id: string;
         cell_type: 'code';
         input_prompt_number: number;
         output_area: OutputArea;
+        kernel: Kernel;
+        notebook: Notebook;
+        tooltip: Tooltip;
+        fromJSON: (data: JSON) => void;
+        toJSON: () => JSON;
+    }
+    interface CodeCellConstructor {
+        new(kernel: Kernel, options: CodeCellOptions): CodeCell;
+    }
+    var CodeCell: CodeCellConstructor;
+
+    interface Kernel {}
+
+    interface Tooltip {}
+
+    interface Config {}
+
+    interface CodeCellOptions {
+        events: Events,
+        config: Config,
+        keyboard_manager: KeyboardManager,
+        notebook: Notebook,
+        tooltip: Tooltip
     }
 
     interface Events {
@@ -63,16 +90,18 @@ declare namespace Jupyter {
         new_untitled(path: string, options: { ext?: string, type?: string }): Promise<{ path: string }>;
     }
 
-    interface JupyterStatic {
-        contents: Contents;
-        notebook: Notebook;
-        dialog: Dialog;
-        keyboard_manager: KeyboardManager;
+    interface ShellReplyContent {
+        execution_count: number;
+        status: string;
     }
 
+    var contents: Contents;
+    var notebook: Notebook;
+    var dialog: Dialog;
+    var keyboard_manager: KeyboardManager;
 }
 
-declare const Jupyter: Jupyter.JupyterStatic;
+// declare const Jupyter: Jupyter.JupyterStatic;
 
 declare module "base/js/namespace" {
     export = Jupyter;

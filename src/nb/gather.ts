@@ -1,11 +1,11 @@
 import $ = require('jquery');
 import Jupyter = require('base/js/namespace');
+import { CodeCell } from 'base/js/namespace';
 import { ControlFlowGraph } from "../slicing/ControlFlowAnalysis";
 import { dataflowAnalysis } from '../slicing/DataflowAnalysis';
 import * as python3 from '../parsers/python/python3';
-import { CodeCell } from 'base/js/namespace';
 import { ExecutionLogSlicer } from '../slicing/ExecutionSlicer';
-import { NotebookCell } from './NotebookCell';
+import { NotebookCell, copyCodeCell } from './NotebookCell';
 
 
 export function small_test(code: string) {
@@ -15,25 +15,25 @@ export function small_test(code: string) {
     console.log('dfa', dfa);
 }
 
-
-/**
- * A record of when a cell was executed.
- */
-export class CellExecution {
-    constructor(
-        public cellId: string,
-        public executionCount: number,
-        public executionTime: Date
-    ) { }
-}
-
 class ExecutionLogger {
     readonly executionSlicer = new ExecutionLogSlicer();
 
     constructor() {
-        Jupyter.notebook.events.on('execute.CodeCell', (evt: Jupyter.Event, data: { cell: CodeCell }) => {
-            console.log("Just executed cell");
-            const cell = new NotebookCell(data.cell);
+        /**
+         * Potentially relevant devents:
+         * - execute.CodeCell (start of execution)
+         * - finished_execute.CodeCell (end of execution, before input prompt is updated)
+         * - shell_reply.Kernel (end of execution, in kernel)
+         */
+        let lastExecutionCount: number;
+        Jupyter.notebook.events.on('shell_reply.Kernel', (
+            _: Jupyter.Event, data: { reply: { content: Jupyter.ShellReplyContent }}) => {
+            lastExecutionCount = data.reply.content.execution_count;
+        });
+        Jupyter.notebook.events.on('finished_execute.CodeCell', (_: Jupyter.Event, data: { cell: CodeCell }) => {
+            let cellClone = copyCodeCell(data.cell);
+            cellClone.input_prompt_number = lastExecutionCount;
+            const cell = new NotebookCell(cellClone);
             this.executionSlicer.logExecution(cell);
         });
     }
@@ -52,7 +52,7 @@ function gatherToNotebook() {
         // Create a new notebook
         const w = window.open('', '_blank');
         Jupyter.contents.new_untitled('', { type: 'notebook' })
-            .then(data => {
+            .then((data: { [ path: string ]: string }) => {
                 const url: any = Jupyter.notebook.base_url +
                     "/notebooks/" + encodeURIComponent(data.path) +
                     "/kernel_name=python3";
