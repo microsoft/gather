@@ -1,29 +1,23 @@
 import $ = require('jquery');
 import Jupyter = require('base/js/namespace');
-import { CodeCell } from 'base/js/namespace';
-import { ControlFlowGraph } from "../slicing/ControlFlowAnalysis";
-import { dataflowAnalysis } from '../slicing/DataflowAnalysis';
-import * as python3 from '../parsers/python/python3';
+import { CodeCell, notification_area } from 'base/js/namespace';
 import { ExecutionLogSlicer } from '../slicing/ExecutionSlicer';
 import { NotebookCell, copyCodeCell } from './NotebookCell';
+import '../../style/index.css';
 
 
-export function small_test(code: string) {
-    const ast = python3.parse(code);
-    const cfg = new ControlFlowGraph(ast);
-    const dfa = dataflowAnalysis(cfg);
-    console.log('dfa', dfa);
-}
+/**
+ * Class to be added to widgets in the notebook implementation.
+ */
+const NOTEBOOK_CLASS = "nb";
 
 class ExecutionLogger {
     readonly executionSlicer = new ExecutionLogSlicer();
 
     constructor() {
         /**
-         * Potentially relevant devents:
+         * Other relevant events:
          * - execute.CodeCell (start of execution)
-         * - finished_execute.CodeCell (end of execution, before input prompt is updated)
-         * - shell_reply.Kernel (end of execution, in kernel)
          */
         let lastExecutionCount: number;
         Jupyter.notebook.events.on('shell_reply.Kernel', (
@@ -40,6 +34,13 @@ class ExecutionLogger {
 }
 
 const executionLogger = new ExecutionLogger();
+var notificationWidget: Jupyter.NotificationWidget;
+
+function gatherToClipboard() {
+    if (notificationWidget) {
+        notificationWidget.set_message("Copied cells. To paste, type 'v' or right-click.", 5000);
+    }
+}
 
 function gatherToNotebook() {
     const activeCell = Jupyter.notebook.get_selected_cell();
@@ -71,4 +72,6 @@ export function load_ipython_extension() {
     const list = $('<ul id="gather_menu" class="dropdown-menu"></ul>').appendTo(gather);
     $('<li id="gather-to-notebook" title="Gather to notebook"><a href="#">Gather to notebook</a></li>').click(gatherToNotebook).appendTo(list);
     $('<li id="gather-to-script" title="Gather to script"><a href="#">Gather to script</a></li>').appendTo(list);
+    $('<li id="gather-to-clipboard title="Gather to clipboard"><a href="#">Gather to clipboard</a></li>').click(gatherToClipboard).appendTo(list);
+    notificationWidget = notification_area.new_notification_widget("gather");
 }

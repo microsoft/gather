@@ -95,10 +95,19 @@ declare namespace Jupyter {
         status: string;
     }
 
+    interface NotificationWidget {
+        set_message: (message: string, timeMs?: number) => void;
+    }
+
+    interface NotificationArea {
+        new_notification_widget: (name: string) => NotificationWidget;
+    }
+
     var contents: Contents;
     var notebook: Notebook;
     var dialog: Dialog;
     var keyboard_manager: KeyboardManager;
+    var notification_area: NotificationArea;
 }
 
 // declare const Jupyter: Jupyter.JupyterStatic;

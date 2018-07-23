@@ -1,7 +1,6 @@
 import { toArray } from '@phosphor/algorithm';
 import { CommandRegistry } from '@phosphor/commands';
 import { IDisposable, DisposableDelegate } from '@phosphor/disposable';
-import { Widget } from '@phosphor/widgets';
 
 import { JupyterLab, JupyterLabPlugin } from '@jupyterlab/application';
 import { IClientSession, ICommandPalette } from '@jupyterlab/apputils';
@@ -27,6 +26,7 @@ import { LabCell, copyICodeCellModel } from './LabCell';
 import { GatherWidget } from '../packages/contextmenu/widget';
 import { ExecutionLogSlicer } from '../slicing/ExecutionSlicer';
 import { CodeEditor } from '@jupyterlab/codeeditor';
+import { NotificationWidget } from '../packages/notification/widget';
 
 /**
  * Try to only write Jupyter Lab-specific implementation code in this file.
@@ -221,21 +221,10 @@ class CellLiveness {
 }
 
 export class NotifactionExtension implements DocumentRegistry.IWidgetExtension<NotebookPanel, INotebookModel> {
-    private notificationWidget: Widget;
+    private notificationWidget: NotificationWidget;
 
-    /**
-     * The name of the class for toolbar notifications.
-     */
-    TOOLBAR_NOTIFACTION_CLASS = 'jp-Toolbar-notification';
-
-    /**
-     * Number of milliseconds to show a notification.
-     */
-    NOTIFICATION_MS = 5000;
-
-    createNew(panel: NotebookPanel, context: DocumentRegistry.IContext<INotebookModel>): IDisposable {
-        this.notificationWidget = new Widget({ node: document.createElement('p') });
-        this.notificationWidget.addClass(this.TOOLBAR_NOTIFACTION_CLASS);
+    createNew(panel: NotebookPanel, _: DocumentRegistry.IContext<INotebookModel>): IDisposable {
+        this.notificationWidget = new NotificationWidget();
         panel.toolbar.insertItem(9, 'notifications', this.notificationWidget);
         return new DisposableDelegate(() => {
             this.notificationWidget.dispose();
@@ -243,10 +232,7 @@ export class NotifactionExtension implements DocumentRegistry.IWidgetExtension<N
     };
 
     showMessage(message: string) {
-        this.notificationWidget.node.textContent = message;
-        setTimeout(() => {
-            this.notificationWidget.node.textContent = "";
-        }, this.NOTIFICATION_MS);
+        this.notificationWidget.showMessage(message);
     }
 }
 
