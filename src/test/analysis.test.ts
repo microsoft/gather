@@ -1,4 +1,4 @@
-import { dataflowAnalysis, getDefs, Def, DefType, DefSet } from "../slicing/DataflowAnalysis";
+import { dataflowAnalysis, getDefs, Def, DefType, DefSet, getUses } from "../slicing/DataflowAnalysis";
 import * as python3 from '../parsers/python/python3';
 import { ControlFlowGraph } from '../slicing/ControlFlowAnalysis';
 import { expect } from "chai";
@@ -36,6 +36,25 @@ describe('detects dataflow dependencies', () => {
         expect(deps).to.deep.equal([[4, 3]]);
     });
 
+    it('links from a class use to its def', () => {
+        let deps = analyze(
+            "class C(object):",
+            "    pass",
+            "",
+            "c = C()"
+        );
+        expect(deps).to.deep.equal([[4, 1]]);
+    });
+
+    it('links from a function use to its def', () => {
+        let deps = analyze(
+            "def func():",
+            "    pass",
+            "",
+            "func()"
+        );
+        expect(deps).to.deep.equal([[4, 1]]);
+    });
 });
 
 describe('detects control dependencies', () => {
@@ -111,7 +130,6 @@ describe('detects control dependencies', () => {
         );
         expect(deps).to.deep.equal([]);
     });
-
 });
 
 
@@ -152,6 +170,31 @@ describe('getDefs', () => {
             let defs = getDefsFromStatement("from mod import func");
             expect(defs[0]).to.include({ type: DefType.IMPORT, name: "func" });    
         })
+
+        it('for function declarations', () => {
+            let defs = getDefsFromStatement([
+                "def func():",
+                "    return 0"
+            ].join("\n"));
+            expect(defs[0]).to.deep.equal({
+                type: DefType.FUNCTION,
+                name: "func",
+                location: { first_line: 1, first_column: 0, last_line: 3, last_column: -1}
+            });
+        });
+
+        it('for class declarations', () => {
+            let defs = getDefsFromStatement([
+                "class C(object):",
+                "    def __init__(self):",
+                "        pass"
+            ].join("\n"));
+            expect(defs[0]).to.deep.equal({
+                type: DefType.CLASS,
+                name: "C",
+                location: { first_line: 1, first_column: 0, last_line: 4, last_column: -1 }
+            });
+        });
 
         describe('from annotations', () => {
 
@@ -224,7 +267,24 @@ describe('getDefs', () => {
             let defs = getDefNamesFromStatement("a + func()");
             expect(defs).to.deep.equal([]);
         });
+    });
+});
+
+describe('getUses', () => {
+
+    function getUseNames(...codeLines: string[]) {
+        let code = codeLines.concat("").join("\n");
+        let module = python3.parse(code);
+        return getUses(module.code, { moduleNames: new StringSet() }).items
+        .map((use) => use[0]);
+    }
+
+    describe('detects uses', () => {
+        
+        it('of functions', () => {
+            let defs = getUseNames("func()");
+            expect(defs).to.include("func");
+        });
 
     });
-
 });

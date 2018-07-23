@@ -12,6 +12,8 @@ export interface IDataflow {
 
 export enum DefType {
     ASSIGN,
+    CLASS,
+    FUNCTION,
     IMPORT,
     MUTATION,
     MAGIC
@@ -215,6 +217,21 @@ export function getDefs(
                 };
             }));
             break;
+        }
+        case ast.DEF: {
+            defs.add({
+                type: DefType.FUNCTION,
+                name: statement.name,
+                location: statement.location
+            });
+            break;
+        }
+        case ast.CLASS: {
+            defs.add({
+                type: DefType.CLASS,
+                name: statement.name,
+                location: statement.location
+            })
         }
     }
     return defs;
