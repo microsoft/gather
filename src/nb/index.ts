@@ -9,7 +9,7 @@ import '../../style/index.css';
 /**
  * Class to be added to widgets in the notebook implementation.
  */
-const NOTEBOOK_CLASS = "nb";
+// const NOTEBOOK_CLASS = "nb";
 
 class ExecutionLogger {
     readonly executionSlicer = new ExecutionLogSlicer();
@@ -37,6 +37,41 @@ const executionLogger = new ExecutionLogger();
 var notificationWidget: Jupyter.NotificationWidget;
 
 function gatherToClipboard() {
+
+    const activeCell = Jupyter.notebook.get_selected_cell();
+    if (activeCell.cell_type != 'code') return;
+
+    const SHOULD_SLICE_CELLS = true;
+    let cell = new NotebookCell(activeCell as CodeCell);
+    let slice = executionLogger.executionSlicer.sliceLatestExecution(cell);
+    let cells = slice.cellSlices
+    .map(([c, lines]) => {
+        let slicedCell = c;
+        if (SHOULD_SLICE_CELLS) {
+            slicedCell = c.copy();
+            slicedCell.text =
+                slicedCell.text.split("\n")
+                    .filter((_, i) => lines.contains(i))
+                    .join("\n");
+        }
+        return slicedCell;
+    });
+    
+    // Copy cells to clipboard
+    Jupyter.notebook.clipboard = [];
+    cells.forEach((c) => {
+        if (c instanceof NotebookCell) {
+            console.log("Copying", c.model.toJSON());
+            Jupyter.notebook.clipboard.push(c.model.toJSON());
+        }
+    });
+    Jupyter.notebook.enable_paste();
+
+    // If lines were selected from the cell, only gather on those lines. Otherwise, gather whole cell.
+    // let relevantLineNumbers = new NumberSet();
+    // let cellLength = cell.text.split("\n").length;
+    // for (let i = 0; i < cellLength; i++) relevantLineNumbers.add(i);
+
     if (notificationWidget) {
         notificationWidget.set_message("Copied cells. To paste, type 'v' or right-click.", 5000);
     }

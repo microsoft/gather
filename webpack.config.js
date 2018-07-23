@@ -1,7 +1,7 @@
 const path = require('path');
 
 module.exports = {
-    entry: './lib/nb/gather.js',
+    entry: './lib/nb/index.js',
     output: {
         path: path.resolve(__dirname, 'dist'),
         filename: 'gather.js',

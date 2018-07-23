@@ -12,6 +12,8 @@ declare namespace Jupyter {
         events: Events;
         contents: Contents;
         config: Config;
+        clipboard: Array<any>;
+        enable_paste: () => void;
     }
 
     interface Dialog {

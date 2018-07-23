@@ -122,104 +122,6 @@ class ExecutionLoggerExtension implements DocumentRegistry.IWidgetExtension<Note
     }
 }
 
-/**
- * Plugin for live programming in a notebook (automatically recompute cells based on data dependencies).
- */
-export class LiveCheckboxExtension implements DocumentRegistry.IWidgetExtension<NotebookPanel, INotebookModel> {
-    private liveness: CellLiveness;
-
-    createNew(panel: NotebookPanel, context: DocumentRegistry.IContext<INotebookModel>): IDisposable {
-        const checkbox = new ToolbarCheckbox(panel.notebook);
-        panel.toolbar.insertItem(9, 'liveCode', checkbox);
-        this.liveness = new CellLiveness(checkbox, panel);
-
-        return new DisposableDelegate(() => {
-            this.liveness.dispose();
-            checkbox.dispose();
-        });
-    }
-}
-
-/**
- * Helper class for keeping track of live programming.
- */
-class CellLiveness {
-
-    private currentlyExecutingCells = false;
-
-    constructor(
-        private checkbox: ToolbarCheckbox,
-        panel: NotebookPanel
-    ) {
-        panel.notebook.model.cells.changed.connect(
-            (cells, value) =>
-                this.onCellsChanged(panel.notebook, panel.session, cells, value),
-            this);
-    }
-
-    public dispose() { }
-
-    private findStaleCells(changedCell: LabCell, cells: LabCell[]): LabCell[] {
-        const program = new CellProgram<LabCell>(changedCell, cells);
-        return program.getDataflowCells(DataflowDirection.Forward).map(r => r[0]);
-    }
-
-    private showStaleness(cell: CodeCell, stale: boolean) {
-        cell.inputArea.editorWidget.node.style.backgroundColor = stale ? 'pink' : null;
-    }
-
-    public onCellsChanged(
-        notebook: Notebook,
-        session: IClientSession,
-        allCells: IObservableList<ICellModel>,
-        cellListChange: IObservableList.IChangedArgs<ICellModel>
-    ): void {
-
-        // When a cell is added, register for its state changes.
-        if (cellListChange.type === 'add') {
-
-            const cell = cellListChange.newValues[0] as ICellModel;
-            cell.stateChanged.connect((changedCell, cellStateChange) => {
-
-                // If cell has been executed
-                if (cellStateChange.name === 'executionCount' && cellStateChange.newValue) {
-
-                    const codeCell = notebook.widgets.find(c => c.model.id === cell.id) as CodeCell;
-                    this.showStaleness(codeCell, false);
-
-                    // If this cell executing is due to the user
-                    if (!this.currentlyExecutingCells) {
-                        // Depending on the checkbox, we either execute the dependent cells
-                        // or show that they are stale.
-                        const handleStaleness: (cell: CodeCell) => Promise<any> = this.checkbox.checked ?
-                            cellWidget => CodeCell.execute(cellWidget, session) :
-                            cellWidget => {
-                                this.showStaleness(cellWidget, true);
-                                return Promise.resolve(0);
-                            }
-
-                        if (changedCell.type == "code") {
-                            let changedLabCell = new LabCell(changedCell as ICodeCellModel);
-                            let allLabCells = toArray(allCells).filter((c) => c.type == "code")
-                                .map((c) => new LabCell(c as ICodeCellModel));
-                            const tasks = this.findStaleCells(changedLabCell, allLabCells)
-                                .filter(cell => cell.id !== changedCell.id)
-                                .map(cell => <CodeCell>notebook.widgets.find(c => c.model.id == cell.id))
-                                .filter(cellWidget => cellWidget)
-                                .map(cellWidget => () => handleStaleness(cellWidget));
-
-                            this.currentlyExecutingCells = true;
-                            doTasksInOrder(tasks).then(() => {
-                                this.currentlyExecutingCells = false;
-                            });
-                        }
-                    }
-                }
-            }, this);
-        }
-    }
-}
-
 export class NotifactionExtension implements DocumentRegistry.IWidgetExtension<NotebookPanel, INotebookModel> {
     private notificationWidget: NotificationWidget;
 
@@ -407,6 +309,103 @@ function activateExtension(app: JupyterLab, palette: ICommandPalette, notebooks:
     });
 }
 
+/**
+ * Plugin for live programming in a notebook (automatically recompute cells based on data dependencies).
+ */
+export class LiveCheckboxExtension implements DocumentRegistry.IWidgetExtension<NotebookPanel, INotebookModel> {
+    private liveness: CellLiveness;
+
+    createNew(panel: NotebookPanel, context: DocumentRegistry.IContext<INotebookModel>): IDisposable {
+        const checkbox = new ToolbarCheckbox(panel.notebook);
+        panel.toolbar.insertItem(9, 'liveCode', checkbox);
+        this.liveness = new CellLiveness(checkbox, panel);
+
+        return new DisposableDelegate(() => {
+            this.liveness.dispose();
+            checkbox.dispose();
+        });
+    }
+}
+
+/**
+ * Helper class for keeping track of live programming.
+ */
+class CellLiveness {
+
+    private currentlyExecutingCells = false;
+
+    constructor(
+        private checkbox: ToolbarCheckbox,
+        panel: NotebookPanel
+    ) {
+        panel.notebook.model.cells.changed.connect(
+            (cells, value) =>
+                this.onCellsChanged(panel.notebook, panel.session, cells, value),
+            this);
+    }
+
+    public dispose() { }
+
+    private findStaleCells(changedCell: LabCell, cells: LabCell[]): LabCell[] {
+        const program = new CellProgram<LabCell>(changedCell, cells);
+        return program.getDataflowCells(DataflowDirection.Forward).map(r => r[0]);
+    }
+
+    private showStaleness(cell: CodeCell, stale: boolean) {
+        cell.inputArea.editorWidget.node.style.backgroundColor = stale ? 'pink' : null;
+    }
+
+    public onCellsChanged(
+        notebook: Notebook,
+        session: IClientSession,
+        allCells: IObservableList<ICellModel>,
+        cellListChange: IObservableList.IChangedArgs<ICellModel>
+    ): void {
+
+        // When a cell is added, register for its state changes.
+        if (cellListChange.type === 'add') {
+
+            const cell = cellListChange.newValues[0] as ICellModel;
+            cell.stateChanged.connect((changedCell, cellStateChange) => {
+
+                // If cell has been executed
+                if (cellStateChange.name === 'executionCount' && cellStateChange.newValue) {
+
+                    const codeCell = notebook.widgets.find(c => c.model.id === cell.id) as CodeCell;
+                    this.showStaleness(codeCell, false);
+
+                    // If this cell executing is due to the user
+                    if (!this.currentlyExecutingCells) {
+                        // Depending on the checkbox, we either execute the dependent cells
+                        // or show that they are stale.
+                        const handleStaleness: (cell: CodeCell) => Promise<any> = this.checkbox.checked ?
+                            cellWidget => CodeCell.execute(cellWidget, session) :
+                            cellWidget => {
+                                this.showStaleness(cellWidget, true);
+                                return Promise.resolve(0);
+                            }
+
+                        if (changedCell.type == "code") {
+                            let changedLabCell = new LabCell(changedCell as ICodeCellModel);
+                            let allLabCells = toArray(allCells).filter((c) => c.type == "code")
+                                .map((c) => new LabCell(c as ICodeCellModel));
+                            const tasks = this.findStaleCells(changedLabCell, allLabCells)
+                                .filter(cell => cell.id !== changedCell.id)
+                                .map(cell => <CodeCell>notebook.widgets.find(c => c.model.id == cell.id))
+                                .filter(cellWidget => cellWidget)
+                                .map(cellWidget => () => handleStaleness(cellWidget));
+
+                            this.currentlyExecutingCells = true;
+                            doTasksInOrder(tasks).then(() => {
+                                this.currentlyExecutingCells = false;
+                            });
+                        }
+                    }
+                }
+            }, this);
+        }
+    }
+}
 
 function doTasksInOrder<T>(work: (() => Promise<T>)[]) {
     return work.reduce((responseList, currentTask) => {
