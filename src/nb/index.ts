@@ -5,9 +5,10 @@ import { Cell, CodeCell, notification_area } from 'base/js/namespace';
 import { NotebookCell, copyCodeCell } from './NotebookCell';
 import { ExecutionLogSlicer } from '../slicing/ExecutionSlicer';
 import { MarkerManager, ICell } from '../packages/cell';
+import { NumberSet } from '../slicing/Set';
+
 import '../../style/nb-vars.css';
 import '../../style/index.css';
-import { NumberSet } from '../slicing/Set';
 
 
 /**
@@ -46,7 +47,7 @@ class DefHighlighter {
     private _markerManager: MarkerManager = new MarkerManager();
 
     constructor() {
-        Jupyter.notebook.events.on('execute.CodeCell', (_: Jupyter.Event, data: { cell: CodeCell }) => {
+        Jupyter.notebook.events.on('finished_execute.CodeCell', (_: Jupyter.Event, data: { cell: CodeCell }) => {
             let cell = data.cell;
             let editor = cell.code_mirror;
             let nbCell = new NotebookCell(cell);

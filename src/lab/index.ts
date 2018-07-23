@@ -20,13 +20,15 @@ import { MarkerManager } from '../packages/cell';
 import { HistoryViewer, buildHistoryModel } from '../packages/history';
 import { CellProgram, DataflowDirection } from '../slicing/Slice';
 
-import '../../style/index.css';
 import { JSONObject } from '@phosphor/coreutils';
 import { LabCell, copyICodeCellModel } from './LabCell';
 import { GatherWidget } from '../packages/contextmenu/widget';
 import { ExecutionLogSlicer } from '../slicing/ExecutionSlicer';
 import { CodeEditor } from '@jupyterlab/codeeditor';
 import { NotificationWidget } from '../packages/notification/widget';
+
+import '../../style/lab-vars.css';
+import '../../style/index.css';
 
 /**
  * Try to only write Jupyter Lab-specific implementation code in this file.
