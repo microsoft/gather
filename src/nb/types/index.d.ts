@@ -2,7 +2,6 @@
 This is an attempt to get minimal coverage of Jupyter Notebook's internal API 
 for writing our extension. We welcome contributions to flesh this out more!
 */
-
 declare namespace Jupyter {
 
     interface Notebook {
@@ -33,15 +32,11 @@ declare namespace Jupyter {
         type: string;
     }
 
-    interface CodeMirror {
-        getValue(): string;
-    }
-
     interface Cell {
         cell_id: string;
         cell_type: 'code' | 'markdown';
         notebook: Notebook;
-        code_mirror: CodeMirror;
+        code_mirror: CodeMirror.Editor;
         events: Events;
         keyboard_manager: KeyboardManager;
     }

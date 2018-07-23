@@ -44,10 +44,10 @@ export class ExecutionLogSlicer {
     /**
      * Get slice for the latest execution of a cell.
      */
-    public sliceLatestExecution(cell: ICell): SlicedExecution {
+    public sliceLatestExecution(cell: ICell, relevantLineNumbers?: NumberSet): SlicedExecution {
         // XXX: This computes more than it has to, performing a slice on each execution of a cell
         // instead of just its latest computation. Optimize later if necessary.
-        return this.sliceAllExecutions(cell).pop();
+        return this.sliceAllExecutions(cell, relevantLineNumbers).pop();
     }
 
     /**

@@ -39,8 +39,7 @@ export class NotebookCell implements IOutputterCell<Output> {
     }
 
     set text(text: string) {
-        // TODO: implement
-        // this._model.code_mirror.val = text;
+        this._model.code_mirror.setValue(text);
     }
 
     get executionCount(): number {
@@ -56,9 +55,7 @@ export class NotebookCell implements IOutputterCell<Output> {
     }
 
     get hasError(): boolean {
-        // TODO: implement.
-        // return this.outputs.some(o => o.type === 'error');
-        return false;
+        return this.outputs.some(o => o.output_type === 'error');
     }
 
     get outputs(): Output[] {
@@ -70,7 +67,6 @@ export class NotebookCell implements IOutputterCell<Output> {
     }
 
     copy(): NotebookCell {
-        // TODO: do a better job of this copy. At the list, code mirror shouldn't be shared.
         return new NotebookCell(copyCodeCell(this._model));
     }
 

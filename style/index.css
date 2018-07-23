@@ -5,11 +5,11 @@
  */
 .jp-InputArea-editor-nametext {
   font-weight: bold;
-  background-color: var(--jp-brand-color3);
+  background-color: var(--brand-color3);
 }
 
 .jp-InputArea-editor-nametext:hover {
-  background-color: var(--jp-brand-color2);
+  background-color: var(--brand-color2);
   cursor: pointer;
 }
 
