@@ -49,9 +49,11 @@ export class ControlFlowGraph {
     private successors = new Set<[Block, Block]>(([b1, b2]) => b1.id + ',' + b2.id);
     private loopVariables: ast.ISyntaxNode[][] = [];
 
-    constructor(module: ast.IModule) {
-        let statements = module.code;
-        if (!(statements instanceof Array)) statements = [statements]; 
+    constructor(node: ast.ISyntaxNode) {
+        let statements: ast.ISyntaxNode[] = [];
+        if (node.type == ast.MODULE) {
+            statements = Array.isArray(node.code) ? node.code : [ node.code ];
+        }
         [this.entry, this.exit] = this.makeCFG(
             'entry', statements, new Context(null, null, this.makeBlock('exceptional exit')));
     }
@@ -220,8 +222,6 @@ export class ControlFlowGraph {
         let last = entry;
         statements.forEach(statement => {
             switch (statement.type) {
-                case ast.DEF:
-                    break;
                 case ast.IF:
                     last = this.handleIf(statement, last, context);
                     break;
@@ -246,6 +246,8 @@ export class ControlFlowGraph {
                 case ast.CONTINUE:
                     this.link(last, context.loopHead);
                     return;
+                case ast.DEF:
+                case ast.CLASS:
                 default:
                     last.statements.push(statement);
                     break;
