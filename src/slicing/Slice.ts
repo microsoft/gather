@@ -4,6 +4,7 @@ import { dataflowAnalysis } from "./DataflowAnalysis";
 import { ILocation } from "../parsers/python/python_parser";
 import * as python3 from '../parsers/python/python3';
 import { ICell } from "../packages/cell";
+import { Set } from "./Set";
 
 export enum DataflowDirection { Forward, Backward };
 
@@ -11,13 +12,35 @@ function lineRange(loc: ILocation): NumberSet {
     return range(loc.first_line, loc.last_line + (loc.last_column ? 1 : 0));
 }
 
-export function slice(code: string, relevantLineNumbers: NumberSet) {
+export class LocationSet extends Set<ILocation> {
+    constructor(...items: ILocation[]) {
+        super(l => l.toString(), ...items);
+    }
+}
+
+/**
+ * More general slice: given locations of important syntax nodes, find locations of all relevant
+ * definitions. Locations can be mapped to lines later.
+ */
+export function slice(code: string, locations: LocationSet): LocationSet {
     const ast = python3.parse(code);
     const cfg = new ControlFlowGraph(ast);
     const dfa = dataflowAnalysis(cfg);
     dfa.add(...cfg.getControlDependencies());
 
-    const forwardDirection = false;
+    let sliceLocations = new LocationSet();
+
+    return sliceLocations;
+}
+
+/**
+ * Slice: given a set of lines in a program, return lines it depends on.
+ */
+export function sliceLines(code: string, relevantLineNumbers: NumberSet) {
+    const ast = python3.parse(code);
+    const cfg = new ControlFlowGraph(ast);
+    const dfa = dataflowAnalysis(cfg);
+    dfa.add(...cfg.getControlDependencies());
 
     let lastSize: number;
     do {
@@ -25,8 +48,8 @@ export function slice(code: string, relevantLineNumbers: NumberSet) {
         for (let flow of dfa.items) {
             const fromLines = lineRange(flow.fromNode.location);
             const toLines = lineRange(flow.toNode.location);
-            const startLines = forwardDirection ? fromLines : toLines;
-            const endLines = forwardDirection ? toLines : fromLines;
+            const startLines = toLines;
+            const endLines = fromLines;
             if (!relevantLineNumbers.intersect(startLines).empty) {
                 relevantLineNumbers = relevantLineNumbers.union(endLines);
             }

@@ -163,7 +163,7 @@ export class ControlFlowGraph {
     private handleFor(statement: ast.IFor, last: Block, context: Context): Block {
         const loopHeadBlock = this.makeBlock('for loop head',
             // synthesize a statement to simulate using the iterator
-            [{ type: ast.ASSIGN, op: undefined, sources: statement.iter, targets: statement.target, location: statement.iter[0].location }]);
+            [{ type: ast.ASSIGN, op: undefined, sources: statement.iter, targets: statement.target, location: statement.decl_location }]);
         this.link(last, loopHeadBlock);
         const afterLoop = this.makeBlock('for loop join');
         this.loopVariables.push(statement.target);

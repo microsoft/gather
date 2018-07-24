@@ -650,10 +650,22 @@ while_stmt
 
 // for_stmt: 'for' exprlist 'in' testlist ':' suite ['else' ':' suite]
 for_stmt
-    : 'for' exprlist 'in' testlist ':' suite
-        { $$ = { type: 'for',  target: $2, iter: $4, code: $6, location: @$ } }
-    | 'for' exprlist 'in' testlist ':' suite 'else' ':' suite
-        { $$ = { type: 'for',  target: $2, iter: $4, code: $6, else: $9, location: @$ } }
+    : 'for' exprlist 'in' testlist colon suite
+        { $$ = { type: 'for',  target: $2, iter: $4, code: $6, location: @$,
+            decl_location: {
+                first_line: @$.first_line,
+                first_column: @$.first_column,
+                last_line: $5.location.last_line,
+                last_column: $5.location.last_column
+            } } }
+    | 'for' exprlist 'in' testlist colon suite 'else' ':' suite
+        { $$ = { type: 'for',  target: $2, iter: $4, code: $6, else: $9, location: @$,
+            decl_location: {
+                first_line: @$.first_line,
+                first_column: @$.first_column,
+                last_line: $5.location.last_line,
+                last_column: $5.location.last_column
+            } } }
     ;
 
 // try_stmt: ('try' ':' suite
@@ -990,6 +1002,8 @@ atom
     | 'False'
         { $$ = { type: 'literal', value: 'False', location: @$} }
     ;
+
+colon: ':' { $$ = { location: @$ } } ;
 
 // testlist_comp: (test|star_expr) ( comp_for | (',' (test|star_expr))* [','] )
 testlist_comp

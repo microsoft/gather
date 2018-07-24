@@ -198,6 +198,7 @@ export interface IFor extends ILocatable {
     target: ISyntaxNode[];
     iter: ISyntaxNode[];
     code: ISyntaxNode[];
+    decl_location: ILocation;
 }
 
 export const COMPFOR = 'comp_for';
@@ -410,7 +411,7 @@ function walkRecursive(node: ISyntaxNode, ancestors?: ISyntaxNode[], walkListene
         case MODULE:
         case DEF:
         case CLASS:
-            children = node.code;
+            children = flatten([node.code]);
             break;
         case IF:
             children = [node.cond].concat(node.code)
@@ -455,7 +456,7 @@ function walkRecursive(node: ISyntaxNode, ancestors?: ISyntaxNode[], walkListene
                 .concat(node.comp_for ? node.comp_for: []);
             break;
         case ASSIGN: children = node.sources.concat(node.targets); break;
-        case ASSERT: children = [node.cond].concat([node.err] || []); break;
+        case ASSERT: children = [node.cond].concat(node.err ? [node.err] : []); break;
         case DOT: children = [node.value, node.name]; break;
         case INDEX: children = [node.value].concat(node.args); break;
         case SLICE:

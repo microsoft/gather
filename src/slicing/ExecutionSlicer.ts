@@ -1,7 +1,7 @@
 import { ICell } from "../packages/cell";
 import { NumberSet } from "./Set";
 import { ProgramBuilder } from "./ProgramBuilder";
-import { slice } from "./Slice";
+import { sliceLines } from "./Slice";
 
 /**
  * A record of when a cell was executed.
@@ -71,12 +71,12 @@ export class ExecutionLogSlicer {
                 } else {
                     sliceStartLines = sliceStartLines.union(cellLines);
                 }
-                let sliceLines = slice(program.code, sliceStartLines);
+                let linesSliced = sliceLines(program.code, sliceStartLines);
 
                 // Get the relative offsets of slice lines in each cell.
                 let relativeSliceLines: { [cellId: string]: { [executionCount: number]: NumberSet } } = {};
                 let cellOrder = new Array<ICell>();
-                sliceLines.items.forEach((lineNumber) => {
+                linesSliced.items.forEach((lineNumber) => {
                     let sliceCell = program.lineToCellMap[lineNumber];
                     let sliceCellLines = program.cellToLineMap[sliceCell.id][sliceCell.executionCount];
                     let sliceCellStart = Math.min(...sliceCellLines.items);

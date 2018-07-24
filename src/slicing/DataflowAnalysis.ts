@@ -23,6 +23,7 @@ export type Def = {
     type: DefType;
     name: string;
     location: ast.ILocation;
+    statement: ast.ISyntaxNode;
 };
 
 export class DefSet extends Set<Def> {
@@ -56,7 +57,7 @@ function gatherNames(node: ast.ISyntaxNode | ast.ISyntaxNode[]): NameSet {
     }
 }
 
-interface IDefUseInfo { defs: StringSet, uses: StringSet };
+interface IDefUseInfo { defs: DefSet, uses: StringSet };
 
 interface SymbolTable {
     // ⚠️ We should be doing full-blown symbol resolution, but meh 🙄
@@ -67,6 +68,11 @@ interface SymbolTable {
  * Tree walk listener for collecting manual def annotations.
  */
 class DefAnnotationListener implements ast.IWalkListener {
+
+    constructor(statement: ast.ISyntaxNode) {
+        this._statement = statement;
+    }
+
     onEnterNode(node: ast.ISyntaxNode, type: string) {
         
         if (type == ast.LITERAL) {
@@ -91,6 +97,7 @@ class DefAnnotationListener implements ast.IWalkListener {
                                     last_line: defSpec.pos[1][0] + node.location.first_line,
                                     last_column: defSpec.pos[1][1]
                                 },
+                                statement: this._statement
                             });
                         }
                     } catch(e) {}
@@ -99,6 +106,7 @@ class DefAnnotationListener implements ast.IWalkListener {
         }
     }
 
+    private _statement: ast.ISyntaxNode;
     readonly defs: DefSet = new DefSet();
 }
 
@@ -170,11 +178,12 @@ export function getDefs(
         return {
             type: DefType.MUTATION,
             name: name,
-            location: node.location
+            location: node.location,
+            statement: statement
         }
     }));
 
-    let defAnnotationsListener = new DefAnnotationListener();
+    let defAnnotationsListener = new DefAnnotationListener(statement);
     ast.walk(statement, defAnnotationsListener);
     defs = defs.union(defAnnotationsListener.defs);
 
@@ -186,7 +195,8 @@ export function getDefs(
                     return {
                         type: DefType.IMPORT,
                         name: nameNode.name || nameNode.path,
-                        location: nameNode.location
+                        location: nameNode.location,
+                        statement: statement
                     };
                 }));
             break;
@@ -201,7 +211,8 @@ export function getDefs(
                     return {
                         type: DefType.IMPORT,
                         name: i.name || i.path,
-                        location: i.location
+                        location: i.location,
+                        statement: statement
                     }
                 }));
             }
@@ -213,7 +224,8 @@ export function getDefs(
                 return {
                     type: DefType.ASSIGN,
                     name: name,
-                    location: node.location
+                    location: node.location,
+                    statement: statement
                 };
             }));
             break;
@@ -222,7 +234,8 @@ export function getDefs(
             defs.add({
                 type: DefType.FUNCTION,
                 name: statement.name,
-                location: statement.location
+                location: statement.location,
+                statement: statement
             });
             break;
         }
@@ -230,7 +243,8 @@ export function getDefs(
             defs.add({
                 type: DefType.CLASS,
                 name: statement.name,
-                location: statement.location
+                location: statement.location,
+                statement: statement
             })
         }
     }
@@ -263,7 +277,7 @@ export function getDefsUses(
     let defSet = getDefs(statement, symbolTable, slicerConfig);
     let useSet = getUses(statement, symbolTable);
     return {
-        defs: new StringSet(...defSet.items.map((def) => def.name)),
+        defs: defSet,
         uses: new StringSet(...useSet.items.map((use) => use[0]))
     };
 }
@@ -277,8 +291,8 @@ function getDataflowId(df: IDataflow) {
 export function dataflowAnalysis(cfg: ControlFlowGraph): Set<IDataflow> {
     const workQueue: Block[] = cfg.blocks.reverse();
 
-    const definitionsForBlock = new Map(workQueue.map<[number, NameSet]>(block =>
-        ([block.id, new Set(getNameSetId)])));
+    const definitionsForBlock = new Map(workQueue.map<[number, DefSet]>(block =>
+        ([block.id, new DefSet()])));
 
     let dataflows = new Set<IDataflow>(getDataflowId);
 
@@ -292,25 +306,27 @@ export function dataflowAnalysis(cfg: ControlFlowGraph): Set<IDataflow> {
         let defs = oldDefs.union(...cfg.getPredecessors(block)
             .map(block => definitionsForBlock.get(block.id)));
 
+        /*
         const loopUses = new StringSet(...[].concat(block.loopVariables.map(s => 
                 { return getUses(s, symbolTable).items.map((u) => u[0]); }
             )));
+        */
 
         for (let statement of block.statements) {
             let { defs: definedHere, uses: usedHere } = getDefsUses(statement, symbolTable);
-            usedHere = usedHere.union(loopUses);
+            // usedHere = usedHere.union(loopUses);
 
             // TODO: fix up dataflow computation within this block: check for definitions in
             // defsWithinBlock first; if found, don't look to defs that come from the predecessor.
 
             // For everything that's defined coming into this block, if it's used in this block, save connection.
-            const newFlows = defs.filter(([name, _]) => usedHere.contains(name))
-                .map(getDataflowId, ([_, defstmt]) => ({ fromNode: defstmt, toNode: statement }));
+            const newFlows = defs.filter((def) => usedHere.contains(def.name))
+                .map(getDataflowId, (def) => ({ fromNode: def.statement, toNode: statement }));
 
             dataflows = dataflows.union(newFlows);
 
-            const genSet = definedHere.map(getNameSetId, name => [name, statement]) as Set<[string, ast.ISyntaxNode]>;
-            const killSet = defs.filter(([name, _]) => definedHere.contains(name));
+            const genSet = definedHere;
+            const killSet = defs.filter((def) => definedHere.items.some((newDef) => newDef.name == def.name));
             defs = defs.minus(killSet).union(genSet);
         }
         if (!defs.equals(oldDefs)) {

@@ -1,8 +1,8 @@
-import { dataflowAnalysis, getDefs, Def, DefType, DefSet, getUses } from "../slicing/DataflowAnalysis";
+import { dataflowAnalysis, getDefs, Def, DefType, DefSet, getUses, IDataflow } from "../slicing/DataflowAnalysis";
 import * as python3 from '../parsers/python/python3';
 import { ControlFlowGraph } from '../slicing/ControlFlowAnalysis';
 import { expect } from "chai";
-import { StringSet } from "../slicing/Set";
+import { Set, StringSet } from "../slicing/Set";
 import { SlicerConfig, FunctionConfig } from "../slicing/SlicerConfig";
 import { ISyntaxNode } from "../parsers/python/python_parser";
 
@@ -10,16 +10,19 @@ import { ISyntaxNode } from "../parsers/python/python_parser";
 // High-level tests on dataflow as a sanity check.
 describe('detects dataflow dependencies', () => {
 
-    function analyze(...codeLines: string[]): [number, number][] {
+    function analyze(...codeLines: string[]): Set<IDataflow> {
         let code = codeLines.concat("").join("\n");  // add newlines to end of every line.
-        let deps = dataflowAnalysis(new ControlFlowGraph(python3.parse(code)));
-        return deps.items.map(function(dep): [number, number] { 
+        return dataflowAnalysis(new ControlFlowGraph(python3.parse(code)));
+    }
+
+    function analyzeLineDeps(...codeLines: string[]): [number, number][] {
+        return analyze(...codeLines).items.map(function(dep): [number, number] { 
             return [dep.toNode.location.first_line, dep.fromNode.location.first_line]
         });
     }
 
     it('from variable uses to names', () => {
-        let deps = analyze(
+        let deps = analyzeLineDeps(
             "a = 1",
             "b = a"
         );
@@ -27,7 +30,7 @@ describe('detects dataflow dependencies', () => {
     });
 
     it('only links from a use to its most recent def', () => {
-        let deps = analyze(
+        let deps = analyzeLineDeps(
             "a = 2",
             "a.prop = 3",
             "a = 4",
@@ -36,8 +39,46 @@ describe('detects dataflow dependencies', () => {
         expect(deps).to.deep.equal([[4, 3]]);
     });
 
-    it('links from a class use to its def', () => {
+    it('links between statements, not symbol locations', () => {
         let deps = analyze(
+            "a = 1",
+            "b = a"
+        );
+        expect(deps.items[0].fromNode.location).to.deep.equal(
+            { first_line: 1, first_column: 0, last_line: 1, last_column: 5 });
+        expect(deps.items[0].toNode.location).to.deep.equal(
+            { first_line: 2, first_column: 0, last_line: 2, last_column: 5 });
+    });
+
+    it('links to a multi-line dependency', () => {
+        let deps = analyze(
+            "a = func(",
+            "    1)",
+            "b = a"
+        );
+        expect(deps.items[0].fromNode.location).to.deep.equal(
+            { first_line: 1, first_column: 0, last_line: 2, last_column: 6 });
+    });
+
+    it('detects a dependency to a full for-loop declaration', () => {
+        let deps = analyze(
+            "for i in range(a, b):",
+            "    print(i)"
+        );
+        expect(deps.items[0].fromNode.location).to.deep.equal(
+            { first_line: 1, first_column: 0, last_line: 1, last_column: 21 });
+    });
+
+    it('doesn\'t detect a dependency in for-loop by default', () => {
+        let deps = analyze(
+            "for i in range(a, b):",
+            "    print(c)"
+        );
+        expect(deps.items).does.deep.equal([]);
+    });
+
+    it('links from a class use to its def', () => {
+        let deps = analyzeLineDeps(
             "class C(object):",
             "    pass",
             "",
@@ -47,7 +88,7 @@ describe('detects dataflow dependencies', () => {
     });
 
     it('links from a function use to its def', () => {
-        let deps = analyze(
+        let deps = analyzeLineDeps(
             "def func():",
             "    pass",
             "",
@@ -176,7 +217,7 @@ describe('getDefs', () => {
                 "def func():",
                 "    return 0"
             ].join("\n"));
-            expect(defs[0]).to.deep.equal({
+            expect(defs[0]).to.deep.include({
                 type: DefType.FUNCTION,
                 name: "func",
                 location: { first_line: 1, first_column: 0, last_line: 3, last_column: -1}
@@ -189,7 +230,7 @@ describe('getDefs', () => {
                 "    def __init__(self):",
                 "        pass"
             ].join("\n"));
-            expect(defs[0]).to.deep.equal({
+            expect(defs[0]).to.deep.include({
                 type: DefType.CLASS,
                 name: "C",
                 location: { first_line: 1, first_column: 0, last_line: 4, last_column: -1 }
@@ -202,7 +243,7 @@ describe('getDefs', () => {
                 let defs = getDefsFromStatement(
                     '"""defs: [{ "name": "a", "pos": [[0, 0], [0, 11]] }]"""%some_magic'
                 );
-                expect(defs[0]).to.deep.equal({
+                expect(defs[0]).to.deep.include({
                     type: DefType.MAGIC,
                     name: "a",
                     location: { first_line: 1, first_column: 0, last_line: 1, last_column: 11 }
