@@ -56,7 +56,11 @@ export class GatherButton implements Button, IGatherObserver {
      * Handle click action.
      */
     onClick() {
-        this._gatherModel.requestStateChange(GatherState.GATHER);
+        if (this._gatherModel.selectedSlices.length >= 1) {
+            this._gatherModel.requestStateChange(GatherState.GATHER);
+        } else {
+            window.alert("To gather, you must first select some definitions or results from the notebook.");
+        }
     }
 
     /**

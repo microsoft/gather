@@ -4,7 +4,7 @@
  * Gather button
  */
  .jp-Toolbar-gatherbutton.jp-Toolbar-button-glow {
-   background-color: var(--brand-color3);
+   background-color: var(--brand-color4);
    border-color: var(--brand-color1);
    box-shadow: 0 0 10px var(--brand-color1);
  }
