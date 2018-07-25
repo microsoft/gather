@@ -13,18 +13,18 @@ export interface ICell {
 }
 
 /**
- * Type checker for IOutputterCell.
- */
-export function instanceOfIOutputterCell<TOutputModel>(object: any): object is IOutputterCell<TOutputModel> {
-    return object.type && object.outputs == "outputter";
-}
-
-/**
  * Cell interface with data.
  */
 export interface IOutputterCell<TOutputModel> extends ICell {
-    type: "outputter";
+    is_outputter_cell: boolean;
     outputs: TOutputModel[];
+}
+
+/**
+ * Type checker for IOutputterCell.
+ */
+export function instanceOfIOutputterCell<TOutputModel>(object: any): object is IOutputterCell<TOutputModel> {
+    return "is_outputter_cell" in object;
 }
 
 /**

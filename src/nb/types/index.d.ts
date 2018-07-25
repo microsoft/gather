@@ -100,11 +100,33 @@ declare namespace Jupyter {
         new_notification_widget: (name: string) => NotificationWidget;
     }
 
+    interface Actions {
+        register: (action: Action, action_name: string, prefix: string) => string;
+    }
+
+    interface Action {
+        icon: string;  // font-awesome class
+        help: string;
+        help_index: string;
+        handler: () => void;
+    }
+
+    interface ActionSpec {
+        label: string;
+        action: string;  // action name
+    }
+
+    interface Toolbar {
+        add_buttons_group: (actions: ActionSpec[]) => void;
+    }
+
+    var actions: Actions;
     var contents: Contents;
-    var notebook: Notebook;
     var dialog: Dialog;
     var keyboard_manager: KeyboardManager;
+    var notebook: Notebook;
     var notification_area: NotificationArea;
+    var toolbar: Toolbar;
 }
 
 // declare const Jupyter: Jupyter.JupyterStatic;

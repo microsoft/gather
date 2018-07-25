@@ -1,28 +1,31 @@
 import $ = require('jquery');
 import Jupyter = require('base/js/namespace');
-import { Cell, CodeCell, notification_area } from 'base/js/namespace';
+import { Cell, CodeCell, notification_area, Notebook } from 'base/js/namespace';
 
 import { NotebookCell, copyCodeCell } from './NotebookCell';
 import { ExecutionLogSlicer } from '../slicing/ExecutionSlicer';
-import { MarkerManager, ICell } from '../packages/cell';
+import { MarkerManager, ICell, CellEditorResolver } from '../packages/cell';
+
+import { ILocation } from '../parsers/python/python_parser';
+import { GatherModel } from '../packages/gather/model';
+import { GatherController } from '../packages/gather/controller';
 
 import '../../style/nb-vars.css';
 import '../../style/index.css';
-import { ILocation } from '../parsers/python/python_parser';
-import { LocationSet } from '../slicing/Slice';
-
 
 /**
  * Widget for gather notifications.
  */
-var notificationWidget: Jupyter.NotificationWidget;
+// var notificationWidget: Jupyter.NotificationWidget;
 
 /**
  * Logs cell executions.
  */
 var executionLogger: ExecutionLogger;
-var markerManager: MarkerManager;
 
+/**
+ * Logs each cell execution.
+ */
 class ExecutionLogger {
     readonly executionSlicer = new ExecutionLogSlicer();
 
@@ -42,24 +45,61 @@ class ExecutionLogger {
 }
 
 /**
+ * Resolve the active editors for cells in Jupyter notebook.
+ */
+class NotebookCellEditorResolver implements CellEditorResolver {
+
+    /**
+     * Construct a new cell editor resolver.
+     */
+    constructor(notebook: Notebook) {
+        this._notebook = notebook;
+    }
+
+    /**
+     * Get a cell from the notebook with the specified properties.
+     */
+    getCellWidget(cellId: string, executionCount?: number): Cell {
+        let matchingCells = this._notebook.get_cells()
+        .filter((c) => {
+            if (c.cell_id != cellId) return false;
+            if (executionCount != undefined) {
+                if (!(c instanceof CodeCell)) return false;
+                if ((c as CodeCell).input_prompt_number != executionCount) return false;
+            }
+            return true;
+        });
+        if (matchingCells.length > 0) {
+            return matchingCells.pop();
+        }
+        return null;
+    }
+
+    resolve(cell: ICell): CodeMirror.Editor {
+        let cellWidget = this.getCellWidget(cell.id, cell.executionCount);
+        if (cellWidget) {
+            return cellWidget.code_mirror;
+        }
+        return null;
+    }
+
+    private _notebook: Notebook;
+}
+
+/**
  * Highlights definitions in executed cells.
  */
 class DefHighlighter {
 
     private _markerManager: MarkerManager;
 
-    constructor(markerManager: MarkerManager) {
+    constructor(gatherModel: GatherModel, markerManager: MarkerManager) {
         this._markerManager = markerManager;
         Jupyter.notebook.events.on('finished_execute.CodeCell', (_: Jupyter.Event, data: { cell: CodeCell }) => {
             let cell = data.cell;
-            let editor = cell.code_mirror;
             let nbCell = new NotebookCell(cell);
             if (!nbCell.hasError) {
-                this._markerManager.highlightDefs(editor, cell.cell_id, 
-                    (cellId: string, location: ILocation) => {
-                        // gatherToClipboard({ cellId: cellId, location: location });
-                        highlightDependencies(cellId, location);
-                    });
+                gatherModel.lastExecutedCell = nbCell;
             }
         });
 
@@ -70,47 +110,11 @@ class DefHighlighter {
 }
 
 /**
- * Get a cell from the notebook with the specified properties.
- */
-function getCellWidget(cellId: string, executionCount?: number) {
-    let matchingCells = Jupyter.notebook.get_cells()
-    .filter((c) => {
-        if (c.cell_id != cellId) return false;
-        if (executionCount != undefined) {
-            if (!(c instanceof CodeCell)) return false;
-            if ((c as CodeCell).input_prompt_number != executionCount) return false;
-        }
-        return true;
-    });
-    if (matchingCells.length > 0) {
-        return matchingCells.pop();
-    }
-    return null;
-}
-
-/**
- * Highlight the dependencies for a selection.
- */
-function highlightDependencies(cellId: string, selection: ILocation) {
-    let cellWidget = getCellWidget(cellId);
-    if (!cellWidget) return;
-    let cell = new NotebookCell(cellWidget as CodeCell);
-    let seedLocations = new LocationSet(selection);
-    let slice = executionLogger.executionSlicer.sliceLatestExecution(cell, seedLocations);
-    slice.cellSlices.forEach((cellSlice) => {
-        let cell = cellSlice.cell;
-        let otherCell = getCellWidget(cell.id, cell.executionCount);
-        if (otherCell && otherCell instanceof CodeCell) {
-            markerManager.highlightDependencies(otherCell.code_mirror, cellSlice.slice);
-        }
-    });
-}
-
-/**
  * Gather code to the clipboard.
  */
 function gatherToClipboard(options: IGatherOptions) {
 
+    /*
     let cellWidget: Cell;
     let cell: ICell;
     if (options.cellId) {
@@ -152,6 +156,7 @@ function gatherToClipboard(options: IGatherOptions) {
     if (notificationWidget) {
         notificationWidget.set_message("Copied cells. To paste, type 'v' or right-click.", 5000);
     }
+    */
 }
 
 /**
@@ -192,12 +197,49 @@ function gatherToNotebook() {
 export function load_ipython_extension() {
     console.log('extension started');
 
-    /**
-     * Plugin initializations.
-     */
+    // Object containing global UI state.
+    let gatherModel = new GatherModel();
+
+    // Plugin initializations.
     executionLogger = new ExecutionLogger();
-    markerManager = new MarkerManager();
-    new DefHighlighter(markerManager);
+    let markerManager = new MarkerManager(gatherModel,
+        new NotebookCellEditorResolver(Jupyter.notebook));
+    new DefHighlighter(gatherModel, markerManager);
+
+    // Controller for global UI state.
+    new GatherController(gatherModel, executionLogger.executionSlicer);
+
+    // Set up toolbar with gather actions.
+    let gatherAction = {
+        icon: 'fa-level-up',
+        help: 'Gather code to clipboard',
+        help_index: 'gather-code',
+        handler: () => {
+            console.log("Gathering up the code");
+        }
+    };
+    let gatherActionName = 'gather-code';
+    let prefix = 'gather_extension';
+    let gatherFullActionName = Jupyter.actions.register(gatherAction, gatherActionName, prefix);
+
+    let clearAction = {
+        icon: 'fa-remove',
+        help: 'Clear gather selections',
+        help_index: 'clear-selections',
+        handler: () => { 
+            console.log("Clearing selection");
+        }
+    }
+    let clearActionName = 'clear-selections';
+    let clearFullActionName = Jupyter.actions.register(clearAction, clearActionName, prefix);
+
+    Jupyter.toolbar.add_buttons_group([{
+        label: 'Gather',
+        action: gatherFullActionName
+    }, {
+        label: 'Clear',
+        action: clearFullActionName
+    }]);
 
     // Add UI elements
     const menu = $('#menus ul.navbar-nav');
@@ -208,5 +250,6 @@ export function load_ipython_extension() {
     $('<li id="gather-to-script" title="Gather to script"><a href="#">Gather to script</a></li>').appendTo(list);
     $('<li id="gather-to-clipboard title="Gather to clipboard"><a href="#">Gather to clipboard</a></li>')
         .click(() => gatherToClipboard({})).appendTo(list);
-    notificationWidget = notification_area.new_notification_widget("gather");
+    // notificationWidget = notification_area.new_notification_widget("gather");
+    notification_area.new_notification_widget("gather");
 }

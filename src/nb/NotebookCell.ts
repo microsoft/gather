@@ -58,6 +58,10 @@ export class NotebookCell implements IOutputterCell<Output> {
         return this.outputs.some(o => o.output_type === 'error');
     }
 
+    get editor(): CodeMirror.Editor {
+        return this._model.code_mirror;
+    }
+
     get outputs(): Output[] {
         if (this._model.output_area) {
             return this._model.output_area.outputs;
@@ -70,6 +74,6 @@ export class NotebookCell implements IOutputterCell<Output> {
         return new NotebookCell(copyCodeCell(this._model));
     }
 
-    type: "outputter";
+    is_outputter_cell: boolean = true;
     private _model: CodeCell;
 }

@@ -65,6 +65,6 @@ export class LabCell implements IOutputterCell<IOutputModel> {
         return new LabCell(clonedModel);
     }
 
-    type: "outputter";
+    is_outputter_cell: boolean = true;
     private _model: ICodeCellModel;
 }

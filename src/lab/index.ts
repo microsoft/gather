@@ -6,7 +6,6 @@ import { JupyterLab, JupyterLabPlugin } from '@jupyterlab/application';
 import { IClientSession, ICommandPalette } from '@jupyterlab/apputils';
 import { Clipboard } from '@jupyterlab/apputils';
 import { ICellModel, CodeCell, ICodeCellModel } from '@jupyterlab/cells';
-import { CodeMirrorEditor } from '@jupyterlab/codemirror';
 import { IDocumentManager } from '@jupyterlab/docmanager';
 import { DocumentRegistry } from '@jupyterlab/docregistry';
 import { FileEditor } from '@jupyterlab/fileeditor';
@@ -15,7 +14,6 @@ import { IObservableList } from '@jupyterlab/observables';
 import { RenderMimeRegistry, standardRendererFactories as initialFactories, IOutputModel } from '@jupyterlab/rendermime';
 
 import { ToolbarCheckbox } from './ToolboxCheckbox';
-import { MarkerManager } from '../packages/cell';
 import { HistoryViewer, buildHistoryModel } from '../packages/history';
 import { CellProgram, DataflowDirection, LocationSet } from '../slicing/Slice';
 
@@ -28,7 +26,6 @@ import { NotificationWidget } from '../packages/notification/widget';
 
 import '../../style/lab-vars.css';
 import '../../style/index.css';
-import { ILocation } from '../parsers/python/python_parser';
 
 /**
  * Try to only write Jupyter Lab-specific implementation code in this file.
@@ -56,12 +53,12 @@ function copyCellsToClipboard(cellModels: Array<ICellModel>) {
  */
 class ExecutionLoggerExtension implements DocumentRegistry.IWidgetExtension<NotebookPanel, INotebookModel> {
 
-    private _markerManager: MarkerManager = new MarkerManager();
-    private _commands: CommandRegistry;
+    // private _markerManager: MarkerManager = new MarkerManager();
+    // private _commands: CommandRegistry;
     private _executionSlicer: ExecutionLogSlicer = new ExecutionLogSlicer();
 
     constructor(commands: CommandRegistry) {
-        this._commands = commands;
+        // this._commands = commands;
     }
 
     get executionSlicer(): ExecutionLogSlicer {
@@ -74,6 +71,7 @@ class ExecutionLoggerExtension implements DocumentRegistry.IWidgetExtension<Note
                 this.onCellsChanged(panel.notebook, panel.session, cells, value),
             this);
 
+        /*
         // Listen for all clicks on definition markers to trigger gathering.
         // XXX: For some reason (tested in both Chrome and Edge), "click" events get dropped
         // sometimes when you're clicking on a cell. Mouseup doesn't. Eventually should find
@@ -81,6 +79,7 @@ class ExecutionLoggerExtension implements DocumentRegistry.IWidgetExtension<Note
         panel.notebook.node.addEventListener("mouseup", (event: MouseEvent) => {
             this._markerManager.handleClick(event);
         });
+        */
 
         return new DisposableDelegate(() => {});
     }
@@ -109,8 +108,10 @@ class ExecutionLoggerExtension implements DocumentRegistry.IWidgetExtension<Note
                     this._executionSlicer.logExecution(new LabCell(cellClone));
 
                     // Get the editor instance for the cell.
+                    // Legacy code, needs to be updated to new GatherModel
+                    /*
                     let cell = notebook.widgets.filter((c) => c.model.id == cellModel.id).pop();
-                    let editor = (cell.editor as CodeMirrorEditor).editor
+                    let editor = (cell.editor as CodeMirrorEditor).editor;
                     this._markerManager.highlightDefs(editor, cell.model.id, 
                         (cellId: string, location: ILocation) => {
                             this._commands.execute("livecells:gatherToClipboard", {
@@ -123,6 +124,7 @@ class ExecutionLoggerExtension implements DocumentRegistry.IWidgetExtension<Note
                                 }
                             });
                         });
+                    */
                 }
             });
         }
