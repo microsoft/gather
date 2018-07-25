@@ -1,6 +1,15 @@
 @import './history.css';
 
 /**
+ * Gather button
+ */
+ .jp-Toolbar-button-glow {
+   background-color: var(--brand-color3);
+   border-color: var(--brand-color1);
+   box-shadow: 0 0 10px var(--brand-color1);
+ }
+
+/**
  * Clues for gatherable text.
  */
 .jp-InputArea-editor-nametext {

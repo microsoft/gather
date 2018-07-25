@@ -1,23 +1,22 @@
 import $ = require('jquery');
 import Jupyter = require('base/js/namespace');
 import { Cell, CodeCell, notification_area, Notebook, Action } from 'base/js/namespace';
+import { Widget } from '@phosphor/widgets';
 
 import { NotebookCell, copyCodeCell } from './NotebookCell';
-import { ExecutionLogSlicer } from '../slicing/ExecutionSlicer';
+import { ExecutionLogSlicer, SlicedExecution } from '../slicing/ExecutionSlicer';
 import { MarkerManager, ICell, CellEditorResolver } from '../packages/cell';
 
-import { ILocation } from '../parsers/python/python_parser';
-import { GatherModel, GatherModelEvent, GatherEventData } from '../packages/gather/model';
+import { GatherModel, GatherModelEvent, GatherEventData, IGatherObserver } from '../packages/gather/model';
 import { GatherController } from '../packages/gather/controller';
 
 import '../../style/nb-vars.css';
 import '../../style/index.css';
-import { Widget } from '../../node_modules/@phosphor/widgets';
 
 /**
  * Widget for gather notifications.
  */
-// var notificationWidget: Jupyter.NotificationWidget;
+var notificationWidget: Jupyter.NotificationWidget;
 
 /**
  * Logs cell executions.
@@ -127,66 +126,34 @@ class DefHighlighter {
 /**
  * Gather code to the clipboard.
  */
-function gatherToClipboard(options: IGatherOptions) {
-
-    /*
-    let cellWidget: Cell;
-    let cell: ICell;
-    if (options.cellId) {
-        cellWidget = getCellWidget(options.cellId);
-    } else {
-        cellWidget = Jupyter.notebook.get_selected_cell();
-    }
-    if (cellWidget && cellWidget.cell_type == 'code') {
-        cell = new NotebookCell(cellWidget as CodeCell);
-    }
-    if (!cell) return;
-
-    let seedLocations = undefined;
-    if (options.location && options.location.first_line != undefined) {
-        seedLocations = new LocationSet(options.location);
-    }
+function gatherToClipboard(slice?: SlicedExecution) {
 
     const SHOULD_SLICE_CELLS = true;
-    let slice = executionLogger.executionSlicer.sliceLatestExecution(cell, seedLocations);
-    let cells = slice.cellSlices
-    .map((cellSlice) => {
-        let slicedCell = cellSlice.cell;
-        if (SHOULD_SLICE_CELLS) {
-            slicedCell = slicedCell.copy();
-            slicedCell.text = cellSlice.textSliceLines;
-        }
-        return slicedCell;
-    });
-    
-    // Copy cells to clipboard
-    Jupyter.notebook.clipboard = [];
-    cells.forEach((c) => {
-        if (c instanceof NotebookCell) {
-            Jupyter.notebook.clipboard.push(c.model.toJSON());
-        }
-    });
-    Jupyter.notebook.enable_paste();
 
-    if (notificationWidget) {
-        notificationWidget.set_message("Copied cells. To paste, type 'v' or right-click.", 5000);
+    if (slice) {
+        let cells = slice.cellSlices
+        .map((cellSlice) => {
+            let slicedCell = cellSlice.cell;
+            if (SHOULD_SLICE_CELLS) {
+                slicedCell = slicedCell.copy();
+                slicedCell.text = cellSlice.textSliceLines;
+            }
+            return slicedCell;
+        });
+        
+        // Copy cells to clipboard
+        Jupyter.notebook.clipboard = [];
+        cells.forEach((c) => {
+            if (c instanceof NotebookCell) {
+                Jupyter.notebook.clipboard.push(c.model.toJSON());
+            }
+        });
+        Jupyter.notebook.enable_paste();
+
+        if (notificationWidget) {
+            notificationWidget.set_message("Copied cells. To paste, type 'v' or right-click.", 5000);
+        }
     }
-    */
-}
-
-/**
- * Options for gathering to clipboard.
- */
-interface IGatherOptions {
-    /**
-     * ID of a cell at which to start gathering.
-     */
-    cellId?: string;
-
-    /**
-     * Location in code for which dependencies should be gathered.
-     */
-    location?: ILocation;
 }
 
 function gatherToNotebook() {
@@ -226,12 +193,12 @@ interface Button {
 /**
  * Class for highlighted buttons.
  */
-const HIGHLIGHTED_BUTTON_CLASS = "jp-Toolbar-gatherbutton-highlight";
+const HIGHLIGHTED_BUTTON_CLASS = "jp-Toolbar-button-glow";
 
 /**
  * A button to gather code to the clipboard.
  */
-class GatherButton implements Button implements IGatherObserver {
+class GatherButton implements Button, IGatherObserver {
 
     /**
      * Properties for initializing the gather button.
@@ -260,7 +227,14 @@ class GatherButton implements Button implements IGatherObserver {
      * Jupyter notebook initializes toolbars.
      */
     set node(node: Widget) {
-        this._node = node;
+        if (this._node != node) {
+            this._node = node;
+            this._node.node.onclick = () => {
+                let slices = this._gatherModel.selectedSlices.map((s) => s.slice);
+                let mergedSlice = slices[0].merge(...slices.slice(1));
+                gatherToClipboard(mergedSlice);
+            };
+        }
     }
 
     /**
@@ -313,7 +287,7 @@ export function load_ipython_extension() {
     new GatherController(gatherModel, executionLogger.executionSlicer);
 
     // Set up toolbar with gather actions.
-    let gatherButton = new GatherButton();
+    let gatherButton = new GatherButton(gatherModel );
     let gatherFullActionName = Jupyter.actions.register(
         gatherButton.action, gatherButton.actionName, GATHER_PREFIX);
     let clearButton = new ClearButton();
@@ -324,6 +298,7 @@ export function load_ipython_extension() {
         { label: clearButton.label, action: clearFullActionName }
     ]);
     let gatherButtonNode = buttonsGroup.children()[0];
+    gatherButton.node = new Widget({ node: gatherButtonNode });
 
     // Add UI elements
     const menu = $('#menus ul.navbar-nav');
@@ -333,7 +308,7 @@ export function load_ipython_extension() {
     $('<li id="gather-to-notebook" title="Gather to notebook"><a href="#">Gather to notebook</a></li>').click(gatherToNotebook).appendTo(list);
     $('<li id="gather-to-script" title="Gather to script"><a href="#">Gather to script</a></li>').appendTo(list);
     $('<li id="gather-to-clipboard title="Gather to clipboard"><a href="#">Gather to clipboard</a></li>')
-        .click(() => gatherToClipboard({})).appendTo(list);
-    // notificationWidget = notification_area.new_notification_widget("gather");
+        .click(() => gatherToClipboard()).appendTo(list);
+    notificationWidget = notification_area.new_notification_widget("gather");
     notification_area.new_notification_widget("gather");
 }

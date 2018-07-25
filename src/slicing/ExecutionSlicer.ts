@@ -22,6 +22,28 @@ export class SlicedExecution {
         public executionTime: Date,
         public cellSlices: CellSlice[]
     ) { }
+
+    merge(...slicedExecutions: SlicedExecution[]): SlicedExecution {
+        let cellSlices: { [ cellId: string ]: { [ executionCount: number ]: CellSlice }} = {};
+        let mergedCellSlices = [];
+        for (let slicedExecution of slicedExecutions.concat(this)) {
+            for (let cellSlice of slicedExecution.cellSlices) {
+                let cell = cellSlice.cell;
+                if (!cellSlices.hasOwnProperty(cell.id)) cellSlices[cell.id] = {};
+                if (!cellSlices[cell.id].hasOwnProperty(cell.executionCount)) {
+                    let newCellSlice = new CellSlice(cell.copy(), new LocationSet());
+                    cellSlices[cell.id][cell.executionCount] = newCellSlice;
+                    mergedCellSlices.push(newCellSlice);
+                }
+                let mergedCellSlice = cellSlices[cell.id][cell.executionCount];
+                mergedCellSlice.slice = mergedCellSlice.slice.union(cellSlice.slice);
+            }
+        }
+        return new SlicedExecution(
+            new Date(),  // Date doesn't mean anything for the merged slice.
+            mergedCellSlices.sort((a, b) => a.cell.executionCount - b.cell.executionCount)
+        );
+    }
 }
 
 /**

@@ -37,7 +37,7 @@ export class CellSlice {
      */
     constructor(cell: ICell, slice: LocationSet) {
         this.cell = cell;
-        this.slice = slice;
+        this._slice = slice;
     }
 
     /**
@@ -86,6 +86,20 @@ export class CellSlice {
         }).filter((text) => text != "").join("\n");
     }
 
+    /**
+     * Get the slice.
+     */
+    get slice(): LocationSet {
+        return this._slice;
+    }
+
+    /**
+     * Set the slice.
+     */
+    set slice(slice: LocationSet) {
+        this._slice = slice;
+    }
+
     readonly cell: ICell;
-    readonly slice: LocationSet;
+    private _slice: LocationSet;
 }
