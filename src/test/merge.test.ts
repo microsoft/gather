@@ -37,7 +37,7 @@ describe('SlicedExecution', () => {
         );
     }
 
-    describe.only('merge', () => {
+    describe('merge', () => {
 
         it('unions slices with different cells', () => {
             let slice1 = slicedExecution(

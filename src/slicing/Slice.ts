@@ -54,19 +54,33 @@ function intersect(l1: ILocation, l2: ILocation): boolean {
  * seedLocations are symbol locations.
  */
 export function slice(code: string, seedLocations: LocationSet): LocationSet {
+
     const ast = python3.parse(code);
     const cfg = new ControlFlowGraph(ast);
     const dfa = dataflowAnalysis(cfg);
     dfa.add(...cfg.getControlDependencies());
 
-    let sliceLocations = new LocationSet();
+    // Include at least the full statements for each seed.
+    let seedStatementLocations = new LocationSet();
+    seedLocations.items.forEach((seedLoc) => {
+        for (let block of cfg.blocks) {
+            for (let statement of block.statements) {
+                if (within(seedLoc, statement.location)) {
+                    seedStatementLocations.add(statement.location);
+                }
+            }
+        }
+    });
+
+    let sliceLocations = new LocationSet(...seedStatementLocations.items);
     let lastSize: number;
     do {
         lastSize = sliceLocations.size;
         for (let flow of dfa.items) {
             const from = flow.fromNode.location;
             const to = flow.toNode.location;
-            if (seedLocations.items.some((seedLoc) => { return intersect(seedLoc, to); })) {
+            if (seedStatementLocations.items.some((seedStmtLoc) =>
+                { return intersect(seedStmtLoc, to); })) {
                 sliceLocations.add(to);
             }
             if (sliceLocations.items.some((loc) => { return within(to, loc); })) {
@@ -80,6 +94,7 @@ export function slice(code: string, seedLocations: LocationSet): LocationSet {
 
 /**
  * Slice: given a set of lines in a program, return lines it depends on.
+ * OUT OF DATE: use slice() instead of sliceLines().
  */
 export function sliceLines(code: string, relevantLineNumbers: NumberSet) {
     const ast = python3.parse(code);

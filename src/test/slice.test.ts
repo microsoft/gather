@@ -1,9 +1,9 @@
 import { expect } from "chai";
 import { slice, LocationSet } from "../slicing/Slice";
 
-describe('detects dataflow dependencies', () => {
+describe('slices', () => {
 
-    it('from variable uses to names', () => {
+    it('statements including the def and use', () => {
         let locations = slice([
             "a = 1",
             "b = a",
@@ -16,5 +16,16 @@ describe('detects dataflow dependencies', () => {
         );
     });
 
+    it('at least yields the statement for a seed', () => {
+        let locations = slice([
+            "c = 1",
+            ""
+        ].join("\n"), new LocationSet(
+            { first_line: 1, first_column: 0, last_line: 1, last_column: 2 }
+        ));
+        expect(locations.contains(
+            { first_line: 1, first_column: 0, last_line: 1, last_column: 5 }
+        )).to.be.true;
+    });
     
 });

@@ -39,6 +39,7 @@ class ExecutionLogger {
             if (this._cellWithUndefinedCount) {
                 console.log("Defining cell execution count after the fact...");
                 this._cellWithUndefinedCount.executionCount = data.reply.content.execution_count;
+                this.executionSlicer.logExecution(this._cellWithUndefinedCount);
                 this._cellWithUndefinedCount = undefined;
             } else {
                 this._lastExecutionCount = data.reply.content.execution_count;
@@ -49,11 +50,11 @@ class ExecutionLogger {
             const cell = new NotebookCell(cellClone);
             if (this._lastExecutionCount) {
                 cellClone.input_prompt_number = this._lastExecutionCount;
+                this.executionSlicer.logExecution(cell);
                 this._lastExecutionCount = undefined;
             } else {
                 this._cellWithUndefinedCount = cell;
             }
-            this.executionSlicer.logExecution(cell);
         });
     }
 }
@@ -310,5 +311,4 @@ export function load_ipython_extension() {
     $('<li id="gather-to-clipboard title="Gather to clipboard"><a href="#">Gather to clipboard</a></li>')
         .click(() => gatherToClipboard()).appendTo(list);
     notificationWidget = notification_area.new_notification_widget("gather");
-    notification_area.new_notification_widget("gather");
 }
