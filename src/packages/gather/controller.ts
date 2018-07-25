@@ -1,7 +1,8 @@
-import { IGatherObserver, GatherModel, GatherModelEvent, GatherEventData } from ".";
+import { IGatherObserver, GatherModel, GatherModelEvent, GatherEventData, GatherState } from ".";
 import { ExecutionLogSlicer } from "../../slicing/ExecutionSlicer";
 import { DefSelection } from "./selections";
 import { LocationSet } from "../../slicing/Slice";
+import { ICellClipboard } from "./clipboard";
 
 /**
  * Controller for updating the gather model.
@@ -10,9 +11,10 @@ export class GatherController implements IGatherObserver {
     /**
      * Constructor for gather controller.
      */
-    constructor(model: GatherModel, executionSlicer: ExecutionLogSlicer) {
+    constructor(model: GatherModel, executionSlicer: ExecutionLogSlicer, clipboard: ICellClipboard) {
         model.addObserver(this);
         this._executionSlicer = executionSlicer;
+        this._cellClipboard = clipboard;
     }
 
     /**
@@ -20,6 +22,18 @@ export class GatherController implements IGatherObserver {
      */
     onModelChange(eventType: GatherModelEvent, eventData: GatherEventData, model: GatherModel) {
         
+        // If a gather action was requested, do the gather.
+        if (eventType == GatherModelEvent.STATE_CHANGED) {
+            let newState = eventData as GatherState;
+            if (newState == GatherState.GATHER) {
+                let slices = model.selectedSlices.map((s) => s.slice);
+                let mergedSlice = slices[0].merge(...slices.slice(1));
+                this._cellClipboard.copy(mergedSlice);
+                model.deselectAllDefs();
+                model.requestStateChange(GatherState.SELECTING);
+            }
+        }
+
         // If def is selected, select its slice too.
         if (eventType == GatherModelEvent.DEF_SELECTED) {
             let defSelection = eventData as DefSelection;
@@ -41,4 +55,5 @@ export class GatherController implements IGatherObserver {
     }
 
     private _executionSlicer: ExecutionLogSlicer;
+    private _cellClipboard: ICellClipboard;
 }

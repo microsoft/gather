@@ -7,7 +7,7 @@ import { getDefs, DefType } from "../../slicing/DataflowAnalysis";
 import { StringSet } from "../../slicing/Set";
 import { SlicerConfig } from "../../slicing/SlicerConfig";
 import { MagicsRewriter } from "../../slicing/MagicsRewriter";
-import { GatherModel, IGatherObserver, GatherEventData, GatherModelEvent, EditorDef } from "../gather";
+import { GatherModel, IGatherObserver, GatherEventData, GatherModelEvent, EditorDef, DefSelection } from "../gather";
 import { ICell } from "./model";
 import { SlicedExecution } from "../../slicing/ExecutionSlicer";
 
@@ -81,6 +81,14 @@ export class MarkerManager implements IGatherObserver {
         if (eventType == GatherModelEvent.EDITOR_DEF_FOUND) {
             let editorDef = eventData as EditorDef;
             this.highlightDef(editorDef);
+        }
+        // Whenever a definition is deselected, unhighlight it.
+        if (eventType == GatherModelEvent.DEF_DESELECTED) {
+            let defSelection = eventData as DefSelection;
+            this._defMarkers.filter((marker) => {
+                return defSelection.editorDef.def.location == marker.location &&
+                    defSelection.cell.id == marker.cell.id;
+            }).forEach((marker) => marker.deselect());
         }
         // When the chosen slices change, update which lines are highlighted in the document.
         if (eventType == GatherModelEvent.SLICE_SELECTED || eventType == GatherModelEvent.SLICE_DESELECTED) {
@@ -195,26 +203,36 @@ export class DefMarker {
     handleClick(event: MouseEvent) {
         let editor = this.editor;
         if (editor.getWrapperElement().contains(event.target as Node)) {
-            console.log(event.target);
             let clickPosition: CodeMirror.Position = editor.coordsChar(
                 { left: event.clientX, top: event.clientY });
             let editorMarkers = editor.getDoc().findMarksAt(clickPosition);
             if (editorMarkers.indexOf(this.marker) != -1) {
                 if (this.clickHandler) {
-                    this._selected = !this._selected;
-                    // Add class to indicate that the definition was selected.
-                    if (this._selected && !this._selectionMarker) {
-                        let markerPos = this.marker.find();
-                        this._selectionMarker = this.editor.getDoc().markText(
-                            markerPos.from, markerPos.to, { className: DEFINITION_SELECTED_CLASS });
-                    } else if (!this._selected && this._selectionMarker) {
-                        this._selectionMarker.clear();
-                        this._selectionMarker = undefined;
-                    }
+                    this.toggleSelected();
                     this.clickHandler(this.cell, this.location, this._selected);
                 }
                 event.preventDefault();
             }
+        }
+    }
+
+    toggleSelected() {
+        if (this._selected) this.deselect();
+        else if (!this._selected) this.select();
+    }
+
+    select() {
+        this._selected = true;
+        let markerPos = this.marker.find();
+        this._selectionMarker = this.editor.getDoc().markText(
+            markerPos.from, markerPos.to, { className: DEFINITION_SELECTED_CLASS });
+    }
+
+    deselect() {
+        this._selected = false;
+        if (this._selectionMarker) {
+            this._selectionMarker.clear();
+            this._selectionMarker = undefined;
         }
     }
     

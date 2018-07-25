@@ -1,17 +1,19 @@
 import $ = require('jquery');
 import Jupyter = require('base/js/namespace');
-import { Cell, CodeCell, notification_area, Notebook, Action } from 'base/js/namespace';
+import { Cell, CodeCell, notification_area, Notebook } from 'base/js/namespace';
 import { Widget } from '@phosphor/widgets';
 
 import { NotebookCell, copyCodeCell } from './NotebookCell';
 import { ExecutionLogSlicer, SlicedExecution } from '../slicing/ExecutionSlicer';
 import { MarkerManager, ICell, CellEditorResolver } from '../packages/cell';
 
-import { GatherModel, GatherModelEvent, GatherEventData, IGatherObserver } from '../packages/gather/model';
+import { GatherModel } from '../packages/gather/model';
 import { GatherController } from '../packages/gather/controller';
 
 import '../../style/nb-vars.css';
 import '../../style/index.css';
+import { GatherButton, ClearButton } from './buttons';
+import { ICellClipboard, IClipboardListener } from '../packages/gather/clipboard';
 
 /**
  * Widget for gather notifications.
@@ -127,34 +129,41 @@ class DefHighlighter {
 /**
  * Gather code to the clipboard.
  */
-function gatherToClipboard(slice?: SlicedExecution) {
+class Clipboard implements ICellClipboard {
 
-    const SHOULD_SLICE_CELLS = true;
+    addListener(listener: IClipboardListener) {
+        this._listeners.push(listener);
+    }
 
-    if (slice) {
-        let cells = slice.cellSlices
-        .map((cellSlice) => {
-            let slicedCell = cellSlice.cell;
-            if (SHOULD_SLICE_CELLS) {
-                slicedCell = slicedCell.copy();
-                slicedCell.text = cellSlice.textSliceLines;
-            }
-            return slicedCell;
-        });
-        
-        // Copy cells to clipboard
-        Jupyter.notebook.clipboard = [];
-        cells.forEach((c) => {
-            if (c instanceof NotebookCell) {
-                Jupyter.notebook.clipboard.push(c.model.toJSON());
-            }
-        });
-        Jupyter.notebook.enable_paste();
+    copy(slice: SlicedExecution) {
 
-        if (notificationWidget) {
-            notificationWidget.set_message("Copied cells. To paste, type 'v' or right-click.", 5000);
+        const SHOULD_SLICE_CELLS = true;
+
+        if (slice) {
+            let cells = slice.cellSlices
+            .map((cellSlice) => {
+                let slicedCell = cellSlice.cell;
+                if (SHOULD_SLICE_CELLS) {
+                    slicedCell = slicedCell.copy();
+                    slicedCell.text = cellSlice.textSliceLines;
+                }
+                return slicedCell;
+            });
+            
+            // Copy cells to clipboard
+            Jupyter.notebook.clipboard = [];
+            cells.forEach((c) => {
+                if (c instanceof NotebookCell) {
+                    Jupyter.notebook.clipboard.push(c.model.toJSON());
+                }
+            });
+            Jupyter.notebook.enable_paste();
+
+            this._listeners.forEach((listener) => listener.onCopy(slice, this));
         }
     }
+
+    private _listeners: IClipboardListener[] = [];
 }
 
 function gatherToNotebook() {
@@ -182,96 +191,6 @@ function gatherToNotebook() {
  */
 const GATHER_PREFIX = 'gather_extension';
 
-/**
- * Button to add to the Jupyter notebook toolbar.
- */
-interface Button {
-    label?: string;
-    actionName: string;
-    action: Action;
-}
-
-/**
- * Class for highlighted buttons.
- */
-const HIGHLIGHTED_BUTTON_CLASS = "jp-Toolbar-button-glow";
-
-/**
- * A button to gather code to the clipboard.
- */
-class GatherButton implements Button, IGatherObserver {
-
-    /**
-     * Properties for initializing the gather button.
-     */
-    readonly label: string = "Gather";
-    readonly actionName: string = "gather-code";
-    readonly action: Action = {
-        icon: 'fa-level-up',
-        help: 'Gather code to clipboard',
-        help_index: 'gather-code',
-        handler: () => {
-            console.log("Gathering up the code");
-        }
-    }
-
-    /**
-     * Construct a gather button.
-     */
-    constructor(gatherModel: GatherModel) {
-        this._gatherModel = gatherModel;
-        this._gatherModel.addObserver(this);
-    }
-
-    /**
-     * Set the node for this button. For now, has to be done after initialization, given how
-     * Jupyter notebook initializes toolbars.
-     */
-    set node(node: Widget) {
-        if (this._node != node) {
-            this._node = node;
-            this._node.node.onclick = () => {
-                let slices = this._gatherModel.selectedSlices.map((s) => s.slice);
-                let mergedSlice = slices[0].merge(...slices.slice(1));
-                gatherToClipboard(mergedSlice);
-            };
-        }
-    }
-
-    /**
-     * Listen for changes on the gather model.
-     */
-    onModelChange(event: GatherModelEvent, eventData: GatherEventData, model: GatherModel) {
-        if (event == GatherModelEvent.SLICE_SELECTED || event == GatherModelEvent.SLICE_DESELECTED) {
-            if (model.selectedSlices.length > 0) {
-                if (this._node) {
-                    this._node.addClass(HIGHLIGHTED_BUTTON_CLASS);
-                }
-            } else {
-                if (this._node) {
-                    this._node.removeClass(HIGHLIGHTED_BUTTON_CLASS);
-                }
-            }
-        }
-    }
-
-    private _gatherModel: GatherModel;
-    private _node: Widget;
-}
-
-class ClearButton implements Button {
-    readonly label: string = "Clear";
-    readonly actionName: string = "clear-selections";
-    readonly action: Action = {
-        icon: 'fa-remove',
-        help: 'Clear gather selections',
-        help_index: 'clear-selections',
-        handler: () => { 
-            console.log("Clearing selection");
-        }
-    }
-}
-
 export function load_ipython_extension() {
     console.log('extension started');
 
@@ -284,22 +203,32 @@ export function load_ipython_extension() {
         new NotebookCellEditorResolver(Jupyter.notebook));
     new DefHighlighter(gatherModel, markerManager);
 
+    // Initialize clipboard for copying cells.
+    let clipboard = new Clipboard();
+    clipboard.addListener({
+        onCopy: () => {    
+            if (notificationWidget) {
+                notificationWidget.set_message("Copied cells. To paste, type 'v' or right-click.", 5000);
+            }
+        }
+    });
+
     // Controller for global UI state.
-    new GatherController(gatherModel, executionLogger.executionSlicer);
+    new GatherController(gatherModel, executionLogger.executionSlicer, clipboard);
 
     // Set up toolbar with gather actions.
-    let gatherButton = new GatherButton(gatherModel );
+    let gatherButton = new GatherButton(gatherModel);
     let gatherFullActionName = Jupyter.actions.register(
         gatherButton.action, gatherButton.actionName, GATHER_PREFIX);
-    let clearButton = new ClearButton();
+    let clearButton = new ClearButton(gatherModel);
     let clearFullActionName = Jupyter.actions.register(
         clearButton.action, clearButton.actionName, GATHER_PREFIX);
     let buttonsGroup = Jupyter.toolbar.add_buttons_group([
         { label: gatherButton.label, action: gatherFullActionName },
         { label: clearButton.label, action: clearFullActionName }
     ]);
-    let gatherButtonNode = buttonsGroup.children()[0];
-    gatherButton.node = new Widget({ node: gatherButtonNode });
+    gatherButton.node = new Widget({ node: buttonsGroup.children()[0] });
+    clearButton.node = new Widget({ node: buttonsGroup.children()[1] });
 
     // Add UI elements
     const menu = $('#menus ul.navbar-nav');
@@ -308,7 +237,7 @@ export function load_ipython_extension() {
     const list = $('<ul id="gather_menu" class="dropdown-menu"></ul>').appendTo(gather);
     $('<li id="gather-to-notebook" title="Gather to notebook"><a href="#">Gather to notebook</a></li>').click(gatherToNotebook).appendTo(list);
     $('<li id="gather-to-script" title="Gather to script"><a href="#">Gather to script</a></li>').appendTo(list);
-    $('<li id="gather-to-clipboard title="Gather to clipboard"><a href="#">Gather to clipboard</a></li>')
-        .click(() => gatherToClipboard()).appendTo(list);
+    // $('<li id="gather-to-clipboard title="Gather to clipboard"><a href="#">Gather to clipboard</a></li>')
+    //     .click(() => gatherToClipboard()).appendTo(list);
     notificationWidget = notification_area.new_notification_widget("gather");
 }

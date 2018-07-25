@@ -5,8 +5,8 @@ import { ICell } from "../cell";
  * Available states for the gathering application.
  */
 export enum GatherState {
-    IDLE,
-    GATHERING
+    SELECTING,
+    GATHER
 };
 
 /**
@@ -63,9 +63,11 @@ export class GatherModel {
     /**
      * Set the state of the gather model.
      */
-    set state(state: GatherState) {
-        this._state = state;
-        this.notifyObservers(GatherModelEvent.STATE_CHANGED);
+    requestStateChange(state: GatherState) {
+        if (this._state != state) {
+            this._state = state;
+            this.notifyObservers(GatherModelEvent.STATE_CHANGED, state);
+        }
     }
 
     /**
@@ -121,7 +123,7 @@ export class GatherModel {
     }
 
     /**
-     * Remove a slice from the list of selected slices.
+     * Remove a def from the list of selected defs.
      */
     deselectDef(def: DefSelection) {
         for (let i = 0; i < this._selectedDefs.length; i++) {
@@ -130,6 +132,16 @@ export class GatherModel {
                 this.notifyObservers(GatherModelEvent.DEF_DESELECTED, def);
                 return;
             }
+        }
+    }
+
+    /**
+     * Deselect all defs.
+     */
+    deselectAllDefs() {
+        for (let i = this._selectedDefs.length - 1; i >= 0; i--) {
+            let def = this._selectedDefs.splice(i, 1)[0];
+            this.notifyObservers(GatherModelEvent.DEF_DESELECTED, def);
         }
     }
 
@@ -152,7 +164,7 @@ export class GatherModel {
         return this._sliceSelections;
     }
 
-    private _state: GatherState = GatherState.IDLE;
+    private _state: GatherState = GatherState.SELECTING;
     private _observers: IGatherObserver[] = [];
     private _lastExecutedCell: ICell;
     private _editorDefs: EditorDef[] = [];
