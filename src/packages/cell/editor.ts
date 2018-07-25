@@ -17,6 +17,11 @@ import { SlicedExecution } from "../../slicing/ExecutionSlicer";
 const DEFINITION_CLASS = "jp-InputArea-editor-nametext";
 
 /**
+ * Class for selected variable definition text.
+ */
+const DEFINITION_SELECTED_CLASS = "jp-InputArea-editor-nametext-selected";
+
+/**
  * Class for a data dependency.
  */
 const DEPENDENCY_CLASS = "jp-InputArea-editor-dependencyline";
@@ -190,20 +195,31 @@ export class DefMarker {
     handleClick(event: MouseEvent) {
         let editor = this.editor;
         if (editor.getWrapperElement().contains(event.target as Node)) {
+            console.log(event.target);
             let clickPosition: CodeMirror.Position = editor.coordsChar(
                 { left: event.clientX, top: event.clientY });
             let editorMarkers = editor.getDoc().findMarksAt(clickPosition);
             if (editorMarkers.indexOf(this.marker) != -1) {
                 if (this.clickHandler) {
-                    this.selected = !this.selected;
-                    this.clickHandler(this.cell, this.location, this.selected);
+                    this._selected = !this._selected;
+                    // Add class to indicate that the definition was selected.
+                    if (this._selected && !this._selectionMarker) {
+                        let markerPos = this.marker.find();
+                        this._selectionMarker = this.editor.getDoc().markText(
+                            markerPos.from, markerPos.to, { className: DEFINITION_SELECTED_CLASS });
+                    } else if (!this._selected && this._selectionMarker) {
+                        this._selectionMarker.clear();
+                        this._selectionMarker = undefined;
+                    }
+                    this.clickHandler(this.cell, this.location, this._selected);
                 }
                 event.preventDefault();
             }
         }
     }
     
-    selected: boolean = false;
+    private _selected: boolean = false;
+    private _selectionMarker: CodeMirror.TextMarker = undefined;
     readonly marker: CodeMirror.TextMarker;
     readonly editor: CodeMirror.Editor;
     readonly location: ILocation;

@@ -28,17 +28,31 @@ var executionLogger: ExecutionLogger;
  */
 class ExecutionLogger {
     readonly executionSlicer = new ExecutionLogSlicer();
+    private _cellWithUndefinedCount: ICell;
+    private _lastExecutionCount: number;
 
     constructor() {
-        let lastExecutionCount: number;
+        // We don't know the order that we will receive events for the kernel finishing execution and
+        // a cell finishing execution, so this helps us pair execution count to an executed cell.
         Jupyter.notebook.events.on('shell_reply.Kernel', (
-            _: Jupyter.Event, data: { reply: { content: Jupyter.ShellReplyContent }}) => {
-            lastExecutionCount = data.reply.content.execution_count;
+                _: Jupyter.Event, data: { reply: { content: Jupyter.ShellReplyContent }}) => {
+            if (this._cellWithUndefinedCount) {
+                console.log("Defining cell execution count after the fact...");
+                this._cellWithUndefinedCount.executionCount = data.reply.content.execution_count;
+                this._cellWithUndefinedCount = undefined;
+            } else {
+                this._lastExecutionCount = data.reply.content.execution_count;
+            }
         });
         Jupyter.notebook.events.on('finished_execute.CodeCell', (_: Jupyter.Event, data: { cell: CodeCell }) => {
             let cellClone = copyCodeCell(data.cell);
-            cellClone.input_prompt_number = lastExecutionCount;
             const cell = new NotebookCell(cellClone);
+            if (this._lastExecutionCount) {
+                cellClone.input_prompt_number = this._lastExecutionCount;
+                this._lastExecutionCount = undefined;
+            } else {
+                this._cellWithUndefinedCount = cell;
+            }
             this.executionSlicer.logExecution(cell);
         });
     }
