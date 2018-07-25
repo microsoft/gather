@@ -5,10 +5,11 @@ import { Cell, CodeCell, notification_area } from 'base/js/namespace';
 import { NotebookCell, copyCodeCell } from './NotebookCell';
 import { ExecutionLogSlicer } from '../slicing/ExecutionSlicer';
 import { MarkerManager, ICell } from '../packages/cell';
-import { NumberSet } from '../slicing/Set';
 
 import '../../style/nb-vars.css';
 import '../../style/index.css';
+import { ILocation } from '../parsers/python/python_parser';
+import { LocationSet } from '../slicing/Slice';
 
 
 /**
@@ -53,8 +54,8 @@ class DefHighlighter {
             let nbCell = new NotebookCell(cell);
             if (!nbCell.hasError) {
                 this._markerManager.highlightDefs(editor, cell.cell_id, 
-                    (cellId: string, location: [number, number]) => {
-                        gatherToClipboard({ cellId: cellId, selection: location });
+                    (cellId: string, location: ILocation) => {
+                        gatherToClipboard({ cellId: cellId, location: location });
                     });
             }
         });
@@ -85,26 +86,19 @@ function gatherToClipboard(options: IGatherOptions) {
     }
     if (!cell) return;
 
-    let relevantLineNumbers = new NumberSet();
-    if (options.selection && options.selection instanceof Array) {
-        let selection = options.selection as Array<number>;
-        for (let i = selection[0]; i <= selection[1]; i++) relevantLineNumbers.add(i);
-    } else {
-        let cellLength = cell.text.split("\n").length;
-        for (let i = 0; i < cellLength; i++) relevantLineNumbers.add(i);
+    let seedLocations = undefined;
+    if (options.location && options.location.first_line != undefined) {
+        seedLocations = new LocationSet(options.location);
     }
 
     const SHOULD_SLICE_CELLS = true;
-    let slice = executionLogger.executionSlicer.sliceLatestExecution(cell, relevantLineNumbers);
+    let slice = executionLogger.executionSlicer.sliceLatestExecution(cell, seedLocations);
     let cells = slice.cellSlices
-    .map(([c, lines]) => {
-        let slicedCell = c;
+    .map((cellSlice) => {
+        let slicedCell = cellSlice.cell;
         if (SHOULD_SLICE_CELLS) {
-            slicedCell = c.copy();
-            slicedCell.text =
-                slicedCell.text.split("\n")
-                    .filter((_, i) => lines.contains(i))
-                    .join("\n");
+            slicedCell = slicedCell.copy();
+            slicedCell.text = cellSlice.textSliceLines;
         }
         return slicedCell;
     });
@@ -133,9 +127,9 @@ interface IGatherOptions {
     cellId?: string;
 
     /**
-     * Range of lines selected for which dependencies should be gathered.
+     * Location in code for which dependencies should be gathered.
      */
-    selection?: [number, number];
+    location?: ILocation;
 }
 
 function gatherToNotebook() {
@@ -143,7 +137,7 @@ function gatherToNotebook() {
     if (activeCell.cell_type === 'code') {
         let cell = new NotebookCell(activeCell as CodeCell);
         let slice = executionLogger.executionSlicer.sliceLatestExecution(cell);
-        let cells = slice.cellSlices.map(([cell, _]) => cell);
+        let cells = slice.cellSlices.map((cellSlice) => cellSlice.cell);
         console.log(cells);
 
         // Create a new notebook

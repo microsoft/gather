@@ -14,21 +14,66 @@ function lineRange(loc: ILocation): NumberSet {
 
 export class LocationSet extends Set<ILocation> {
     constructor(...items: ILocation[]) {
-        super(l => l.toString(), ...items);
+        super(l => [l.first_line, l.first_column, l.last_line, l.last_column].toString(), ...items);
     }
+}
+
+function within(inner: ILocation, outer: ILocation): boolean {
+    let leftWithin = (
+        (outer.first_line < inner.first_line) ||
+        ((outer.first_line == inner.first_line) && (outer.first_column <= inner.first_column)));
+    let rightWithin = (
+        (outer.last_line > inner.last_line) ||
+        ((outer.last_line == inner.last_line) && (outer.first_column >= inner.first_column)));        
+    return leftWithin && rightWithin;
+}
+
+function isPositionBetween(line: number, column: number, start_line: number,
+    start_column: number, end_line: number, end_column: number) {
+    let afterStart = (
+        line > start_line ||
+        line == start_line && column >= start_column);
+    let beforeEnd = (
+        line < end_line ||
+        line == end_line && column <= end_column);
+    return afterStart && beforeEnd;
+}
+
+function intersect(l1: ILocation, l2: ILocation): boolean {
+    return (
+        isPositionBetween(l1.first_line, l1.first_column, l2.first_line,
+            l2.first_column, l2.last_line, l2.last_column) ||
+        isPositionBetween(l1.last_line, l1.last_column, l2.first_line,
+            l2.first_column, l2.last_line, l2.last_column)
+    );
 }
 
 /**
  * More general slice: given locations of important syntax nodes, find locations of all relevant
  * definitions. Locations can be mapped to lines later.
+ * seedLocations are symbol locations.
  */
-export function slice(code: string, locations: LocationSet): LocationSet {
+export function slice(code: string, seedLocations: LocationSet): LocationSet {
     const ast = python3.parse(code);
     const cfg = new ControlFlowGraph(ast);
     const dfa = dataflowAnalysis(cfg);
     dfa.add(...cfg.getControlDependencies());
 
     let sliceLocations = new LocationSet();
+    let lastSize: number;
+    do {
+        lastSize = sliceLocations.size;
+        for (let flow of dfa.items) {
+            const from = flow.fromNode.location;
+            const to = flow.toNode.location;
+            if (seedLocations.items.some((seedLoc) => { return intersect(seedLoc, to); })) {
+                sliceLocations.add(to);
+            }
+            if (sliceLocations.items.some((loc) => { return within(to, loc); })) {
+                sliceLocations.add(from);
+            }
+        }
+    } while (sliceLocations.size > lastSize);
 
     return sliceLocations;
 }

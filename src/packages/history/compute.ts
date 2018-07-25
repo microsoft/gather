@@ -64,8 +64,8 @@ export function buildHistoryModel<TOutputModel>(
     // make comparisons between versions of cells.
     let lastestVersion = executionVersions[executionVersions.length - 1];
     let latestCellVersions: { [cellId: string]: ICell } = {};
-    lastestVersion.cellSlices.forEach(([cellModel, _]) => {
-        latestCellVersions[cellModel.id] = cellModel;
+    lastestVersion.cellSlices.forEach((cellSlice) => {
+        latestCellVersions[cellSlice.cell.id] = cellSlice.cell;
     });
 
     // Compute diffs between each of the previous revisions and the current revision.
@@ -78,8 +78,8 @@ export function buildHistoryModel<TOutputModel>(
         let slicedCellModels: Array<SlicedCellModel> = new Array<SlicedCellModel>();
         executionVersion.cellSlices.forEach(function (cellSlice) {
 
-            let cell = cellSlice[0];
-            let sliceLines = cellSlice[1].items.sort((a, b) => (a - b));
+            let cell = cellSlice.cell;
+            let sliceLocations = cellSlice.slice.items.sort((a, b) => (a.first_line - b.first_line));
 
             let recentCellVersion = latestCellVersions[cell.id];
             let latestText: string = "";
@@ -95,6 +95,17 @@ export function buildHistoryModel<TOutputModel>(
             let sliceRanges = [];
             let cellLines = thisVersionText.split('\n')
             let lineFirstCharIndex = 0;
+            
+            // TODO: mark up character ranges, not entire lines, as being in the slice or not.
+            let sliceLines: number[] = [];
+            sliceLocations.forEach((loc) => {
+                for (let lineNumber = loc.first_line - 1; lineNumber <= loc.last_line - 1; lineNumber++) {
+                    if (sliceLines.indexOf(lineNumber) != -1) {
+                        sliceLines.push(lineNumber);
+                    }
+                }
+            });
+
             for (let lineNumber = 0; lineNumber < cellLines.length; lineNumber++) {
                 let lineLength = cellLines[lineNumber].length + 1;
                 if (sliceLines.indexOf(lineNumber) != -1) {
@@ -116,7 +127,7 @@ export function buildHistoryModel<TOutputModel>(
 
         let results: TOutputModel[] = null;
         let selectedCell: ICell = null;
-        executionVersion.cellSlices.map(cs => cs[0]).forEach(function (cellModel) {
+        executionVersion.cellSlices.map(cs => cs.cell).forEach(function (cellModel) {
             if (cellModel.id == selectedCellId) {
                 selectedCell = cellModel;
             }

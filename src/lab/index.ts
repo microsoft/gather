@@ -14,11 +14,10 @@ import { NotebookPanel, INotebookModel, Notebook, INotebookTracker } from '@jupy
 import { IObservableList } from '@jupyterlab/observables';
 import { RenderMimeRegistry, standardRendererFactories as initialFactories, IOutputModel } from '@jupyterlab/rendermime';
 
-import { NumberSet } from '../slicing/Set';
 import { ToolbarCheckbox } from './ToolboxCheckbox';
 import { MarkerManager } from '../packages/cell';
 import { HistoryViewer, buildHistoryModel } from '../packages/history';
-import { CellProgram, DataflowDirection } from '../slicing/Slice';
+import { CellProgram, DataflowDirection, LocationSet } from '../slicing/Slice';
 
 import { JSONObject } from '@phosphor/coreutils';
 import { LabCell, copyICodeCellModel } from './LabCell';
@@ -29,6 +28,7 @@ import { NotificationWidget } from '../packages/notification/widget';
 
 import '../../style/lab-vars.css';
 import '../../style/index.css';
+import { ILocation } from '../parsers/python/python_parser';
 
 /**
  * Try to only write Jupyter Lab-specific implementation code in this file.
@@ -112,10 +112,15 @@ class ExecutionLoggerExtension implements DocumentRegistry.IWidgetExtension<Note
                     let cell = notebook.widgets.filter((c) => c.model.id == cellModel.id).pop();
                     let editor = (cell.editor as CodeMirrorEditor).editor
                     this._markerManager.highlightDefs(editor, cell.model.id, 
-                        (cellId: string, selection: [number, number]) => {
+                        (cellId: string, location: ILocation) => {
                             this._commands.execute("livecells:gatherToClipboard", {
                                 cellId: cellId,
-                                selection: selection
+                                location: {
+                                    first_line: location.first_line,
+                                    first_column: location.first_column,
+                                    last_line: location.last_line,
+                                    last_column: location.last_column
+                                }
                             });
                         });
                 }
@@ -207,28 +212,29 @@ function activateExtension(app: JupyterLab, palette: ICommandPalette, notebooks:
         if (!chosenCell || !(chosenCell.model.type == 'code')) return;
 
         // If lines were selected from the cell, only gather on those lines. Otherwise, gather whole cell.
-        let relevantLineNumbers = new NumberSet();
-        if (options.selection && options.selection instanceof Array) {
-            let selection = options.selection as Array<number>;
-            for (let i = selection[0]; i <= selection[1]; i++) relevantLineNumbers.add(i);
-        } else {
-            let cellLength = chosenCell.model.value.text.split("\n").length;
-            for (let i = 0; i < cellLength; i++) relevantLineNumbers.add(i);
+        let seedLocations = undefined;
+        if (options.location) {
+            let oloc = options.location as JSONObject;
+            if (oloc.first_line != undefined && oloc.first_column != undefined && oloc.last_line != undefined && oloc.last_column != undefined) {
+                seedLocations = new LocationSet({
+                    first_line: oloc.first_line as number,
+                    first_column: oloc.first_column as number,
+                    last_line: oloc.last_line as number,
+                    last_column: oloc.last_column as number
+                });
+            }
         }
 
         let slicer = executionLogger.executionSlicer;
         let cellModel = chosenCell.model as ICodeCellModel;
-        let slicedExecutions = slicer.sliceAllExecutions(new LabCell(cellModel), relevantLineNumbers);
+        let slicedExecutions = slicer.sliceAllExecutions(new LabCell(cellModel), seedLocations);
         let latestSlicedExecution = slicedExecutions.pop();
         let cells = latestSlicedExecution.cellSlices
-            .map(([cell, lines]) => {
-                let slicedCell = cell;
+            .map((cellSlice) => {
+                let slicedCell = cellSlice.cell;
                 if (SHOULD_SLICE_CELLS) {
-                    slicedCell = cell.copy();
-                    slicedCell.text =
-                        slicedCell.text.split("\n")
-                            .filter((_, i) => lines.contains(i))
-                            .join("\n");
+                    slicedCell = slicedCell.copy();
+                    slicedCell.text = cellSlice.textSliceLines;
                 }
                 return slicedCell;
             });
@@ -247,7 +253,7 @@ function activateExtension(app: JupyterLab, palette: ICommandPalette, notebooks:
             let slicer = executionLogger.executionSlicer;
             let cellModel = activeCell.model as ICodeCellModel;
             let slice = slicer.sliceLatestExecution(new LabCell(cellModel));
-            let cells = slice.cellSlices.map(([cell, _]) => cell);
+            let cells = slice.cellSlices.map((cellSlice) => cellSlice.cell);
 
             docManager.newUntitled({ ext: 'ipynb' }).then(model => {
                 const widget = docManager.open(model.path, undefined, panel.session.kernel.model) as NotebookPanel;
@@ -269,7 +275,7 @@ function activateExtension(app: JupyterLab, palette: ICommandPalette, notebooks:
             let slicer = executionLogger.executionSlicer;
             let cellModel = activeCell.model as ICodeCellModel;
             let slice = slicer.sliceLatestExecution(new LabCell(cellModel));
-            let cells = slice.cellSlices.map(([cell, _]) => cell);
+            let cells = slice.cellSlices.map((cellSlice) => cellSlice.cell);
             let scriptText = cells
                 .map((cell) => cell.text)
                 .reduce((buffer, cellText) => { return buffer + cellText + "\n" }, "");

@@ -1,7 +1,7 @@
 /**
  * Helpers for marking up CodeMirror editors.
  */
-import { ISyntaxNode } from "../../parsers/python/python_parser";
+import { ISyntaxNode, ILocation } from "../../parsers/python/python_parser";
 import { parse } from '../../parsers/python/python3';
 import { DefType, getDefs } from "../../slicing/DataflowAnalysis";
 import { StringSet } from "../../slicing/Set";
@@ -22,7 +22,7 @@ export class MarkerManager {
      * Highlight all of the definitions in an editor.
      */
     highlightDefs(editor: CodeMirror.Editor, cellId: string,
-        clickHandler: (cellId: string, selection: [number, number]) => void) {
+        clickHandler: (cellId: string, selection: ILocation) => void) {
 
         let doc = editor.getDoc();
 
@@ -54,7 +54,7 @@ export class MarkerManager {
                         { className: "jp-InputArea-editor-nametext" }
                     );
                     this._defMarkers.push(new DefMarker(
-                        defMarker, editor, statement, cellId, clickHandler
+                        defMarker, editor, d.location, statement, cellId, clickHandler
                     ));
                 });
         });
@@ -67,10 +67,12 @@ export class MarkerManager {
  */
 export class DefMarker {
 
-    constructor(marker: CodeMirror.TextMarker, editor: CodeMirror.Editor, statement: ISyntaxNode,
-            cellId: string, clickHandler: (cellId: string, selection: [number, number]) => void) {
+    constructor(marker: CodeMirror.TextMarker, editor: CodeMirror.Editor, location: ILocation,
+            statement: ISyntaxNode, cellId: string,
+            clickHandler: (cellId: string, selection: ILocation) => void) {
         this.marker = marker;
         this.editor = editor;
+        this.location = location;
         this.statement = statement;
         this.cellId = cellId;
         this.clickHandler = clickHandler;
@@ -84,9 +86,7 @@ export class DefMarker {
             let editorMarkers = editor.getDoc().findMarksAt(clickPosition);
             if (editorMarkers.indexOf(this.marker) != -1) {
                 if (this.clickHandler) {
-                    this.clickHandler(this.cellId, [
-                        this.statement.location.first_line - 1, this.statement.location.last_line - 1
-                    ])
+                    this.clickHandler(this.cellId, this.location);
                 }
                 event.preventDefault();
             }
@@ -95,7 +95,8 @@ export class DefMarker {
     
     readonly marker: CodeMirror.TextMarker;
     readonly editor: CodeMirror.Editor;
+    readonly location: ILocation;
     readonly statement: ISyntaxNode;
     readonly cellId: string;
-    readonly clickHandler: (cellId: string, selection: [number, number]) => void;
+    readonly clickHandler: (cellId: string, selection: ILocation) => void;
 };

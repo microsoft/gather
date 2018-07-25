@@ -1,7 +1,6 @@
-import { ICell } from "../packages/cell";
-import { NumberSet } from "./Set";
+import { ICell, CellSlice } from "../packages/cell";
 import { ProgramBuilder } from "./ProgramBuilder";
-import { sliceLines } from "./Slice";
+import { LocationSet, slice } from "./Slice";
 
 /**
  * A record of when a cell was executed.
@@ -21,7 +20,7 @@ export class CellExecution {
 export class SlicedExecution {
     constructor(
         public executionTime: Date,
-        public cellSlices: Array<[ICell, NumberSet]>
+        public cellSlices: CellSlice[]
     ) { }
 }
 
@@ -44,54 +43,77 @@ export class ExecutionLogSlicer {
     /**
      * Get slice for the latest execution of a cell.
      */
-    public sliceLatestExecution(cell: ICell, relevantLineNumbers?: NumberSet): SlicedExecution {
+    public sliceLatestExecution(cell: ICell, seedLocations?: LocationSet): SlicedExecution {
         // XXX: This computes more than it has to, performing a slice on each execution of a cell
         // instead of just its latest computation. Optimize later if necessary.
-        return this.sliceAllExecutions(cell, relevantLineNumbers).pop();
+        return this.sliceAllExecutions(cell, seedLocations).pop();
     }
 
     /**
      * Get slices of the necessary code for all executions of a cell.
      * Relevant line numbers are relative to the cell's start line (starting at first line = 0).
      */
-    public sliceAllExecutions(cell: ICell, relevantLineNumbers?: NumberSet): SlicedExecution[] {
+    public sliceAllExecutions(cell: ICell, seedLocations?: LocationSet): SlicedExecution[] {
 
         return this.executionLog
             .filter((execution) => execution.cellId == cell.id)
             .filter((execution) => !execution.hasError)
             .map((execution) => {
 
-                // Slice the program leading up to that cell.)
+                // Build the program up to that cell.
                 let program = this.programBuilder.buildTo(execution.cellId, execution.executionCount);
-                let sliceStartLines = new NumberSet();
-                let cellLines = program.cellToLineMap[execution.cellId][execution.executionCount];
-                let cellFirstLine = Math.min(...cellLines.items);
-                if (relevantLineNumbers) {
-                    sliceStartLines.add(...relevantLineNumbers.items.map((l) => l + cellFirstLine));
-                } else {
-                    sliceStartLines = sliceStartLines.union(cellLines);
+
+                // If seed locations weren't specified, slice the whole cell.
+                // XXX: Whole cell specified by an unreasonably large character range.
+                if (!seedLocations) {
+                    seedLocations = new LocationSet({
+                        first_line: 0, first_column: 0, last_line: 10000, last_column: 10000
+                    });
                 }
-                let linesSliced = sliceLines(program.code, sliceStartLines);
+                // If seed locations were specified, set them relative to the last cell's position in program.
+                else {
+                    let lastCellLines = program.cellToLineMap[execution.cellId][execution.executionCount];
+                    let lastCellStart = Math.min(...lastCellLines.items);
+                    seedLocations = new LocationSet(
+                        ...seedLocations.items.map((loc) => {
+                            return {
+                                first_line: lastCellStart + loc.first_line - 1,
+                                first_column: loc.first_column,
+                                last_line: lastCellStart + loc.last_line - 1,
+                                last_column: loc.last_column
+                            };
+                        })
+                    );
+                }
+                let sliceLocations = slice(program.code, seedLocations).items
+                .sort((loc1, loc2) => loc1.first_line - loc2.first_line);
 
                 // Get the relative offsets of slice lines in each cell.
-                let relativeSliceLines: { [cellId: string]: { [executionCount: number]: NumberSet } } = {};
+                let cellSliceLocations: { [cellId: string]: { [executionCount: number]: LocationSet } } = {};
                 let cellOrder = new Array<ICell>();
-                linesSliced.items.forEach((lineNumber) => {
-                    let sliceCell = program.lineToCellMap[lineNumber];
+                sliceLocations.forEach((location) => {
+                    let sliceCell = program.lineToCellMap[location.first_line];
                     let sliceCellLines = program.cellToLineMap[sliceCell.id][sliceCell.executionCount];
                     let sliceCellStart = Math.min(...sliceCellLines.items);
                     if (cellOrder.indexOf(sliceCell) == -1) {
                         cellOrder.push(sliceCell);
                     }
-                    if (!relativeSliceLines[sliceCell.id]) relativeSliceLines[sliceCell.id] = {};
-                    if (!relativeSliceLines[sliceCell.id][sliceCell.executionCount]) {
-                        relativeSliceLines[sliceCell.id][sliceCell.executionCount] = new NumberSet();
+                    let adjustedLocation = {
+                        first_line: location.first_line - sliceCellStart + 1,
+                        first_column: location.first_column,
+                        last_line: location.last_line - sliceCellStart + 1,
+                        last_column: location.last_column
+                    };
+                    if (!cellSliceLocations[sliceCell.id]) cellSliceLocations[sliceCell.id] = {};
+                    if (!cellSliceLocations[sliceCell.id][sliceCell.executionCount]) {
+                        cellSliceLocations[sliceCell.id][sliceCell.executionCount] = new LocationSet();
                     }
-                    relativeSliceLines[sliceCell.id][sliceCell.executionCount].add(lineNumber - sliceCellStart);
+                    cellSliceLocations[sliceCell.id][sliceCell.executionCount].add(adjustedLocation);
                 });
 
-                let cellSlices = cellOrder.map((sliceCell): [ICell, NumberSet] => {
-                    return [sliceCell, relativeSliceLines[sliceCell.id][sliceCell.executionCount]];
+                let cellSlices = cellOrder.map((sliceCell): CellSlice => {
+                    return new CellSlice(sliceCell,
+                        cellSliceLocations[sliceCell.id][sliceCell.executionCount]);
                 });
                 return new SlicedExecution(execution.executionTime, cellSlices);
             });
