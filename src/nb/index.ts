@@ -1,17 +1,18 @@
 import $ = require('jquery');
 import Jupyter = require('base/js/namespace');
-import { Cell, CodeCell, notification_area, Notebook } from 'base/js/namespace';
+import { Cell, CodeCell, notification_area, Notebook, Action } from 'base/js/namespace';
 
 import { NotebookCell, copyCodeCell } from './NotebookCell';
 import { ExecutionLogSlicer } from '../slicing/ExecutionSlicer';
 import { MarkerManager, ICell, CellEditorResolver } from '../packages/cell';
 
 import { ILocation } from '../parsers/python/python_parser';
-import { GatherModel } from '../packages/gather/model';
+import { GatherModel, GatherModelEvent, GatherEventData } from '../packages/gather/model';
 import { GatherController } from '../packages/gather/controller';
 
 import '../../style/nb-vars.css';
 import '../../style/index.css';
+import { Widget } from '../../node_modules/@phosphor/widgets';
 
 /**
  * Widget for gather notifications.
@@ -208,6 +209,94 @@ function gatherToNotebook() {
     }
 }
 
+/**
+ * Prefix for all gather actions.
+ */
+const GATHER_PREFIX = 'gather_extension';
+
+/**
+ * Button to add to the Jupyter notebook toolbar.
+ */
+interface Button {
+    label?: string;
+    actionName: string;
+    action: Action;
+}
+
+/**
+ * Class for highlighted buttons.
+ */
+const HIGHLIGHTED_BUTTON_CLASS = "jp-Toolbar-gatherbutton-highlight";
+
+/**
+ * A button to gather code to the clipboard.
+ */
+class GatherButton implements Button implements IGatherObserver {
+
+    /**
+     * Properties for initializing the gather button.
+     */
+    readonly label: string = "Gather";
+    readonly actionName: string = "gather-code";
+    readonly action: Action = {
+        icon: 'fa-level-up',
+        help: 'Gather code to clipboard',
+        help_index: 'gather-code',
+        handler: () => {
+            console.log("Gathering up the code");
+        }
+    }
+
+    /**
+     * Construct a gather button.
+     */
+    constructor(gatherModel: GatherModel) {
+        this._gatherModel = gatherModel;
+        this._gatherModel.addObserver(this);
+    }
+
+    /**
+     * Set the node for this button. For now, has to be done after initialization, given how
+     * Jupyter notebook initializes toolbars.
+     */
+    set node(node: Widget) {
+        this._node = node;
+    }
+
+    /**
+     * Listen for changes on the gather model.
+     */
+    onModelChange(event: GatherModelEvent, eventData: GatherEventData, model: GatherModel) {
+        if (event == GatherModelEvent.SLICE_SELECTED || event == GatherModelEvent.SLICE_DESELECTED) {
+            if (model.selectedSlices.length > 0) {
+                if (this._node) {
+                    this._node.addClass(HIGHLIGHTED_BUTTON_CLASS);
+                }
+            } else {
+                if (this._node) {
+                    this._node.removeClass(HIGHLIGHTED_BUTTON_CLASS);
+                }
+            }
+        }
+    }
+
+    private _gatherModel: GatherModel;
+    private _node: Widget;
+}
+
+class ClearButton implements Button {
+    readonly label: string = "Clear";
+    readonly actionName: string = "clear-selections";
+    readonly action: Action = {
+        icon: 'fa-remove',
+        help: 'Clear gather selections',
+        help_index: 'clear-selections',
+        handler: () => { 
+            console.log("Clearing selection");
+        }
+    }
+}
+
 export function load_ipython_extension() {
     console.log('extension started');
 
@@ -224,36 +313,17 @@ export function load_ipython_extension() {
     new GatherController(gatherModel, executionLogger.executionSlicer);
 
     // Set up toolbar with gather actions.
-    let gatherAction = {
-        icon: 'fa-level-up',
-        help: 'Gather code to clipboard',
-        help_index: 'gather-code',
-        handler: () => {
-            console.log("Gathering up the code");
-        }
-    };
-    let gatherActionName = 'gather-code';
-    let prefix = 'gather_extension';
-    let gatherFullActionName = Jupyter.actions.register(gatherAction, gatherActionName, prefix);
-
-    let clearAction = {
-        icon: 'fa-remove',
-        help: 'Clear gather selections',
-        help_index: 'clear-selections',
-        handler: () => { 
-            console.log("Clearing selection");
-        }
-    }
-    let clearActionName = 'clear-selections';
-    let clearFullActionName = Jupyter.actions.register(clearAction, clearActionName, prefix);
-
-    Jupyter.toolbar.add_buttons_group([{
-        label: 'Gather',
-        action: gatherFullActionName
-    }, {
-        label: 'Clear',
-        action: clearFullActionName
-    }]);
+    let gatherButton = new GatherButton();
+    let gatherFullActionName = Jupyter.actions.register(
+        gatherButton.action, gatherButton.actionName, GATHER_PREFIX);
+    let clearButton = new ClearButton();
+    let clearFullActionName = Jupyter.actions.register(
+        clearButton.action, clearButton.actionName, GATHER_PREFIX);
+    let buttonsGroup = Jupyter.toolbar.add_buttons_group([
+        { label: gatherButton.label, action: gatherFullActionName },
+        { label: clearButton.label, action: clearFullActionName }
+    ]);
+    let gatherButtonNode = buttonsGroup.children()[0];
 
     // Add UI elements
     const menu = $('#menus ul.navbar-nav');

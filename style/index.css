@@ -5,16 +5,21 @@
  */
 .jp-InputArea-editor-nametext {
   font-weight: bold;
-  background-color: var(--brand-color2);
+  background-color: var(--brand-color3);
 }
 
 .jp-InputArea-editor-nametext:hover {
-  background-color: var(--brand-color1);
+  background-color: var(--brand-color2);
   cursor: pointer;
 }
 
+.jp-InputArea-editor-nametext.jp-InputArea-editor-nametext-selected {
+  box-shadow: inset 0 0 5px black;  /* border */
+  background-color: var(--brand-color2);
+}
+
 .jp-InputArea-editor-dependencyline {
-  background-color: var(--brand-color3);
+  background-color: var(--brand-color4);
 }
 
 /* Gather tool buttons */

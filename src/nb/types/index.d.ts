@@ -117,7 +117,7 @@ declare namespace Jupyter {
     }
 
     interface Toolbar {
-        add_buttons_group: (actions: ActionSpec[]) => void;
+        add_buttons_group: (actions: ActionSpec[]) => JQuery;
     }
 
     var actions: Actions;
