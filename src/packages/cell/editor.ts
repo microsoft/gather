@@ -7,15 +7,43 @@ import { DefType, getDefs } from "../../slicing/DataflowAnalysis";
 import { StringSet } from "../../slicing/Set";
 import { SlicerConfig } from "../../slicing/SlicerConfig";
 import { MagicsRewriter } from "../../slicing/MagicsRewriter";
+import { LocationSet } from "../../slicing/Slice";
 
+/**
+ * Class for variable definition text.
+ */
+const DEFINITION_CLASS = "jp-InputArea-editor-nametext";
+
+/**
+ * Class for a data dependency.
+ */
+const DEPENDENCY_CLASS = "jp-InputArea-editor-dependencyline";
+
+/**
+ * Adds and manages text markers.
+ */
 export class MarkerManager {
 
     private _defMarkers: DefMarker[] = [];
 
+    /**
+     * Click-handler---pass on click event to markers.
+     */
     handleClick(event: MouseEvent) {
         this._defMarkers.forEach((marker) => {
             marker.handleClick(event);
         });
+    }
+
+    /**
+     * Highlight dependencies in a cell at a set of locations. 
+     */
+    highlightDependencies(editor: CodeMirror.Editor, locations: LocationSet) {
+        locations.items.forEach((loc) => {
+            for (let lineNumber = loc.first_line - 1; lineNumber <= loc.last_line -1; lineNumber++) {
+                editor.addLineClass(lineNumber, "background", DEPENDENCY_CLASS);
+            }
+        });        
     }
 
     /**
@@ -51,7 +79,7 @@ export class MarkerManager {
                     let defMarker = doc.markText(
                         { line: d.location.first_line - 1, ch: d.location.first_column },
                         { line: d.location.last_line - 1, ch: d.location.last_column },
-                        { className: "jp-InputArea-editor-nametext" }
+                        { className: DEFINITION_CLASS }
                     );
                     this._defMarkers.push(new DefMarker(
                         defMarker, editor, d.location, statement, cellId, clickHandler

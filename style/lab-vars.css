@@ -1,6 +1,7 @@
 :root {
-  --brand-color3: var(--jp-brand-color3);
-  --brand-color2: var(--jp-brand-color2);
-  --brand-color1: var(--jp-brand-color1);
-  --brand-color0: var(--jp-brand-color0);
+  --brand-color4: #e3f2fd;
+  --brand-color3: #bbdefb;
+  --brand-color2: #90caf9;
+  --brand-color1: #64b5f6;
+  --brand-color0: #42a5f5;
 }

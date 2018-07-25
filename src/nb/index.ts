@@ -21,6 +21,7 @@ var notificationWidget: Jupyter.NotificationWidget;
  * Logs cell executions.
  */
 var executionLogger: ExecutionLogger;
+var markerManager: MarkerManager;
 
 class ExecutionLogger {
     readonly executionSlicer = new ExecutionLogSlicer();
@@ -45,9 +46,10 @@ class ExecutionLogger {
  */
 class DefHighlighter {
 
-    private _markerManager: MarkerManager = new MarkerManager();
+    private _markerManager: MarkerManager;
 
-    constructor() {
+    constructor(markerManager: MarkerManager) {
+        this._markerManager = markerManager;
         Jupyter.notebook.events.on('finished_execute.CodeCell', (_: Jupyter.Event, data: { cell: CodeCell }) => {
             let cell = data.cell;
             let editor = cell.code_mirror;
@@ -55,7 +57,8 @@ class DefHighlighter {
             if (!nbCell.hasError) {
                 this._markerManager.highlightDefs(editor, cell.cell_id, 
                     (cellId: string, location: ILocation) => {
-                        gatherToClipboard({ cellId: cellId, location: location });
+                        // gatherToClipboard({ cellId: cellId, location: location });
+                        highlightDependencies(cellId, location);
                     });
             }
         });
@@ -67,6 +70,43 @@ class DefHighlighter {
 }
 
 /**
+ * Get a cell from the notebook with the specified properties.
+ */
+function getCellWidget(cellId: string, executionCount?: number) {
+    let matchingCells = Jupyter.notebook.get_cells()
+    .filter((c) => {
+        if (c.cell_id != cellId) return false;
+        if (executionCount != undefined) {
+            if (!(c instanceof CodeCell)) return false;
+            if ((c as CodeCell).input_prompt_number != executionCount) return false;
+        }
+        return true;
+    });
+    if (matchingCells.length > 0) {
+        return matchingCells.pop();
+    }
+    return null;
+}
+
+/**
+ * Highlight the dependencies for a selection.
+ */
+function highlightDependencies(cellId: string, selection: ILocation) {
+    let cellWidget = getCellWidget(cellId);
+    if (!cellWidget) return;
+    let cell = new NotebookCell(cellWidget as CodeCell);
+    let seedLocations = new LocationSet(selection);
+    let slice = executionLogger.executionSlicer.sliceLatestExecution(cell, seedLocations);
+    slice.cellSlices.forEach((cellSlice) => {
+        let cell = cellSlice.cell;
+        let otherCell = getCellWidget(cell.id, cell.executionCount);
+        if (otherCell && otherCell instanceof CodeCell) {
+            markerManager.highlightDependencies(otherCell.code_mirror, cellSlice.slice);
+        }
+    });
+}
+
+/**
  * Gather code to the clipboard.
  */
 function gatherToClipboard(options: IGatherOptions) {
@@ -74,10 +114,7 @@ function gatherToClipboard(options: IGatherOptions) {
     let cellWidget: Cell;
     let cell: ICell;
     if (options.cellId) {
-        let matchingCells = Jupyter.notebook.get_cells().filter((c) => c.cell_id == options.cellId);
-        if (matchingCells.length > 0) {
-            cellWidget = matchingCells.pop();
-        }
+        cellWidget = getCellWidget(options.cellId);
     } else {
         cellWidget = Jupyter.notebook.get_selected_cell();
     }
@@ -159,7 +196,8 @@ export function load_ipython_extension() {
      * Plugin initializations.
      */
     executionLogger = new ExecutionLogger();
-    new DefHighlighter();
+    markerManager = new MarkerManager();
+    new DefHighlighter(markerManager);
 
     // Add UI elements
     const menu = $('#menus ul.navbar-nav');
