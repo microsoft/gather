@@ -1,4 +1,4 @@
-import { DefSelection, SliceSelection, EditorDef } from "./selections";
+import { DefSelection, SliceSelection, EditorDef, OutputSelection } from "./selections";
 import { ICell } from "../cell";
 
 /**
@@ -18,6 +18,8 @@ export enum GatherModelEvent {
     EDITOR_DEF_FOUND,
     DEF_SELECTED,
     DEF_DESELECTED,
+    OUTPUT_SELECTED,
+    OUTPUT_DESELECTED,
     SLICE_SELECTED,
     SLICE_DESELECTED
 };
@@ -30,6 +32,7 @@ export type GatherEventData =
     ICell |
     EditorDef |
     DefSelection |
+    OutputSelection |
     SliceSelection
     ;
 
@@ -158,6 +161,37 @@ export class GatherModel {
     }
 
     /**
+     * Add an output to the list of selected outputs.
+     */
+    selectOutput(output: OutputSelection) {
+        this._selectedOutputs.push(output);
+        this.notifyObservers(GatherModelEvent.OUTPUT_SELECTED, output);
+    }
+
+    /**
+     * Remove an output from the list of selected outputs.
+     */
+    deselectOutput(output: OutputSelection) {
+        for (let i = 0; i < this._selectedOutputs.length; i++) {
+            if (this._selectedOutputs[i] == output) {
+                this._selectedOutputs.splice(i, 1);
+                this.notifyObservers(GatherModelEvent.OUTPUT_DESELECTED, output);
+                return;
+            }
+        }
+    }
+
+    /**
+     * Deselect all outputs.
+     */
+    deselectAllOutputs() {
+        for (let i = this._selectedOutputs.length - 1; i >= 0; i--) {
+            let output = this._selectedOutputs.splice(i, 1)[0];
+            this.notifyObservers(GatherModelEvent.OUTPUT_DESELECTED, output);
+        }
+    }
+
+    /**
      * Get a list of currently selected slices (readonly).
      */
     get selectedSlices(): ReadonlyArray<SliceSelection> {
@@ -169,6 +203,7 @@ export class GatherModel {
     private _lastExecutedCell: ICell;
     private _editorDefs: EditorDef[] = [];
     private _selectedDefs: DefSelection[] = [];
+    private _selectedOutputs: OutputSelection[] = [];
     private _sliceSelections: SliceSelection[] = [];
 }
 

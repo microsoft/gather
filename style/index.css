@@ -37,6 +37,22 @@
   background-color: var(--brand-color4);
 }
 
+/**
+ * Clues for gatherable results.
+ */
+.jp-OutputArea-highlighted {
+  border: 1px solid var(--brand-color3);
+}
+
+.jp-OutputArea-highlighted:hover {
+  box-shadow: inset 0 0 3px var(--brand-color2);
+  cursor: pointer;
+}
+
+.jp-OutputArea-highlighted.jp-OutputArea-selected {
+  box-shadow: inset 0 0 10px var(--brand-color0);
+}
+
 /* Gather tool buttons */
 .jp-OutputArea-child {
   overflow: visible;

@@ -7,9 +7,19 @@ import { getDefs, DefType } from "../../slicing/DataflowAnalysis";
 import { StringSet } from "../../slicing/Set";
 import { SlicerConfig } from "../../slicing/SlicerConfig";
 import { MagicsRewriter } from "../../slicing/MagicsRewriter";
-import { GatherModel, IGatherObserver, GatherEventData, GatherModelEvent, EditorDef, DefSelection } from "../gather";
+import { GatherModel, IGatherObserver, GatherEventData, GatherModelEvent, EditorDef, DefSelection, OutputSelection } from "../gather";
 import { ICell } from "./model";
 import { SlicedExecution } from "../../slicing/ExecutionSlicer";
+
+/**
+ * Class for a highlighted, clickable output.
+ */
+const OUTPUT_HIGHLIGHTED_CLASS = "jp-OutputArea-highlighted";
+
+/**
+ * Class for a selected output.
+ */
+const OUTPUT_SELECTED_CLASS = "jp-OutputArea-selected";
 
 /**
  * Class for variable definition text.
@@ -39,21 +49,35 @@ export interface CellEditorResolver {
 }
 
 /**
+ * Resolves cells to the HTML elements for their outputs.
+ */
+export interface CellOutputResolver {
+    /**
+     * Get the divs containing output for this cell.
+     */
+    resolve(cell: ICell): HTMLElement[];
+}
+
+/**
  * Adds and manages text markers.
  */
 export class MarkerManager implements IGatherObserver {
     /**
      * Construct a new marker manager.
      */
-    constructor(model: GatherModel, cellEditorResolver: CellEditorResolver) {
+    constructor(model: GatherModel, cellEditorResolver: CellEditorResolver,
+            cellOutputResolver: CellOutputResolver) {
         this._model = model;
         this._model.addObserver(this);
         this._cellEditorResolver = cellEditorResolver;
+        this._cellOutputResolver = cellOutputResolver;
     }
 
     private _model: GatherModel;
     private _cellEditorResolver: CellEditorResolver;
+    private _cellOutputResolver: CellOutputResolver;
     private _defMarkers: DefMarker[] = [];
+    private _outputMarkers: OutputMarker[] = [];
     private _dependencyLineMarkers: DependencyLineMarker[] = [];
 
     /**
@@ -69,20 +93,25 @@ export class MarkerManager implements IGatherObserver {
      * Listen for changes to the gather model.
      */
     onModelChange(eventType: GatherModelEvent, eventData: GatherEventData, model: GatherModel) {
-        // When a cell is executed, search for definitions.
+
+        // When a cell is executed, search for definitions and output.
         if (eventType == GatherModelEvent.CELL_EXECUTED) {
             let cell = eventData as ICell;
             let editor = this._cellEditorResolver.resolve(cell);
             if (editor) {
                 this.findDefs(editor, cell);
             }
+            let outputElements = this._cellOutputResolver.resolve(cell);
+            this.highlightOutputs(cell, outputElements);
         }
+
         // When definitions are found, highlight them.
         if (eventType == GatherModelEvent.EDITOR_DEF_FOUND) {
             let editorDef = eventData as EditorDef;
             this.highlightDef(editorDef);
         }
-        // Whenever a definition is deselected, unhighlight it.
+
+        // Whenever a definition is deselected from outside, unhighlight it.
         if (eventType == GatherModelEvent.DEF_DESELECTED) {
             let defSelection = eventData as DefSelection;
             this._defMarkers.filter((marker) => {
@@ -90,6 +119,16 @@ export class MarkerManager implements IGatherObserver {
                     defSelection.cell.id == marker.cell.id;
             }).forEach((marker) => marker.deselect());
         }
+
+        // Whenever an output is deselected from outside, unhighlight it.
+        if (eventType == GatherModelEvent.OUTPUT_DESELECTED) {
+            let outputSelection = eventData as OutputSelection;
+            this._outputMarkers.filter((marker) => {
+                return marker.outputIndex == outputSelection.outputIndex &&
+                    marker.cell.id == outputSelection.cell.id;
+            }).forEach((marker) => marker.deselect());
+        }
+
         // When the chosen slices change, update which lines are highlighted in the document.
         if (eventType == GatherModelEvent.SLICE_SELECTED || eventType == GatherModelEvent.SLICE_DESELECTED) {
             this._clearDependencyLineMarkers();
@@ -153,6 +192,24 @@ export class MarkerManager implements IGatherObserver {
     }
 
     /**
+     * Highlight a list of output elements.
+     */
+    highlightOutputs(cell: ICell, outputElements: HTMLElement[]) {
+        for (let i = 0; i < outputElements.length; i++) {
+            let outputElement = outputElements[i];
+            let outputSelection = { outputIndex: i, cell };
+            let outputMarker = new OutputMarker(outputElement, i, cell, (selected) => {
+                if (selected) {
+                    this._model.selectOutput(outputSelection);
+                } else {
+                    this._model.deselectOutput(outputSelection);
+                }
+            });
+            this._outputMarkers.push(outputMarker);
+        }
+    }
+
+    /**
      * Highlight dependencies in a cell at a set of locations. 
      */
     highlightDependencies(slice: SlicedExecution) {
@@ -185,9 +242,52 @@ type DependencyLineMarker = {
 }
 
 /**
+ * Marker for an output.
+ */
+class OutputMarker {
+
+    constructor(outputElement: HTMLElement, outputIndex: number, cell: ICell,
+            onToggle: (selected: boolean) => void) {
+        this._element = outputElement;
+        this._element.classList.add(OUTPUT_HIGHLIGHTED_CLASS);
+        this.outputIndex = outputIndex;
+        this.cell = cell;
+        this._onToggle = onToggle;
+
+        this._element.onclick = (_: MouseEvent) => {
+            if (this._onToggle) {
+                this.toggleSelected();
+                this._onToggle(this._selected);
+            }
+        }
+    }
+
+    toggleSelected() {
+        if (this._selected) this.deselect();
+        else if (!this._selected) this.select();
+    }
+
+    select() {
+        this._selected = true;
+        this._element.classList.add(OUTPUT_SELECTED_CLASS);
+    }
+
+    deselect() {
+        this._selected = false;
+        this._element.classList.remove(OUTPUT_SELECTED_CLASS);
+    }
+    
+    readonly outputIndex: number;
+    readonly cell: ICell;
+    private _element: HTMLElement;
+    private _onToggle: (selected: boolean) => void;
+    private _selected: boolean = false;
+}
+
+/**
  * Marker for a variable definition.
  */
-export class DefMarker {
+class DefMarker {
 
     constructor(marker: CodeMirror.TextMarker, editor: CodeMirror.Editor, location: ILocation,
             statement: ISyntaxNode, cell: ICell,

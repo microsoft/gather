@@ -124,6 +124,7 @@ export class ClearButton implements Button {
      */
     onClick() {
         this._gatherModel.deselectAllDefs();
+        this._gatherModel.deselectAllOutputs();
     }
 
     /**

@@ -24,7 +24,7 @@ function within(inner: ILocation, outer: ILocation): boolean {
         ((outer.first_line == inner.first_line) && (outer.first_column <= inner.first_column)));
     let rightWithin = (
         (outer.last_line > inner.last_line) ||
-        ((outer.last_line == inner.last_line) && (outer.first_column >= inner.first_column)));        
+        ((outer.last_line == inner.last_line) && (outer.last_column >= inner.last_column)));        
     return leftWithin && rightWithin;
 }
 
@@ -44,7 +44,8 @@ function intersect(l1: ILocation, l2: ILocation): boolean {
         isPositionBetween(l1.first_line, l1.first_column, l2.first_line,
             l2.first_column, l2.last_line, l2.last_column) ||
         isPositionBetween(l1.last_line, l1.last_column, l2.first_line,
-            l2.first_column, l2.last_line, l2.last_column)
+            l2.first_column, l2.last_line, l2.last_column) ||
+        within(l1, l2) || within(l2, l1)
     );
 }
 
@@ -65,7 +66,7 @@ export function slice(code: string, seedLocations: LocationSet): LocationSet {
     seedLocations.items.forEach((seedLoc) => {
         for (let block of cfg.blocks) {
             for (let statement of block.statements) {
-                if (within(seedLoc, statement.location)) {
+                if (intersect(seedLoc, statement.location)) {
                     seedStatementLocations.add(statement.location);
                 }
             }

@@ -35,6 +35,7 @@ declare namespace Jupyter {
     interface Cell {
         cell_id: string;
         cell_type: 'code' | 'markdown';
+        element: JQuery;
         notebook: Notebook;
         code_mirror: CodeMirror.Editor;
         events: Events;
@@ -50,12 +51,10 @@ declare namespace Jupyter {
     }
 
     interface CodeCell extends Cell {
-        cell_id: string;
         cell_type: 'code';
         input_prompt_number: number;
         output_area: OutputArea;
         kernel: Kernel;
-        notebook: Notebook;
         tooltip: Tooltip;
         fromJSON: (data: JSON) => void;
         toJSON: () => JSON;

@@ -1,19 +1,19 @@
-import $ = require('jquery');
 import Jupyter = require('base/js/namespace');
 import { Cell, CodeCell, notification_area, Notebook } from 'base/js/namespace';
 import { Widget } from '@phosphor/widgets';
 
 import { NotebookCell, copyCodeCell } from './NotebookCell';
 import { ExecutionLogSlicer, SlicedExecution } from '../slicing/ExecutionSlicer';
-import { MarkerManager, ICell, CellEditorResolver } from '../packages/cell';
+import { MarkerManager, ICell, CellEditorResolver, CellOutputResolver } from '../packages/cell';
 
 import { GatherModel } from '../packages/gather/model';
 import { GatherController } from '../packages/gather/controller';
 
-import '../../style/nb-vars.css';
-import '../../style/index.css';
 import { GatherButton, ClearButton } from './buttons';
 import { ICellClipboard, IClipboardListener } from '../packages/gather/clipboard';
+
+import '../../style/nb-vars.css';
+import '../../style/index.css';
 
 /**
  * Widget for gather notifications.
@@ -62,10 +62,28 @@ class ExecutionLogger {
 }
 
 /**
+ * Get a cell from the notebook with the specified properties.
+ */
+function getCellWidget(notebook: Notebook, cellId: string, executionCount?: number): Cell {
+    let matchingCells = notebook.get_cells()
+    .filter((c) => {
+        if (c.cell_id != cellId) return false;
+        if (executionCount != undefined) {
+            if (!(c instanceof CodeCell)) return false;
+            if ((c as CodeCell).input_prompt_number != executionCount) return false;
+        }
+        return true;
+    });
+    if (matchingCells.length > 0) {
+        return matchingCells.pop();
+    }
+    return null;
+}
+
+/**
  * Resolve the active editors for cells in Jupyter notebook.
  */
 class NotebookCellEditorResolver implements CellEditorResolver {
-
     /**
      * Construct a new cell editor resolver.
      */
@@ -73,27 +91,8 @@ class NotebookCellEditorResolver implements CellEditorResolver {
         this._notebook = notebook;
     }
 
-    /**
-     * Get a cell from the notebook with the specified properties.
-     */
-    getCellWidget(cellId: string, executionCount?: number): Cell {
-        let matchingCells = this._notebook.get_cells()
-        .filter((c) => {
-            if (c.cell_id != cellId) return false;
-            if (executionCount != undefined) {
-                if (!(c instanceof CodeCell)) return false;
-                if ((c as CodeCell).input_prompt_number != executionCount) return false;
-            }
-            return true;
-        });
-        if (matchingCells.length > 0) {
-            return matchingCells.pop();
-        }
-        return null;
-    }
-
     resolve(cell: ICell): CodeMirror.Editor {
-        let cellWidget = this.getCellWidget(cell.id, cell.executionCount);
+        let cellWidget = getCellWidget(this._notebook, cell.id, cell.executionCount);
         if (cellWidget) {
             return cellWidget.code_mirror;
         }
@@ -104,9 +103,38 @@ class NotebookCellEditorResolver implements CellEditorResolver {
 }
 
 /**
- * Highlights definitions in executed cells.
+ * Finds HTML elements for cell outputs in a notebook.
  */
-class DefHighlighter {
+class NotebookCellOutputResolver implements CellOutputResolver {
+    /**
+     * Construct a new cell editor resolver.
+     */
+    constructor(notebook: Notebook) {
+        this._notebook = notebook;
+    }
+
+    resolve(cell: ICell): HTMLElement[] {
+        let cellWidget = getCellWidget(this._notebook, cell.id, cell.executionCount);
+        let outputElements = [];
+        if (cellWidget) {
+            let cellElement = cellWidget.element[0];
+            var outputNodes = cellElement.querySelectorAll(".output_subarea");
+            for (var i = 0; i < outputNodes.length; i++) {
+                if (outputNodes[i] instanceof HTMLElement) {
+                    outputElements.push(outputNodes[i] as HTMLElement);
+                }
+            }
+        }
+        return outputElements;
+    }
+
+    private _notebook: Notebook;
+}
+
+/**
+ * Highlights gatherable entities.
+ */
+class ResultsHighlighter {
 
     private _markerManager: MarkerManager;
 
@@ -166,6 +194,7 @@ class Clipboard implements ICellClipboard {
     private _listeners: IClipboardListener[] = [];
 }
 
+/*
 function gatherToNotebook() {
     const activeCell = Jupyter.notebook.get_selected_cell();
     if (activeCell.cell_type === 'code') {
@@ -185,6 +214,7 @@ function gatherToNotebook() {
             });
     }
 }
+*/
 
 /**
  * Prefix for all gather actions.
@@ -200,8 +230,9 @@ export function load_ipython_extension() {
     // Plugin initializations.
     executionLogger = new ExecutionLogger();
     let markerManager = new MarkerManager(gatherModel,
-        new NotebookCellEditorResolver(Jupyter.notebook));
-    new DefHighlighter(gatherModel, markerManager);
+        new NotebookCellEditorResolver(Jupyter.notebook),
+        new NotebookCellOutputResolver(Jupyter.notebook));
+    new ResultsHighlighter(gatherModel, markerManager);
 
     // Initialize clipboard for copying cells.
     let clipboard = new Clipboard();
@@ -231,13 +262,14 @@ export function load_ipython_extension() {
     clearButton.node = new Widget({ node: buttonsGroup.children()[1] });
 
     // Add UI elements
-    const menu = $('#menus ul.navbar-nav');
-    const gather = $('<li class="dropdown"></li>').appendTo(menu);
-    $('<a href="#" class="dropdown-toggle" data-toggle="dropdown">Gather</a>').appendTo(gather);
-    const list = $('<ul id="gather_menu" class="dropdown-menu"></ul>').appendTo(gather);
-    $('<li id="gather-to-notebook" title="Gather to notebook"><a href="#">Gather to notebook</a></li>').click(gatherToNotebook).appendTo(list);
-    $('<li id="gather-to-script" title="Gather to script"><a href="#">Gather to script</a></li>').appendTo(list);
+    // const menu = $('#menus ul.navbar-nav');
+    // const gather = $('<li class="dropdown"></li>').appendTo(menu);
+    // $('<a href="#" class="dropdown-toggle" data-toggle="dropdown">Gather</a>').appendTo(gather);
+    // const list = $('<ul id="gather_menu" class="dropdown-menu"></ul>').appendTo(gather);
+    // $('<li id="gather-to-notebook" title="Gather to notebook"><a href="#">Gather to notebook</a></li>').click(gatherToNotebook).appendTo(list);
+    // $('<li id="gather-to-script" title="Gather to script"><a href="#">Gather to script</a></li>').appendTo(list);
     // $('<li id="gather-to-clipboard title="Gather to clipboard"><a href="#">Gather to clipboard</a></li>')
     //     .click(() => gatherToClipboard()).appendTo(list);
+    
     notificationWidget = notification_area.new_notification_widget("gather");
 }
