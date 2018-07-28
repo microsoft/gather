@@ -13,6 +13,8 @@ declare namespace Jupyter {
         config: Config;
         clipboard: Array<any>;
         enable_paste: () => void;
+        paste_enabled: boolean;
+        toJSON: () => NotebookJson;
     }
 
     interface Dialog {
@@ -56,8 +58,8 @@ declare namespace Jupyter {
         output_area: OutputArea;
         kernel: Kernel;
         tooltip: Tooltip;
-        fromJSON: (data: JSON) => void;
-        toJSON: () => JSON;
+        fromJSON: (data: CellJson) => void;
+        toJSON: () => CellJson;
     }
     interface CodeCellConstructor {
         new(kernel: Kernel, options: CodeCellOptions): CodeCell;
@@ -84,6 +86,12 @@ declare namespace Jupyter {
 
     interface Contents {
         new_untitled(path: string, options: { ext?: string, type?: string }): Promise<{ path: string }>;
+        save(path: string, model: SaveModel): Promise<any>;
+    }
+
+    interface SaveModel {
+        type: string;
+        content: NotebookJson; 
     }
 
     interface ShellReplyContent {
@@ -126,6 +134,19 @@ declare namespace Jupyter {
     var notebook: Notebook;
     var notification_area: NotificationArea;
     var toolbar: Toolbar;
+}
+
+// This is not from base/ns/namespace. We declared it so we can type-check the output of the
+// toJSON method on notebooks.
+declare interface NotebookJson {
+    cells: CellJson[];
+}
+
+declare interface CellJson {
+    source: string;
+    outputs: JSON[];
+    cell_type: string;
+    execution_count: number;
 }
 
 // declare const Jupyter: Jupyter.JupyterStatic;

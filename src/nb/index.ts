@@ -194,27 +194,27 @@ class Clipboard implements ICellClipboard {
     private _listeners: IClipboardListener[] = [];
 }
 
-/*
-function gatherToNotebook() {
-    const activeCell = Jupyter.notebook.get_selected_cell();
-    if (activeCell.cell_type === 'code') {
-        let cell = new NotebookCell(activeCell as CodeCell);
-        let slice = executionLogger.executionSlicer.sliceLatestExecution(cell);
-        let cells = slice.cellSlices.map((cellSlice) => cellSlice.cell);
-        console.log(cells);
+function gatherToNotebook(notebook: Notebook) {
 
-        // Create a new notebook
-        const w = window.open('', '_blank');
-        Jupyter.contents.new_untitled('', { type: 'notebook' })
-            .then((data: { [ path: string ]: string }) => {
-                const url: any = Jupyter.notebook.base_url +
-                    "/notebooks/" + encodeURIComponent(data.path) +
-                    "/kernel_name=python3";
-                w.location.href = url;
-            });
+    // Make boilerplate notebook JSON.
+    let notebookJson = notebook.toJSON();
+
+    // Replace the notebook model's cells with the copied cells.
+    notebookJson.cells = [];
+    if (notebook.clipboard != null && notebook.paste_enabled) {
+        for (let i = 0; i < notebook.clipboard.length; i++) {
+            let cellJson = notebook.clipboard[i];
+            notebookJson.cells.push(cellJson);
+        }
     }
+
+    // Save the gathered code to a new notebook, and then open it.
+    notebook.contents.save("GatheredCode.ipynb",
+            { type: "notebook", content: notebookJson}).then(() => {
+        console.log("Save finished");
+        window.open("/notebooks/GatheredCode.ipynb?kernel_name=python3", '_blank');
+    })
 }
-*/
 
 /**
  * Prefix for all gather actions.
@@ -262,11 +262,12 @@ export function load_ipython_extension() {
     clearButton.node = new Widget({ node: buttonsGroup.children()[1] });
 
     // Add UI elements
-    // const menu = $('#menus ul.navbar-nav');
-    // const gather = $('<li class="dropdown"></li>').appendTo(menu);
-    // $('<a href="#" class="dropdown-toggle" data-toggle="dropdown">Gather</a>').appendTo(gather);
-    // const list = $('<ul id="gather_menu" class="dropdown-menu"></ul>').appendTo(gather);
-    // $('<li id="gather-to-notebook" title="Gather to notebook"><a href="#">Gather to notebook</a></li>').click(gatherToNotebook).appendTo(list);
+    const menu = $('#menus ul.navbar-nav');
+    const gather = $('<li class="dropdown"></li>').appendTo(menu);
+    $('<a href="#" class="dropdown-toggle" data-toggle="dropdown">Gather</a>').appendTo(gather);
+    const list = $('<ul id="gather_menu" class="dropdown-menu"></ul>').appendTo(gather);
+    $('<li id="gather-to-notebook" title="Gather to notebook"><a href="#">Gather to notebook</a></li>')
+        .click(() => { gatherToNotebook(Jupyter.notebook) }).appendTo(list);
     // $('<li id="gather-to-script" title="Gather to script"><a href="#">Gather to script</a></li>').appendTo(list);
     // $('<li id="gather-to-clipboard title="Gather to clipboard"><a href="#">Gather to clipboard</a></li>')
     //     .click(() => gatherToClipboard()).appendTo(list);
