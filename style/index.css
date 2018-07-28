@@ -3,11 +3,25 @@
 /**
  * Gather button
  */
- .jp-Toolbar-gatherbutton.jp-Toolbar-button-glow {
+ .jp-Toolbar-gatherlabel {
+   float: left;
+   vertical-align: middle;
+   padding-top: 3px;
+   padding-left: 10px;
+   padding-right: 4px;
+ }
+
+ .jp-Toolbar-gathertoclipboardbutton.jp-Toolbar-button-glow {
    background-color: var(--brand-color4);
    border-color: var(--brand-color1);
    box-shadow: 0 0 10px var(--brand-color1);
  }
+
+ .jp-Toolbar-gathertonotebookbutton.jp-Toolbar-button-glow {
+  background-color: var(--brand-color4);
+  border-color: var(--brand-color1);
+  box-shadow: 0 0 10px var(--brand-color1);
+}
 
  .jp-Toolbar-clearbutton.jp-Toolbar-button-glow {
    background-color: #f4f4f4;

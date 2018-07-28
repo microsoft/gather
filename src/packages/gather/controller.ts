@@ -3,6 +3,7 @@ import { ExecutionLogSlicer } from "../../slicing/ExecutionSlicer";
 import { DefSelection, OutputSelection } from "./selections";
 import { LocationSet } from "../../slicing/Slice";
 import { ICellClipboard } from "./clipboard";
+import { INotebookOpener } from "./opener";
 
 /**
  * Controller for updating the gather model.
@@ -11,10 +12,12 @@ export class GatherController implements IGatherObserver {
     /**
      * Constructor for gather controller.
      */
-    constructor(model: GatherModel, executionSlicer: ExecutionLogSlicer, clipboard: ICellClipboard) {
+    constructor(model: GatherModel, executionSlicer: ExecutionLogSlicer, clipboard: ICellClipboard,
+        opener: INotebookOpener) {
         model.addObserver(this);
         this._executionSlicer = executionSlicer;
         this._cellClipboard = clipboard;
+        this._notebookOpener = opener;
     }
 
     /**
@@ -25,10 +28,14 @@ export class GatherController implements IGatherObserver {
         // If a gather action was requested, do the gather.
         if (eventType == GatherModelEvent.STATE_CHANGED) {
             let newState = eventData as GatherState;
-            if (newState == GatherState.GATHER) {
+            if (newState == GatherState.GATHER_TO_CLIPBOARD || newState == GatherState.GATHER_TO_NOTEBOOK) {
                 let slices = model.selectedSlices.map((s) => s.slice);
                 let mergedSlice = slices[0].merge(...slices.slice(1));
-                this._cellClipboard.copy(mergedSlice);
+                if (newState == GatherState.GATHER_TO_CLIPBOARD) {
+                    this._cellClipboard.copy(mergedSlice);
+                } else if (newState == GatherState.GATHER_TO_NOTEBOOK) {
+                    this._notebookOpener.openNotebookForSlice(mergedSlice);
+                }
                 model.deselectAllDefs();
                 model.requestStateChange(GatherState.SELECTING);
             }
@@ -82,4 +89,5 @@ export class GatherController implements IGatherObserver {
 
     private _executionSlicer: ExecutionLogSlicer;
     private _cellClipboard: ICellClipboard;
+    private _notebookOpener: INotebookOpener;
 }

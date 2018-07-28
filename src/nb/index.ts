@@ -9,11 +9,12 @@ import { MarkerManager, ICell, CellEditorResolver, CellOutputResolver } from '..
 import { GatherModel } from '../packages/gather/model';
 import { GatherController } from '../packages/gather/controller';
 
-import { GatherButton, ClearButton } from './buttons';
+import { GatherToClipboardButton, ClearButton, GatherToNotebookButton } from './buttons';
 import { ICellClipboard, IClipboardListener } from '../packages/gather/clipboard';
 
 import '../../style/nb-vars.css';
 import '../../style/index.css';
+import { INotebookOpener } from '../packages/gather/opener';
 
 /**
  * Widget for gather notifications.
@@ -155,6 +156,24 @@ class ResultsHighlighter {
 }
 
 /**
+ * Convert program slice to list of cell JSONs
+ */
+function sliceToCellJson(slice: SlicedExecution): CellJson[] {
+    const SHOULD_SLICE_CELLS = true;
+    return slice.cellSlices
+    .map((cellSlice) => {
+        let slicedCell = cellSlice.cell;
+        if (SHOULD_SLICE_CELLS) {
+            slicedCell = slicedCell.copy();
+            slicedCell.text = cellSlice.textSliceLines;
+        }
+        if (slicedCell instanceof NotebookCell) {
+            return slicedCell.model.toJSON();
+        }
+    }).filter((c) => c != undefined);
+}
+
+/**
  * Gather code to the clipboard.
  */
 class Clipboard implements ICellClipboard {
@@ -164,29 +183,13 @@ class Clipboard implements ICellClipboard {
     }
 
     copy(slice: SlicedExecution) {
-
-        const SHOULD_SLICE_CELLS = true;
-
         if (slice) {
-            let cells = slice.cellSlices
-            .map((cellSlice) => {
-                let slicedCell = cellSlice.cell;
-                if (SHOULD_SLICE_CELLS) {
-                    slicedCell = slicedCell.copy();
-                    slicedCell.text = cellSlice.textSliceLines;
-                }
-                return slicedCell;
-            });
-            
-            // Copy cells to clipboard
             Jupyter.notebook.clipboard = [];
-            cells.forEach((c) => {
-                if (c instanceof NotebookCell) {
-                    Jupyter.notebook.clipboard.push(c.model.toJSON());
-                }
+            let cellsJson = sliceToCellJson(slice);
+            cellsJson.forEach((c) => {
+                Jupyter.notebook.clipboard.push(c);
             });
             Jupyter.notebook.enable_paste();
-
             this._listeners.forEach((listener) => listener.onCopy(slice, this));
         }
     }
@@ -194,26 +197,39 @@ class Clipboard implements ICellClipboard {
     private _listeners: IClipboardListener[] = [];
 }
 
-function gatherToNotebook(notebook: Notebook) {
+/**
+ * Opens new notebooks containing program slices.
+ */
+class NotebookOpener implements INotebookOpener {
 
-    // Make boilerplate notebook JSON.
-    let notebookJson = notebook.toJSON();
+    // Pass in the current notebook. This class will open new notebooks.
+    constructor(thisNotebook: Notebook) {
+        this._notebook = thisNotebook;
+    }
 
-    // Replace the notebook model's cells with the copied cells.
-    notebookJson.cells = [];
-    if (notebook.clipboard != null && notebook.paste_enabled) {
-        for (let i = 0; i < notebook.clipboard.length; i++) {
-            let cellJson = notebook.clipboard[i];
-            notebookJson.cells.push(cellJson);
+    openNotebookForSlice(slice: SlicedExecution) {
+
+        // Make boilerplate, empty notebook JSON.
+        let notebookJson = this._notebook.toJSON();
+        notebookJson.cells = [];
+
+        // Replace the notebook model's cells with the copied cells.
+        if (slice) {
+            let cellsJson = sliceToCellJson(slice);
+            for (let i = 0; i < cellsJson.length; i++) {
+                let cellJson = cellsJson[i];
+                notebookJson.cells.push(cellJson);
+            }
+
+            // Save the gathered code to a new notebook, and then open it.
+            let model = { type: "notebook", content: notebookJson };
+            this._notebook.contents.save("GatheredCode.ipynb", model).then(() => {
+                window.open("/notebooks/GatheredCode.ipynb?kernel_name=python3", '_blank');
+            });
         }
     }
 
-    // Save the gathered code to a new notebook, and then open it.
-    notebook.contents.save("GatheredCode.ipynb",
-            { type: "notebook", content: notebookJson}).then(() => {
-        console.log("Save finished");
-        window.open("/notebooks/GatheredCode.ipynb?kernel_name=python3", '_blank');
-    })
+    private _notebook: Notebook;
 }
 
 /**
@@ -244,30 +260,47 @@ export function load_ipython_extension() {
         }
     });
 
+    // Initialize utility for opening new notebooks.
+    let opener = new NotebookOpener(Jupyter.notebook);
+
     // Controller for global UI state.
-    new GatherController(gatherModel, executionLogger.executionSlicer, clipboard);
+    new GatherController(gatherModel, executionLogger.executionSlicer, clipboard, opener);
 
     // Set up toolbar with gather actions.
-    let gatherButton = new GatherButton(gatherModel);
-    let gatherFullActionName = Jupyter.actions.register(
-        gatherButton.action, gatherButton.actionName, GATHER_PREFIX);
+    let gatherToClipboardButton = new GatherToClipboardButton(gatherModel);
+    let gatherToNotebookButton = new GatherToNotebookButton(gatherModel);
     let clearButton = new ClearButton(gatherModel);
+
+    // Create buttons for gathering.
+    let gatherToClipboardFullActionName = Jupyter.actions.register(
+        gatherToClipboardButton.action, gatherToClipboardButton.actionName, GATHER_PREFIX);
+    let gatherToNotebookFullActionName = Jupyter.actions.register(
+        gatherToNotebookButton.action, gatherToNotebookButton.actionName, GATHER_PREFIX);
     let clearFullActionName = Jupyter.actions.register(
         clearButton.action, clearButton.actionName, GATHER_PREFIX);
     let buttonsGroup = Jupyter.toolbar.add_buttons_group([
-        { label: gatherButton.label, action: gatherFullActionName },
+        { label: gatherToClipboardButton.label, action: gatherToClipboardFullActionName },
+        { label: gatherToNotebookButton.label, action: gatherToNotebookFullActionName },
         { label: clearButton.label, action: clearFullActionName }
     ]);
-    gatherButton.node = new Widget({ node: buttonsGroup.children()[0] });
-    clearButton.node = new Widget({ node: buttonsGroup.children()[1] });
+    
+    // Add a label to the gathering part of the toolbar.
+    let gatherLabel = document.createElement("div");
+    gatherLabel.classList.add(".jp-Toolbar-gatherlabel");
+    buttonsGroup[0].insertBefore(gatherLabel, buttonsGroup.children()[0]);
+
+    // Finish initializing the buttons.
+    gatherToClipboardButton.node = new Widget({ node: buttonsGroup.children()[0] });
+    gatherToNotebookButton.node = new Widget({ node: buttonsGroup.children()[1] })
+    clearButton.node = new Widget({ node: buttonsGroup.children()[2] });
 
     // Add UI elements
-    const menu = $('#menus ul.navbar-nav');
-    const gather = $('<li class="dropdown"></li>').appendTo(menu);
-    $('<a href="#" class="dropdown-toggle" data-toggle="dropdown">Gather</a>').appendTo(gather);
-    const list = $('<ul id="gather_menu" class="dropdown-menu"></ul>').appendTo(gather);
-    $('<li id="gather-to-notebook" title="Gather to notebook"><a href="#">Gather to notebook</a></li>')
-        .click(() => { gatherToNotebook(Jupyter.notebook) }).appendTo(list);
+    // const menu = $('#menus ul.navbar-nav');
+    // const gather = $('<li class="dropdown"></li>').appendTo(menu);
+    // $('<a href="#" class="dropdown-toggle" data-toggle="dropdown">Gather</a>').appendTo(gather);
+    // const list = $('<ul id="gather_menu" class="dropdown-menu"></ul>').appendTo(gather);
+    // $('<li id="gather-to-notebook" title="Gather to notebook"><a href="#">Gather to notebook</a></li>')
+    //     .click(() => { gatherToNotebook(Jupyter.notebook) }).appendTo(list);
     // $('<li id="gather-to-script" title="Gather to script"><a href="#">Gather to script</a></li>').appendTo(list);
     // $('<li id="gather-to-clipboard title="Gather to clipboard"><a href="#">Gather to clipboard</a></li>')
     //     .click(() => gatherToClipboard()).appendTo(list);

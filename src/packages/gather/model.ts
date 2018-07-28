@@ -6,7 +6,8 @@ import { ICell } from "../cell";
  */
 export enum GatherState {
     SELECTING,
-    GATHER
+    GATHER_TO_CLIPBOARD,
+    GATHER_TO_NOTEBOOK
 };
 
 /**
