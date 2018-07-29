@@ -286,13 +286,14 @@ export function load_ipython_extension() {
     
     // Add a label to the gathering part of the toolbar.
     let gatherLabel = document.createElement("div");
-    gatherLabel.classList.add(".jp-Toolbar-gatherlabel");
+    gatherLabel.textContent = "Gather to:";
+    gatherLabel.classList.add("jp-Toolbar-gatherlabel");
     buttonsGroup[0].insertBefore(gatherLabel, buttonsGroup.children()[0]);
 
     // Finish initializing the buttons.
-    gatherToClipboardButton.node = new Widget({ node: buttonsGroup.children()[0] });
-    gatherToNotebookButton.node = new Widget({ node: buttonsGroup.children()[1] })
-    clearButton.node = new Widget({ node: buttonsGroup.children()[2] });
+    gatherToClipboardButton.node = new Widget({ node: buttonsGroup.children()[1] });
+    gatherToNotebookButton.node = new Widget({ node: buttonsGroup.children()[2] })
+    clearButton.node = new Widget({ node: buttonsGroup.children()[3] });
 
     // Add UI elements
     // const menu = $('#menus ul.navbar-nav');
