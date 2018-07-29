@@ -158,9 +158,10 @@ class ResultsHighlighter {
 /**
  * Convert program slice to list of cell JSONs
  */
-function sliceToCellJson(slice: SlicedExecution): CellJson[] {
+function sliceToCellJson(slice: SlicedExecution, annotate?: boolean): CellJson[] {
     const SHOULD_SLICE_CELLS = true;
-    const SHOULD_OMIT_NONTERMINAL_INPUT = true;
+    const SHOULD_OMIT_NONTERMINAL_OUTPUT = true;
+    annotate = annotate || false;
     return slice.cellSlices
     .map((cellSlice, i) => {
         let slicedCell = cellSlice.cell;
@@ -170,8 +171,14 @@ function sliceToCellJson(slice: SlicedExecution): CellJson[] {
         }
         if (slicedCell instanceof NotebookCell) {
             let cellJson = slicedCell.model.toJSON();
+            // This new cell hasn't been executed yet. So don't mark it as having been executed.
+            cellJson.execution_count = null;
+            // Add a flag to distinguish gathered cells from other cells.
+            if (annotate) {
+                cellJson.metadata.gathered = true;
+            }
             // If this isn't the last cell, don't include its output.
-            if (SHOULD_OMIT_NONTERMINAL_INPUT && i != slice.cellSlices.length - 1) {
+            if (SHOULD_OMIT_NONTERMINAL_OUTPUT && i != slice.cellSlices.length - 1) {
                 cellJson.outputs = [];
             }
             return cellJson;
@@ -191,7 +198,7 @@ class Clipboard implements ICellClipboard {
     copy(slice: SlicedExecution) {
         if (slice) {
             Jupyter.notebook.clipboard = [];
-            let cellsJson = sliceToCellJson(slice);
+            let cellsJson = sliceToCellJson(slice, true);
             cellsJson.forEach((c) => {
                 Jupyter.notebook.clipboard.push(c);
             });
@@ -221,7 +228,7 @@ class NotebookOpener implements INotebookOpener {
 
         // Replace the notebook model's cells with the copied cells.
         if (slice) {
-            let cellsJson = sliceToCellJson(slice);
+            let cellsJson = sliceToCellJson(slice, false);
             for (let i = 0; i < cellsJson.length; i++) {
                 let cellJson = cellsJson[i];
                 notebookJson.cells.push(cellJson);
@@ -300,6 +307,34 @@ export function load_ipython_extension() {
     gatherToClipboardButton.node = new Widget({ node: buttonsGroup.children()[1] });
     gatherToNotebookButton.node = new Widget({ node: buttonsGroup.children()[2] })
     clearButton.node = new Widget({ node: buttonsGroup.children()[3] });
+    
+    // When pasting gathered cells, select those cells. This is hacky: we add a flag to the
+    // gathered cells so we can find them right after the paste, as there is no listener for
+    // pasting gathered cells in the notebook API.
+    Jupyter.notebook.events.on('select.Cell', (_: Jupyter.Event, data: { cell: Cell }) => {
+        
+        let cell = data.cell;
+        if (cell.metadata.gathered) {
+
+            // Select all of the gathered cells.
+            let gatheredCellIndexes = cell.notebook.get_cells()
+            .map((c, i): [Cell, number] => [c, i])
+            .filter(([c, i]) => c.metadata.gathered)
+            .map(([c, i]) => i);
+            let firstGatheredIndex = Math.min(...gatheredCellIndexes);
+            let lastGatheredIndex = Math.max(...gatheredCellIndexes);
+            Jupyter.notebook.select(firstGatheredIndex, true);
+            Jupyter.notebook.select(lastGatheredIndex, false);
+
+            // We won't use the `gathered` flag on these cells anymore, so remove them from the cells.
+            cell.notebook.get_cells()
+            .forEach((c) => {
+                if (c.metadata.gathered) {
+                    delete c.metadata.gathered;
+                }
+            });
+        }
+    });    
 
     // Add UI elements
     // const menu = $('#menus ul.navbar-nav');

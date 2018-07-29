@@ -8,6 +8,7 @@ declare namespace Jupyter {
         base_url: string;
         get_cells(): Cell[];
         get_selected_cell(): Cell;
+        select: (index: number, moveanchor: boolean) => Notebook;
         events: Events;
         contents: Contents;
         config: Config;
@@ -39,6 +40,7 @@ declare namespace Jupyter {
         cell_type: 'code' | 'markdown';
         element: JQuery;
         notebook: Notebook;
+        metadata: CellMetadata;
         code_mirror: CodeMirror.Editor;
         events: Events;
         keyboard_manager: KeyboardManager;
@@ -142,11 +144,20 @@ declare interface NotebookJson {
     cells: CellJson[];
 }
 
+declare interface CellMetadata {
+    gathered?: boolean;
+}
+
 declare interface CellJson {
     source: string;
     outputs: JSON[];
     cell_type: string;
     execution_count: number;
+    metadata: CellJsonMetadata;
+}
+
+declare interface CellJsonMetadata {
+    gathered?: boolean;
 }
 
 // declare const Jupyter: Jupyter.JupyterStatic;
