@@ -37,6 +37,7 @@ export class GatherController implements IGatherObserver {
                     this._notebookOpener.openNotebookForSlice(mergedSlice);
                 }
                 model.deselectAllDefs();
+                model.deselectAllOutputs();
                 model.requestStateChange(GatherState.SELECTING);
             }
         }

@@ -160,15 +160,21 @@ class ResultsHighlighter {
  */
 function sliceToCellJson(slice: SlicedExecution): CellJson[] {
     const SHOULD_SLICE_CELLS = true;
+    const SHOULD_OMIT_NONTERMINAL_INPUT = true;
     return slice.cellSlices
-    .map((cellSlice) => {
+    .map((cellSlice, i) => {
         let slicedCell = cellSlice.cell;
         if (SHOULD_SLICE_CELLS) {
             slicedCell = slicedCell.copy();
             slicedCell.text = cellSlice.textSliceLines;
         }
         if (slicedCell instanceof NotebookCell) {
-            return slicedCell.model.toJSON();
+            let cellJson = slicedCell.model.toJSON();
+            // If this isn't the last cell, don't include its output.
+            if (SHOULD_OMIT_NONTERMINAL_INPUT && i != slice.cellSlices.length - 1) {
+                cellJson.outputs = [];
+            }
+            return cellJson;
         }
     }).filter((c) => c != undefined);
 }
