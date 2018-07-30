@@ -131,6 +131,7 @@ exponent                [e|E][\+|\-]({digit})+
                         %}
 
 <INLINE>\#[^\n]*        /* skip comments */
+<INLINE>[\ \t\f]*\\\n   /* skip line continuations */
 <INLINE>[\ \t\f]+       /* skip whitespace, separate tokens */
 /* floatnumber rules should go before operators. Otherwise .\d+ will never be read as a floating
  * point number, the '.' will only be used for property accesses. */

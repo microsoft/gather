@@ -20,4 +20,13 @@ describe('python parser', () => {
         expect(node.comp_for).not.to.be.undefined;
     });
 
+    it.only('can parse line continuations', () => {
+        parse([
+            'a = b\\',
+            '.func(1, 2)\\',
+            '.func(3, 4)',
+            ''
+        ].join('\n'));
+    })
+
 });
