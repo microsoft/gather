@@ -49,7 +49,7 @@ export class ProgramBuilder {
             // then discard it:
             let parseSucceeded: boolean = false;
             try {
-                ast.parse(cell.text + "\n");
+                ast.parse(this._magicsRewriter.rewrite(cell.text) + "\n");
                 parseSucceeded = true;
             } catch(e) {
                 console.log("Couldn't parse block", cell.text, ", not adding to programs.");
