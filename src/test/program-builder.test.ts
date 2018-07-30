@@ -87,7 +87,7 @@ describe('program builder', () => {
 
     /* Sometimes, a cell might not throw an error, but our parser might choke. This shouldn't
      * crash the entire program---just skip it if it can't parse. */
-    it.only('skips cells that fail to parse', () => {
+    it('skips cells that fail to parse', () => {
         let badCell = createCell("idE", 2, "causes_syntax_error(");
         programBuilder.add(
             createCell("id1", 1, "print(1)"),

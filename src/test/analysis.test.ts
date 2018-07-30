@@ -1,5 +1,5 @@
 import { dataflowAnalysis, getDefs, Def, DefType, DefSet, getUses, IDataflow } from "../slicing/DataflowAnalysis";
-import * as python3 from '../parsers/python/python3';
+import { parse } from '../parsers/python/python_parser';
 import { ControlFlowGraph } from '../slicing/ControlFlowAnalysis';
 import { expect } from "chai";
 import { Set, StringSet } from "../slicing/Set";
@@ -12,7 +12,7 @@ describe('detects dataflow dependencies', () => {
 
     function analyze(...codeLines: string[]): Set<IDataflow> {
         let code = codeLines.concat("").join("\n");  // add newlines to end of every line.
-        return dataflowAnalysis(new ControlFlowGraph(python3.parse(code)));
+        return dataflowAnalysis(new ControlFlowGraph(parse(code)));
     }
 
     function analyzeLineDeps(...codeLines: string[]): [number, number][] {
@@ -102,7 +102,7 @@ describe('detects control dependencies', () => {
 
     function analyze(...codeLines: string[]): [number, number][] {
         let code = codeLines.concat("").join("\n");  // add newlines to end of every line.
-        let deps = (new ControlFlowGraph(python3.parse(code))).getControlDependencies();
+        let deps = (new ControlFlowGraph(parse(code))).getControlDependencies();
         return deps.map(function(dep): [number, number] { 
             return [dep.toNode.location.first_line, dep.fromNode.location.first_line]
         });
@@ -178,7 +178,7 @@ describe('getDefs', () => {
 
     function getDefsFromStatements(...codeLines: string[]): Def[] {
         let code = codeLines.concat("").join("\n");
-        let module = python3.parse(code);
+        let module = parse(code);
         return new DefSet().union(...module.code.map((stmt: ISyntaxNode) => {
             return getDefs(stmt, { moduleNames: new StringSet() });
         })).items;
@@ -186,7 +186,7 @@ describe('getDefs', () => {
 
     function getDefsFromStatement(code: string, slicerConfig?: SlicerConfig): Def[] {
         code = code + "\n";  // programs need to end with newline
-        let module = python3.parse(code);
+        let module = parse(code);
         return getDefs(module.code, { moduleNames: new StringSet() }, slicerConfig).items;
     }
 
@@ -315,7 +315,7 @@ describe('getUses', () => {
 
     function getUseNames(...codeLines: string[]) {
         let code = codeLines.concat("").join("\n");
-        let module = python3.parse(code);
+        let module = parse(code);
         return getUses(module.code, { moduleNames: new StringSet() }).items
         .map((use) => use[0]);
     }

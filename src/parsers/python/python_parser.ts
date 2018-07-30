@@ -1,3 +1,19 @@
+/**
+ * This is the main interface for parsing code.
+ * Call this instead of the `parse` method in python3.js.
+ * If the `parse` method gets an error, all later calls will throw an error.
+ * This method resets the state of the `parse` method so that doesn't happen.
+ */
+export function parse(program: string) {
+    // Unload parser if it was already loaded before.
+    let parseModulePath = require.resolve("./python3");
+    if (require.cache[parseModulePath]) {
+        delete require.cache[parseModulePath];
+    }
+    let jisonParse = require("./python3").parse;
+    return jisonParse(program);
+}
+
 export type ISyntaxNode =
     | IModule
     | IImport

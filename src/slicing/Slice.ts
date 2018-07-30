@@ -1,8 +1,7 @@
 import { NumberSet, range } from "./Set";
 import { ControlFlowGraph } from "./ControlFlowAnalysis";
 import { dataflowAnalysis } from "./DataflowAnalysis";
-import { ILocation } from "../parsers/python/python_parser";
-import * as python3 from '../parsers/python/python3';
+import { ILocation, parse } from "../parsers/python/python_parser";
 import { ICell } from "../packages/cell";
 import { Set } from "./Set";
 
@@ -56,7 +55,7 @@ function intersect(l1: ILocation, l2: ILocation): boolean {
  */
 export function slice(code: string, seedLocations: LocationSet): LocationSet {
 
-    const ast = python3.parse(code);
+    const ast = parse(code);
     const cfg = new ControlFlowGraph(ast);
     const dfa = dataflowAnalysis(cfg);
     dfa.add(...cfg.getControlDependencies());
@@ -98,7 +97,7 @@ export function slice(code: string, seedLocations: LocationSet): LocationSet {
  * OUT OF DATE: use slice() instead of sliceLines().
  */
 export function sliceLines(code: string, relevantLineNumbers: NumberSet) {
-    const ast = python3.parse(code);
+    const ast = parse(code);
     const cfg = new ControlFlowGraph(ast);
     const dfa = dataflowAnalysis(cfg);
     dfa.add(...cfg.getControlDependencies());
@@ -149,7 +148,7 @@ export class CellProgram<CellType extends ICell> {
     }
 
     private followDataflow(direction: DataflowDirection): NumberSet {
-        const ast = python3.parse(this.code);
+        const ast = parse(this.code);
         const cfg = new ControlFlowGraph(ast);
         const dfa = dataflowAnalysis(cfg);
         dfa.add(...cfg.getControlDependencies());

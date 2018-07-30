@@ -1,5 +1,5 @@
 import * as fs from 'fs';
-import * as python3 from '../python3'
+import * as ast from '../python_parser';
 import { ControlFlowGraph } from '../../../slicing/ControlFlowAnalysis';
 import { dataflowAnalysis } from '../../../slicing/DataflowAnalysis';
 
@@ -21,12 +21,12 @@ for (let i = 2; i < process.argv.length; i++) {
     const path = process.argv[i];
     const text = fs.readFileSync(path).toString().replace(/\r\n/g, '\n');
 
-    const ast = python3.parse(text);
+    const tree = ast.parse(text);
     if (printAst) {
-        console.log(JSON.stringify(ast, null, 2));
+        console.log(JSON.stringify(tree, null, 2));
     }
 
-    const cfg = new ControlFlowGraph(ast);
+    const cfg = new ControlFlowGraph(tree);
     if (printCfg) {
         cfg.print();
     }
