@@ -1,6 +1,8 @@
 import { NumberSet } from "./Set";
+import * as python3 from "../parsers/python/python3";
 import { MagicsRewriter } from "./MagicsRewriter";
 import { ICell } from "../packages/cell/model";
+import * as Jison from "jison";
 
 /**
  * Maps to find out what line numbers over a program correspond to what cells.
@@ -43,7 +45,22 @@ export class ProgramBuilder {
      * Add cells to the program builder.
      */
     add(...cells: ICell[]) {
-        this._cells.push(...cells);
+        for (let cell of cells) {
+            // Proactively try to parse each block with our parser. If it can't parse,
+            // then discard it:
+            let parseSucceeded: boolean = false;
+            try {
+                python3.parse(cell.text + "\n");
+                // let parser = python3.parser();
+                // python3.parse(cell.text + "\n");
+                parseSucceeded = true;
+            } catch(e) {
+                console.log("Couldn't parse block", cell.text, ", not adding to programs.");
+            }
+            if (parseSucceeded) {
+                this._cells.push(cell);
+            }
+        }
     }
 
     /**

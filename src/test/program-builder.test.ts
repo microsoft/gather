@@ -85,4 +85,16 @@ describe('program builder', () => {
         expect(code).to.equal(["print(1)", "print(3)", ""].join("\n"));
     });
 
+    /* Sometimes, a cell might not throw an error, but our parser might choke. This shouldn't
+     * crash the entire program---just skip it if it can't parse. */
+    it.only('skips cells that fail to parse', () => {
+        let badCell = createCell("idE", 2, "causes_syntax_error(");
+        programBuilder.add(
+            createCell("id1", 1, "print(1)"),
+            badCell,
+            createCell("id3", 3, "print(3)")
+        );
+        let code = programBuilder.buildTo("id3").code;
+        expect(code).to.equal(["print(1)", "print(3)", ""].join("\n"));
+    });
 });
