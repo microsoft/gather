@@ -11,19 +11,13 @@
    padding-right: 4px;
  }
 
- .jp-Toolbar-gathertoclipboardbutton.jp-Toolbar-button-glow {
-   background-color: var(--brand-color4);
+ .jp-Toolbar-gathertoclipboardbutton.jp-Toolbar-button-glow, .jp-Toolbar-gathertonotebookbutton.jp-Toolbar-button-glow {
+   background-color: var(--brand-color5);
    border-color: var(--brand-color1);
    box-shadow: 0 0 10px var(--brand-color1);
  }
 
- .jp-Toolbar-gathertonotebookbutton.jp-Toolbar-button-glow {
-  background-color: var(--brand-color4);
-  border-color: var(--brand-color1);
-  box-shadow: 0 0 10px var(--brand-color1);
-}
-
- .jp-Toolbar-clearbutton.jp-Toolbar-button-glow {
+ .jp-Toolbar-clearbutton.jp-Toolbar-button-glow, .jp-Toolbar-mergebutton.jp-Toolbar-button-glow {
    background-color: #f4f4f4;
    border-color: #bbbbbb;
    box-shadow: 0 0 7px #bbbbbb;

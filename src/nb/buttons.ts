@@ -1,6 +1,6 @@
 import { GatherModel, IGatherObserver, GatherModelEvent, GatherEventData, GatherState } from "../packages/gather";
 import { Widget } from "@phosphor/widgets";
-import { Action } from "base/js/namespace";
+import { Action, Actions, Notebook } from "base/js/namespace";
 
 
 /**
@@ -16,6 +16,63 @@ interface Button {
  * Class for highlighted buttons.
  */
 const HIGHLIGHTED_BUTTON_CLASS = "jp-Toolbar-button-glow";
+
+/**
+ * Button for merging selected cells.
+ */
+export class MergeButton implements Button {
+    /**
+     * Properties of the merge action.
+     */
+    readonly CLASS_NAME = "jp-Toolbar-mergebutton";
+    readonly label = "Merge";
+    readonly actionName = "merge-cells";
+    readonly action = {
+        icon: 'fa-compress',
+        help: 'Merge selected cells',
+        help_index: 'merge-cells',
+        handler: () => { this._actions.call("jupyter-notebook:merge-cells"); }
+    };
+
+    /**
+     * Construct a merge button.
+     */
+    constructor(actions: Actions, notebook: Notebook) {
+        this._actions = actions;
+        this._notebook = notebook;
+        setInterval(this.updateState.bind(this), 100);
+    }
+
+    updateState() {
+        // Only enable this button if there is more than one selected...
+        let selectedCells = this._notebook.get_selected_cells();
+        this.disabled = (selectedCells.length <= 1);
+    }
+
+    set disabled(disabled: boolean) {
+        this._disabled = disabled;
+        if (this._node) {
+            (this._node.node as HTMLButtonElement).disabled = this._disabled;
+        }
+    }
+
+    /**
+     * Set the node for this button. For now, has to be done after initialization, given how
+     * Jupyter notebook initializes toolbars.
+     */
+    set node(node: Widget) {
+        if (this._node != node) {
+            this._node = node;
+            this._node.addClass(this.CLASS_NAME);
+            this.disabled = true;
+        }
+    }
+
+    private _actions: Actions;
+    private _disabled: boolean;
+    private _notebook: Notebook;
+    private _node: Widget;
+}
 
 /**
  * Class for buttons that highlight on model change.

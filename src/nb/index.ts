@@ -9,7 +9,7 @@ import { MarkerManager, ICell, CellEditorResolver, CellOutputResolver } from '..
 import { GatherModel } from '../packages/gather/model';
 import { GatherController } from '../packages/gather/controller';
 
-import { GatherToClipboardButton, ClearButton, GatherToNotebookButton } from './buttons';
+import { GatherToClipboardButton, ClearButton, GatherToNotebookButton, MergeButton } from './buttons';
 import { ICellClipboard, IClipboardListener } from '../packages/gather/clipboard';
 
 import '../../style/nb-vars.css';
@@ -305,9 +305,16 @@ export function load_ipython_extension() {
 
     // Finish initializing the buttons.
     gatherToClipboardButton.node = new Widget({ node: buttonsGroup.children()[1] });
-    gatherToNotebookButton.node = new Widget({ node: buttonsGroup.children()[2] })
+    gatherToNotebookButton.node = new Widget({ node: buttonsGroup.children()[2] });
     clearButton.node = new Widget({ node: buttonsGroup.children()[3] });
     
+    let mergeButton = new MergeButton(Jupyter.actions, Jupyter.notebook);
+    let mergeFullActionName = Jupyter.actions.register(
+        mergeButton.action, mergeButton.actionName, GATHER_PREFIX);
+    let mergeButtonGroup = Jupyter.toolbar.add_buttons_group(
+        [{ label: mergeButton.label, action: mergeFullActionName }]);
+    mergeButton.node = new Widget({ node: mergeButtonGroup.children()[0] });
+
     // When pasting gathered cells, select those cells. This is hacky: we add a flag to the
     // gathered cells so we can find them right after the paste, as there is no listener for
     // pasting gathered cells in the notebook API.

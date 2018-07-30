@@ -8,6 +8,8 @@ declare namespace Jupyter {
         base_url: string;
         get_cells(): Cell[];
         get_selected_cell(): Cell;
+        get_selected_cells(): Cell[];
+        get_selected_cells_indices(): number[];
         select: (index: number, moveanchor: boolean) => Notebook;
         events: Events;
         contents: Contents;
@@ -84,6 +86,7 @@ declare namespace Jupyter {
 
     interface Events {
         on(name: string, callback: (evt: any, data: any) => void): void;
+        trigger(name: string, data: any): void;
     }
 
     interface Contents {
@@ -111,6 +114,7 @@ declare namespace Jupyter {
 
     interface Actions {
         register: (action: Action, action_name: string, prefix: string) => string;
+        call: (actionName: string) => void;
     }
 
     interface Action {
