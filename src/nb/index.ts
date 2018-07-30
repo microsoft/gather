@@ -220,6 +220,29 @@ class NotebookOpener implements INotebookOpener {
         this._notebook = thisNotebook;
     }
 
+    private _openSlice(notebookJson: NotebookJson, gatherIndex: number) {
+        
+        // Get the directory of the current notebook.
+        let currentDir = document.body.attributes
+            .getNamedItem('data-notebook-path').value.split('/').slice(0, -1).join("/");
+        currentDir = currentDir ? currentDir + "/" : "";
+
+        // Create path to file
+        let fileName = "GatheredCode" + gatherIndex + ".ipynb";
+        let notebookPath = currentDir + fileName;
+
+        this._notebook.contents.get(notebookPath, { type: 'notebook' }).then((_) => {
+            // If there's already a file at this location, try the next gather index.
+            this._openSlice(notebookJson, gatherIndex + 1);
+        }, (err) => {
+            // Open up a new notebook at an available location.
+            let model = { type: "notebook", content: notebookJson };
+            this._notebook.contents.save(notebookPath, model).then(() => {
+                window.open("notebooks/" + notebookPath + "?kernel_name=python3", '_blank');
+            });
+        });
+    }
+
     openNotebookForSlice(slice: SlicedExecution) {
 
         // Make boilerplate, empty notebook JSON.
@@ -235,10 +258,7 @@ class NotebookOpener implements INotebookOpener {
             }
 
             // Save the gathered code to a new notebook, and then open it.
-            let model = { type: "notebook", content: notebookJson };
-            this._notebook.contents.save("GatheredCode.ipynb", model).then(() => {
-                window.open("/notebooks/GatheredCode.ipynb?kernel_name=python3", '_blank');
-            });
+            this._openSlice(notebookJson, 1);
         }
     }
 

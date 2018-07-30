@@ -92,6 +92,7 @@ declare namespace Jupyter {
     interface Contents {
         new_untitled(path: string, options: { ext?: string, type?: string }): Promise<{ path: string }>;
         save(path: string, model: SaveModel): Promise<any>;
+        get(path: string, data: { type: string, content?: boolean }): Promise<any>;
     }
 
     interface SaveModel {
