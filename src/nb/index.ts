@@ -234,11 +234,12 @@ class NotebookOpener implements INotebookOpener {
         this._notebook.contents.get(notebookPath, { type: 'notebook' }).then((_) => {
             // If there's already a file at this location, try the next gather index.
             this._openSlice(notebookJson, gatherIndex + 1);
-        }, (err) => {
+        }, (_) => {
             // Open up a new notebook at an available location.
             let model = { type: "notebook", content: notebookJson };
             this._notebook.contents.save(notebookPath, model).then(() => {
-                window.open("notebooks/" + notebookPath + "?kernel_name=python3", '_blank');
+                // XXX: This seems to open up a file in different places on different machines???
+                window.open(fileName + "?kernel_name=python3", '_blank');
             });
         });
     }
