@@ -1,3 +1,5 @@
+import { ReferenceType } from "./DataflowAnalysis";
+
 /**
  * Configuration with hints on how to slice.
  * Includes defaults of methods that will probably modify their variables.
@@ -18,11 +20,18 @@ export class SlicerConfig {
     private _functionConfigs: FunctionConfig[];
     
     private _defaultFunctionConfigs = [
-        new FunctionConfig({ functionName: "load", mutatesInstance: true }),
         new FunctionConfig({
-            functionName: "rectangle",
-            positionalArgumentsMutated: [0],
-            keywordArgumentsMutated: ["img"],
+            pattern: { functionName: "load" },
+            instanceEffect: ReferenceType.UPDATE
+        }),
+        new FunctionConfig({
+            pattern: { functionName: "rectangle" },
+            positionalArgumentEffects: {
+                0: ReferenceType.UPDATE
+            },
+            keywordArgumentEffects: {
+                "img": ReferenceType.UPDATE
+            },
         }),
     ];
 }
@@ -30,16 +39,23 @@ export class SlicerConfig {
 export class FunctionConfig {
 
     constructor(options: FunctionConfig.IOptions) {
-        this.functionName = options.functionName;
-        this.mutatesInstance = options.mutatesInstance || false;
-        this.positionalArgumentsMutated = options.positionalArgumentsMutated || [];
-        this.keywordArgumentsMutated = options.keywordArgumentsMutated || [];
+        this.pattern = options.pattern;
+        this.instanceEffect = options.instanceEffect;
+        this.positionalArgumentEffects = options.positionalArgumentEffects;
+        this.keywordArgumentEffects = options.keywordArgumentEffects;
     }
     
-    readonly functionName: string;
-    readonly mutatesInstance: boolean;
-    readonly positionalArgumentsMutated: number[];
-    readonly keywordArgumentsMutated: string[];
+    readonly pattern: FunctionPattern;
+    readonly instanceEffect: ReferenceType;
+    readonly positionalArgumentEffects: { [position: number]: ReferenceType };
+    readonly keywordArgumentEffects: { [name: string]: ReferenceType };
+}
+
+export type FunctionPattern = {
+    /**
+     * The name of the function.
+     */
+    functionName: string;
 }
 
 /**
@@ -53,23 +69,23 @@ export namespace FunctionConfig {
      */
     export interface IOptions {
         /**
-         * The name of the function.
+         * Pattern describing matching functions.
          */
-        functionName: string;
+        pattern: FunctionPattern;
 
         /**
-         * Whether the function can change the instance it is called on.
+         * If defined, what this function does to the instance.
          */
-        mutatesInstance?: boolean;
+        instanceEffect?: ReferenceType;
 
         /**
-         * Positions of positional arguments this method can mutate.
+         * Positions of positional arguments this method can define.
          */
-        positionalArgumentsMutated?: number[];
+        positionalArgumentEffects?: { [position: number]: ReferenceType };
 
         /**
-         * Names of keyword arguments this method can mutate.
+         * Names of keyword arguments this method can define.
          */
-        keywordArgumentsMutated?: string[];
+        keywordArgumentEffects?: { [name: string]: ReferenceType };
     }
 }

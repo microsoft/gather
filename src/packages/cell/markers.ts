@@ -3,7 +3,7 @@
  */
 import { ISyntaxNode, ILocation } from "../../parsers/python/python_parser";
 import { parse } from '../../parsers/python/python3';
-import { getDefs, DefType } from "../../slicing/DataflowAnalysis";
+import { getDefs, SymbolType } from "../../slicing/DataflowAnalysis";
 import { StringSet } from "../../slicing/Set";
 import { SlicerConfig } from "../../slicing/SlicerConfig";
 import { MagicsRewriter } from "../../slicing/MagicsRewriter";
@@ -184,7 +184,7 @@ export class MarkerManager implements IGatherObserver {
         // Add marker for all of the definitions in the code.
         statements.forEach((statement: ISyntaxNode) => {
             getDefs(statement, { moduleNames: new StringSet() }, new SlicerConfig())
-            .items.filter((d) => [DefType.VARIABLE, DefType.MUTATION].indexOf(d.type) != -1)
+            .items.filter((d) => [SymbolType.VARIABLE, SymbolType.MUTATION].indexOf(d.type) != -1)
             .forEach((def) => {
                 this._model.addEditorDef({ def: def, editor: editor, cell: cell });
             });

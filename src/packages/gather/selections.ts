@@ -1,4 +1,4 @@
-import { Def } from "../../slicing/DataflowAnalysis";
+import { Ref } from "../../slicing/DataflowAnalysis";
 import { ICell } from "../cell";
 import { SlicedExecution } from "../../slicing/ExecutionSlicer";
 
@@ -32,7 +32,7 @@ export type SliceSelection = {
 export type EditorDef = {
     editor: CodeMirror.Editor,
     cell: ICell,
-    def: Def
+    def: Ref
 }
 
 /**

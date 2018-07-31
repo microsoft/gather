@@ -1,4 +1,4 @@
-import { dataflowAnalysis, getDefs, Def, DefType, DefSet, getUses, IDataflow } from "../slicing/DataflowAnalysis";
+import { dataflowAnalysis, getDefs, Ref, SymbolType, RefSet, getUses, IDataflow, ReferenceType } from "../slicing/DataflowAnalysis";
 import { parse } from '../parsers/python/python_parser';
 import { ControlFlowGraph } from '../slicing/ControlFlowAnalysis';
 import { expect } from "chai";
@@ -8,7 +8,7 @@ import { ISyntaxNode } from "../parsers/python/python_parser";
 
 
 // High-level tests on dataflow as a sanity check.
-describe.only('detects dataflow dependencies', () => {
+describe('detects dataflow dependencies', () => {
 
     function analyze(...codeLines: string[]): Set<IDataflow> {
         let code = codeLines.concat("").join("\n");  // add newlines to end of every line.
@@ -96,6 +96,83 @@ describe.only('detects dataflow dependencies', () => {
         );
         expect(deps).to.deep.equal([[4, 1]]);
     });
+
+    let complexDepsSliceConfig = new SlicerConfig([
+        new FunctionConfig({
+            pattern: { functionName: "update" },
+            instanceEffect: ReferenceType.UPDATE
+        }),
+        new FunctionConfig({
+            pattern: { functionName: "init" },
+            instanceEffect: ReferenceType.INITIALIZATION
+        }),
+        new FunctionConfig({
+            pattern: { functionName: "global_config" },
+            instanceEffect: ReferenceType.GLOBAL_CONFIG
+        }),
+    ]);
+
+    function analyzeComplexDeps(...codeLines: string[]) {
+        let code = codeLines.concat("").join("\n");  // add newlines to end of every line.
+        return dataflowAnalysis(new ControlFlowGraph(parse(code)), complexDepsSliceConfig)
+            .items.map(function(dep): [number, number] { 
+                return [dep.toNode.location.first_line, dep.fromNode.location.first_line]
+            });
+    }
+
+    it('links from uses to variable updates', () => {
+        let deps = analyzeComplexDeps(
+            "obj.update()",
+            "print(obj)"
+        );
+        expect(deps).to.deep.equal([[2, 1]]);
+    });
+
+    it('links from a use to it\'s first previous update', () => {
+        let deps = analyzeComplexDeps(
+            "obj.update()",
+            "obj.update()",
+            "print(obj)"
+        );
+        expect(deps).to.not.deep.include([3, 1]);
+    })
+
+    it('links from a use to an update if there isn\'t an def before it', () => {
+        let deps = analyzeComplexDeps(
+            "obj.update()",
+            "obj = 1",
+            "print(obj)",
+        );
+        expect(deps).to.not.deep.include([3, 1]);
+    });
+
+    it('links from a global config to a previous global config', () => {
+        let deps = analyzeComplexDeps(
+            "obj.global_config()",
+            "obj.global_config()"
+        );
+        expect(deps).to.deep.equal([[2, 1]]);
+    });
+
+    it('links from an initialization to a global config', () => {
+        let deps = analyzeComplexDeps(
+            "obj.global_config()",
+            "obj.init()",
+            "obj.init()"
+        );
+        expect(deps).to.deep.equal([[2, 1], [3, 1]]);
+    });
+
+    it('links from a use to both a global config and an init', () => {
+        let deps = analyzeComplexDeps(
+            "obj.init()",
+            "obj.global_config()",
+            "print(obj)"
+        );
+        expect(deps.length).to.equal(2);
+        expect(deps).to.deep.include([3, 2]);
+        expect(deps).to.deep.include([3, 1]);
+    })
 });
 
 describe('detects control dependencies', () => {
@@ -176,15 +253,15 @@ describe('detects control dependencies', () => {
 
 describe('getDefs', () => {
 
-    function getDefsFromStatements(...codeLines: string[]): Def[] {
+    function getDefsFromStatements(...codeLines: string[]): Ref[] {
         let code = codeLines.concat("").join("\n");
         let module = parse(code);
-        return new DefSet().union(...module.code.map((stmt: ISyntaxNode) => {
+        return new RefSet().union(...module.code.map((stmt: ISyntaxNode) => {
             return getDefs(stmt, { moduleNames: new StringSet() });
         })).items;
     }
 
-    function getDefsFromStatement(code: string, slicerConfig?: SlicerConfig): Def[] {
+    function getDefsFromStatement(code: string, slicerConfig?: SlicerConfig): Ref[] {
         code = code + "\n";  // programs need to end with newline
         let module = parse(code);
         return getDefs(module.code, { moduleNames: new StringSet() }, slicerConfig).items;
@@ -199,17 +276,17 @@ describe('getDefs', () => {
         
         it('for assignments', () => {
             let defs = getDefsFromStatement("a = 1");
-            expect(defs[0]).to.include({ type: DefType.VARIABLE, name: "a" });
+            expect(defs[0]).to.include({ type: SymbolType.VARIABLE, name: "a" });
         })
 
         it('for imports', () => {
             let defs = getDefsFromStatement("import lib");
-            expect(defs[0]).to.include({ type: DefType.IMPORT, name: "lib" });
+            expect(defs[0]).to.include({ type: SymbolType.IMPORT, name: "lib" });
         });
 
         it('for from-imports', () => {
             let defs = getDefsFromStatement("from mod import func");
-            expect(defs[0]).to.include({ type: DefType.IMPORT, name: "func" });    
+            expect(defs[0]).to.include({ type: SymbolType.IMPORT, name: "func" });    
         })
 
         it('for function declarations', () => {
@@ -218,7 +295,7 @@ describe('getDefs', () => {
                 "    return 0"
             ].join("\n"));
             expect(defs[0]).to.deep.include({
-                type: DefType.FUNCTION,
+                type: SymbolType.FUNCTION,
                 name: "func",
                 location: { first_line: 1, first_column: 0, last_line: 3, last_column: -1}
             });
@@ -231,7 +308,7 @@ describe('getDefs', () => {
                 "        pass"
             ].join("\n"));
             expect(defs[0]).to.deep.include({
-                type: DefType.CLASS,
+                type: SymbolType.CLASS,
                 name: "C",
                 location: { first_line: 1, first_column: 0, last_line: 4, last_column: -1 }
             });
@@ -244,7 +321,7 @@ describe('getDefs', () => {
                     '"""defs: [{ "name": "a", "pos": [[0, 0], [0, 11]] }]"""%some_magic'
                 );
                 expect(defs[0]).to.deep.include({
-                    type: DefType.MAGIC,
+                    type: SymbolType.MAGIC,
                     name: "a",
                     location: { first_line: 1, first_column: 0, last_line: 1, last_column: 11 }
                 });
@@ -265,21 +342,34 @@ describe('getDefs', () => {
 
             it('for instances that functions mutate', () => {
                 let defs = getDefsFromStatement("obj.func()", new SlicerConfig([
-                    new FunctionConfig({ functionName: "func", mutatesInstance: true })
+                    new FunctionConfig({
+                        pattern: { functionName: "func" },
+                        instanceEffect: ReferenceType.UPDATE
+                    })
                 ]));
-                expect(defs[0]).to.include({ type: DefType.MUTATION, name: "obj" });
+                expect(defs[0]).to.include({ type: SymbolType.MUTATION, name: "obj" });
             });
 
             it('for positional arguments that functions mutate', () => {
                 let defs = getDefNamesFromStatement("func(a)", new SlicerConfig([
-                    new FunctionConfig({ functionName: "func", positionalArgumentsMutated: [0] })
+                    new FunctionConfig({
+                        pattern: { functionName: "func" },
+                        positionalArgumentEffects: {
+                            0: ReferenceType.UPDATE
+                        }
+                    })
                 ]));
                 expect(defs).to.include("a");
             });
 
             it('for keyword variables that functions mutate', () => {
                 let defs = getDefNamesFromStatement("func(a=var)", new SlicerConfig([
-                    new FunctionConfig({ functionName: "func", keywordArgumentsMutated: ["a"] })
+                    new FunctionConfig({
+                        pattern: { functionName: "func" },
+                        keywordArgumentEffects: {
+                            "a": ReferenceType.UPDATE
+                        }
+                    })
                 ]));
                 expect(defs).to.include("var");
             });
@@ -317,7 +407,7 @@ describe('getUses', () => {
         let code = codeLines.concat("").join("\n");
         let module = parse(code);
         return getUses(module.code, { moduleNames: new StringSet() }).items
-        .map((use) => use[0]);
+        .map((use) => use.name);
     }
 
     describe('detects uses', () => {
