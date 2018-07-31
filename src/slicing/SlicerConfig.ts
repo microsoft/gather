@@ -20,6 +20,7 @@ export class SlicerConfig {
     private _functionConfigs: FunctionConfig[];
     
     private _defaultFunctionConfigs = [
+        // OpenCV
         new FunctionConfig({
             pattern: { functionName: "load" },
             instanceEffect: ReferenceType.UPDATE
@@ -33,6 +34,11 @@ export class SlicerConfig {
                 "img": ReferenceType.UPDATE
             },
         }),
+        // Pandas
+        new FunctionConfig({
+            pattern: { functionName: "set_option" },
+            instanceEffect: ReferenceType.GLOBAL_CONFIG
+        })
     ];
 }
 

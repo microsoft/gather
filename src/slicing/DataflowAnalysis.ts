@@ -289,7 +289,7 @@ export function getDefs(
     return defs;
 }
 
-export function getUses(statement: ast.ISyntaxNode, symbolTable: SymbolTable): RefSet {
+export function getUses(statement: ast.ISyntaxNode, _: SymbolTable): RefSet {
 
     let uses = new RefSet();
 
