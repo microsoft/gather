@@ -967,7 +967,7 @@ trailer_list
 atom_expr
     : atom
     | atom trailer_list
-        { $$ = $2($1) }
+        { partial = $2($1); partial.location = @$; $$ = partial; }
     ;
 
 // atom: ('(' [yield_expr|testlist_comp] ')' |

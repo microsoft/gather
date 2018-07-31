@@ -27,6 +27,18 @@ describe('python parser', () => {
             '.func(3, 4)',
             ''
         ].join('\n'));
-    })
+    });
 
+    it('produces the full location of a line for a call statement', () => {
+        let node = parse([
+            'obj.func()',
+            ''
+        ].join('\n')).code;
+        expect(node.location).to.deep.equal({
+            first_line: 1,
+            first_column: 0,
+            last_line: 1,
+            last_column: 10
+        });
+    });
 });
