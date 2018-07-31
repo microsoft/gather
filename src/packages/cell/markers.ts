@@ -184,7 +184,7 @@ export class MarkerManager implements IGatherObserver {
         // Add marker for all of the definitions in the code.
         statements.forEach((statement: ISyntaxNode) => {
             getDefs(statement, { moduleNames: new StringSet() }, new SlicerConfig())
-            .items.filter((d) => [DefType.ASSIGN, DefType.MUTATION].indexOf(d.type) != -1)
+            .items.filter((d) => [DefType.VARIABLE, DefType.MUTATION].indexOf(d.type) != -1)
             .forEach((def) => {
                 this._model.addEditorDef({ def: def, editor: editor, cell: cell });
             });

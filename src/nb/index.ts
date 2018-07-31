@@ -1,4 +1,5 @@
 import Jupyter = require('base/js/namespace');
+import * as utils from "base/js/utils";
 import { Cell, CodeCell, notification_area, Notebook } from 'base/js/namespace';
 import { Widget } from '@phosphor/widgets';
 
@@ -12,6 +13,7 @@ import { GatherController } from '../packages/gather/controller';
 import { GatherToClipboardButton, ClearButton, GatherToNotebookButton, MergeButton } from './buttons';
 import { ICellClipboard, IClipboardListener } from '../packages/gather/clipboard';
 import { INotebookOpener } from '../packages/gather/opener';
+import { initLogger } from '../utils/log';
 
 import '../../style/nb-vars.css';
 import '../../style/index.css';
@@ -25,12 +27,17 @@ var notificationWidget: Jupyter.NotificationWidget;
 /**
  * Logs cell executions.
  */
-var executionLogger: ExecutionLogger;
+var executionHistory: ExecutionHistory;
 
 /**
- * Logs each cell execution.
+ * Initialize logging.
  */
-class ExecutionLogger {
+initLogger({ ajax: utils.ajax });
+
+/**
+ * Saves each cell execution to a history.
+ */
+class ExecutionHistory {
     readonly executionSlicer = new ExecutionLogSlicer();
     private _cellWithUndefinedCount: ICell;
     private _lastExecutionCount: number;
@@ -279,7 +286,7 @@ export function load_ipython_extension() {
     let gatherModel = new GatherModel();
 
     // Plugin initializations.
-    executionLogger = new ExecutionLogger();
+    executionHistory = new ExecutionHistory();
     let markerManager = new MarkerManager(gatherModel,
         new NotebookCellEditorResolver(Jupyter.notebook),
         new NotebookCellOutputResolver(Jupyter.notebook));
@@ -299,7 +306,7 @@ export function load_ipython_extension() {
     let opener = new NotebookOpener(Jupyter.notebook);
 
     // Controller for global UI state.
-    new GatherController(gatherModel, executionLogger.executionSlicer, clipboard, opener);
+    new GatherController(gatherModel, executionHistory.executionSlicer, clipboard, opener);
 
     // Set up toolbar with gather actions.
     let gatherToClipboardButton = new GatherToClipboardButton(gatherModel);

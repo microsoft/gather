@@ -4,14 +4,20 @@ import { Set, StringSet } from './Set';
 import { SlicerConfig } from './SlicerConfig';
 
 
-
 export interface IDataflow {
     fromNode: ast.ISyntaxNode;
     toNode: ast.ISyntaxNode;
 }
 
+export enum DefLevel {
+    DEFINITION,
+    GLOBAL_CONFIG,
+    INITIALIZATION,
+    UPDATE
+};
+
 export enum DefType {
-    ASSIGN,
+    VARIABLE,
     CLASS,
     FUNCTION,
     IMPORT,
@@ -222,7 +228,7 @@ export function getDefs(
             const targetNames = gatherNames(statement.targets);
             defs.add(...targetNames.items.map(([name, node]) => {
                 return {
-                    type: DefType.ASSIGN,
+                    type: DefType.VARIABLE,
                     name: name,
                     location: node.location,
                     statement: statement

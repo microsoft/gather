@@ -8,7 +8,7 @@ import { ISyntaxNode } from "../parsers/python/python_parser";
 
 
 // High-level tests on dataflow as a sanity check.
-describe('detects dataflow dependencies', () => {
+describe.only('detects dataflow dependencies', () => {
 
     function analyze(...codeLines: string[]): Set<IDataflow> {
         let code = codeLines.concat("").join("\n");  // add newlines to end of every line.
@@ -199,7 +199,7 @@ describe('getDefs', () => {
         
         it('for assignments', () => {
             let defs = getDefsFromStatement("a = 1");
-            expect(defs[0]).to.include({ type: DefType.ASSIGN, name: "a" });
+            expect(defs[0]).to.include({ type: DefType.VARIABLE, name: "a" });
         })
 
         it('for imports', () => {
