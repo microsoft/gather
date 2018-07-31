@@ -170,3 +170,11 @@ declare interface CellJsonMetadata {
 declare module "base/js/namespace" {
     export = Jupyter;
 }
+
+declare namespace Utils {
+    function ajax(url: string|any, settings: any): XMLHttpRequest;
+}
+
+declare module "base/js/utils" {
+    export = Utils;
+}

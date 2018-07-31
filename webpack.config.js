@@ -9,7 +9,8 @@ module.exports = {
     },
     devtool: "inline-source-map",
     externals: {
-        "base/js/namespace": "base/js/namespace"
+        "base/js/namespace": "base/js/namespace",
+        "base/js/utils": "base/js/utils"
     },
     node: {
         fs: 'empty'

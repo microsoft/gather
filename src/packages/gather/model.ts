@@ -1,5 +1,6 @@
 import { DefSelection, SliceSelection, EditorDef, OutputSelection } from "./selections";
 import { ICell } from "../cell";
+import { log } from "../../utils/log";
 
 /**
  * Available states for the gathering application.
@@ -70,6 +71,7 @@ export class GatherModel {
     requestStateChange(state: GatherState) {
         if (this._state != state) {
             this._state = state;
+            log("Model state change", { newState: state });
             this.notifyObservers(GatherModelEvent.STATE_CHANGED, state);
         }
     }
@@ -123,6 +125,7 @@ export class GatherModel {
      */
     selectDef(def: DefSelection) {
         this._selectedDefs.push(def);
+        log("Definition selected", { numSelected: this._selectedDefs.length });
         this.notifyObservers(GatherModelEvent.DEF_SELECTED, def);
     }
 
@@ -133,6 +136,7 @@ export class GatherModel {
         for (let i = 0; i < this._selectedDefs.length; i++) {
             if (this._selectedDefs[i] == def) {
                 this._selectedDefs.splice(i, 1);
+                log("Definition deselected", { numSelected: this._selectedDefs.length });
                 this.notifyObservers(GatherModelEvent.DEF_DESELECTED, def);
                 return;
             }
@@ -166,6 +170,7 @@ export class GatherModel {
      */
     selectOutput(output: OutputSelection) {
         this._selectedOutputs.push(output);
+        log("Output selected", { numSelected: this._selectedOutputs.length });
         this.notifyObservers(GatherModelEvent.OUTPUT_SELECTED, output);
     }
 
@@ -176,6 +181,7 @@ export class GatherModel {
         for (let i = 0; i < this._selectedOutputs.length; i++) {
             if (this._selectedOutputs[i] == output) {
                 this._selectedOutputs.splice(i, 1);
+                log("Output deselected", { numSelected: this._selectedOutputs.length });
                 this.notifyObservers(GatherModelEvent.OUTPUT_DESELECTED, output);
                 return;
             }

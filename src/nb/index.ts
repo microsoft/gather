@@ -11,10 +11,11 @@ import { GatherController } from '../packages/gather/controller';
 
 import { GatherToClipboardButton, ClearButton, GatherToNotebookButton, MergeButton } from './buttons';
 import { ICellClipboard, IClipboardListener } from '../packages/gather/clipboard';
+import { INotebookOpener } from '../packages/gather/opener';
 
 import '../../style/nb-vars.css';
 import '../../style/index.css';
-import { INotebookOpener } from '../packages/gather/opener';
+
 
 /**
  * Widget for gather notifications.

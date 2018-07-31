@@ -30,10 +30,36 @@ jupyter lab build
 
 ## Notebook extension
 
+### Frontend extension
+
 ```bash
 npm run build
 npm run build_nb_extension
 npm run install_nb_extension
 ```
 
+### Backend (logging) extension (optional)
+
 Then run `jupyter notebook` and the extension will be running.
+
+If you want to add logging to the project, look in the `src/nb/python` directory. This Python plugin needs to be installed to receive logging requests and save them to file (`~/.jupyter/events.txt`). To register this Python extension in Jupyter notebook or lab, see this guide: https://jupyter-notebook.readthedocs.io/en/latest/extending/handlers.html. As of the time of this writing, installation involves:
+
+Install dependencies for the plugin:
+
+```bash
+pip install portalocker
+```
+
+Build the project:
+```bash
+cd src/nb/python
+python setup.py install
+```
+
+Then enable the extension by going to the `python` directory for the notebook extension, and running:
+
+```bash
+jupyter serverextension enable --py gather_logger
+```
+
+We aren't yet bundling this extension, nor do we have a good way to develop the plugin in development mode yet. To do either of these two things, we might follow the instructions here: https://jupyter-notebook.readthedocs.io/en/latest/extending/bundler_extensions.html.
