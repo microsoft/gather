@@ -33,9 +33,15 @@ export class GatherController implements IGatherObserver {
                 let mergedSlice = slices[0].merge(...slices.slice(1));
                 if (newState == GatherState.GATHER_TO_CLIPBOARD) {
                     this._cellClipboard.copy(mergedSlice);
+                    model.requestStateChange(GatherState.RESET);
                 } else if (newState == GatherState.GATHER_TO_NOTEBOOK) {
                     this._notebookOpener.openNotebookForSlice(mergedSlice);
+                    model.requestStateChange(GatherState.SELECTING);
                 }
+            } else if (newState == GatherState.GATHER_HISTORY) {
+                // TODO: compute a new historical slice.
+            } else if (newState == GatherState.RESET) {
+                // When a reset is selected, clear selections and transition to selection mode.
                 model.deselectAllDefs();
                 model.deselectAllOutputs();
                 model.requestStateChange(GatherState.SELECTING);
@@ -46,9 +52,10 @@ export class GatherController implements IGatherObserver {
         if (eventType == GatherModelEvent.DEF_SELECTED) {
             let defSelection = eventData as DefSelection;
             let sliceSeeds = new LocationSet(defSelection.editorDef.def.location);
-            let slice = this._executionSlicer.sliceLatestExecution(defSelection.cell, sliceSeeds);
-            let sliceSelection = { userSelection: defSelection, slice: slice }
+            let slices = this._executionSlicer.sliceAllExecutions(defSelection.cell, sliceSeeds);
+            let sliceSelection = { userSelection: defSelection, slice: slices[slices.length - 1] };
             model.selectSlice(sliceSelection);
+            model.addSelectedDefSlices(defSelection, ...slices);
         }
 
         // If a def is deselected, deselect its slice too.
@@ -59,22 +66,17 @@ export class GatherController implements IGatherObserver {
                     model.deselectSlice(sliceSelection);
                 }
             }
+            model.removeSelectedDefSlices(defSelection);
         }
 
         // If output is selected, select the code that produced it too.
         if (eventType == GatherModelEvent.OUTPUT_SELECTED) {
             let outputSelection = eventData as OutputSelection;
             let cell = outputSelection.cell;
-            let fullCellBounds = {
-                first_line: 1,
-                first_column: 0,
-                last_line: cell.text.split("\n").length,
-                last_column: cell.text.split("\n").pop().length
-            }
-            let sliceSeeds = new LocationSet(fullCellBounds);
-            let slice = this._executionSlicer.sliceLatestExecution(cell, sliceSeeds);
-            let sliceSelection = { userSelection: outputSelection, slice: slice }
+            let slices = this._executionSlicer.sliceAllExecutions(cell);
+            let sliceSelection = { userSelection: outputSelection, slice: slices[slices.length - 1] }
             model.selectSlice(sliceSelection);
+            model.addSelectedOutputSlices(outputSelection, ...slices);
         }
 
         // If an output is deselected, deselect its slice too.
@@ -85,6 +87,7 @@ export class GatherController implements IGatherObserver {
                     model.deselectSlice(sliceSelection);
                 }
             }
+            model.removeSelectedOutputSlices(outputSelection);
         }
     }
 

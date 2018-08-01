@@ -1,10 +1,9 @@
 import { PanelLayout } from '@phosphor/widgets';
 import { Widget } from '@phosphor/widgets';
-import { CodeEditor, CodeEditorWrapper } from '@jupyterlab/codeeditor';
-import { CodeMirrorEditor } from '@jupyterlab/codemirror';
-import { InputPrompt } from '@jupyterlab/cells';
 import { ISlicedCellModel } from './model';
 import { CharacterRange } from '../codeversion';
+import CodeMirror = require('codemirror');
+
 
 /**
  * The class name added to sliced cell widgets.
@@ -29,22 +28,22 @@ const SLICED_CELL_UPDATED_TEXT_CLASS = 'jp-SlicedCell-editor-updatedtext';
 /**
  * The class name added to editor text that hasn't been updated.
  */
-const SLICED_CELL_UNCHANGED_TEXT_CLASS = 'jp-SlicedCell-editor-unchangedtext';
+// const SLICED_CELL_UNCHANGED_TEXT_CLASS = 'jp-SlicedCell-editor-unchangedtext';
 
 /**
  * The class name to add to editor text that is out of the slice.
  */
-const SLICED_CELL_OUTOFSLICE_TEXT_CLASS = 'jp-SlicedCell-editor-outofslicetext';
+// const SLICED_CELL_OUTOFSLICE_TEXT_CLASS = 'jp-SlicedCell-editor-outofslicetext';
 
 /**
  * The class name added to editor text for hiding lines.
  */
-const SLICED_CELL_HIDE_TEXT_CLASS = 'jp-SlicedCell-editor-hidetext';
+// const SLICED_CELL_HIDE_TEXT_CLASS = 'jp-SlicedCell-editor-hidetext';
 
 /**
  * The class name to add to editor text for revealed lines.
  */
-const SLICED_CELL_REVEAL_TEXT_CLASS = 'jp-SlicedEditor-editor-revealtext';
+// const SLICED_CELL_REVEAL_TEXT_CLASS = 'jp-SlicedEditor-editor-revealtext';
 
 /**
  * Number of lines of context to show before and after updated code.
@@ -59,7 +58,7 @@ const CELL_AREA_CLASS = 'jp-CellArea';
 /**
  * The class name added to the prompt area of cell.
  */
-const INPUT_AREA_PROMPT_CLASS = 'jp-InputArea-prompt';
+// const INPUT_AREA_PROMPT_CLASS = 'jp-InputArea-prompt';
 
 /**
  * A widget for showing a cell with a code slice.
@@ -72,19 +71,26 @@ export class SlicedCell extends Widget {
         super();
         this.addClass(SLICED_CELL_CLASS);
 
-        let model = (this.model = options.model);
+        this.model = options.model;
 
-        this.editorFactory = options.editorFactory;
-        let editorOptions = { model, factory: this.editorFactory, config: { readOnly: true }};
-        let editor = (this._editor = new CodeEditorWrapper(editorOptions));
-        editor.addClass(SLICED_CELL_EDITOR_CLASS);
+        let codeMirrorElement = document.createElement("div");
+        let codeMirror = CodeMirror(codeMirrorElement, {
+            value: this.model.sourceCode,
+            mode: "python",
+            readOnly: true
+        });
+        let codeMirrorWidget = new Widget({ node: codeMirror.getWrapperElement() });
+        this._editor = codeMirror;
+        this._codeMirrorWidget = codeMirrorWidget;
+        codeMirrorWidget.addClass(SLICED_CELL_EDITOR_CLASS);
 
         let layout = (this.layout = new PanelLayout());
-        layout.addWidget(editor);
-        this.highlightCode();
+        layout.addWidget(codeMirrorWidget);
+        this.initializeEditor();
 
         // Add a class to all text that doesn't belong in the slice.
-        let codeMirrorDoc = (this._editor.editor as CodeMirrorEditor).doc;
+        /* 
+        let codeMirrorDoc = editor.getDoc();
         let rangeStart = 0;
         this.model.sliceRanges.forEach(function(sliceRange: CharacterRange) {
             if (sliceRange.start > rangeStart) {
@@ -101,40 +107,25 @@ export class SlicedCell extends Widget {
             { line: codeMirrorDoc.lastLine() + 1, ch: 0 },
             { className: SLICED_CELL_OUTOFSLICE_TEXT_CLASS }
         );
+        */
     }
 
-    highlightCode() {
-        // XXX: Syntax highlighting only appears to work if we wait before applying it.
-        // Though some other operations (e.g., marking text) without a delay.
-        let codeMirrorEditor: CodeMirror.Editor = (this._editor.editor as CodeMirrorEditor).editor;
+    initializeEditor() {
+        // XXX: If I don't call this method with a delay, the text doesn't appear.
+        let codeMirrorEditor: CodeMirror.Editor = this._editor;
+        // let codeMirrorWidget = this._codeMirrorWidget
         setTimeout(function() {
-            codeMirrorEditor.setOption('mode', 'ipython');
-        }, 1000);
+            // codeMirrorEditor.setOption('mode', 'ipython');
+            // codeMirrorEditor.setOption('mode', 'python');
+            // codeMirrorWidget.show();
+            codeMirrorEditor.refresh();
+        }, 1);
     }
 
     /**
      * The model used by the widget.
      */
     readonly model: ISlicedCellModel;
-
-    /**
-     * The editor factory instance used by the widget.
-     */
-    readonly editorFactory: CodeEditor.Factory;
-
-    /**
-     * Get the CodeEditorWrapper used by this widget.
-     */
-    get editorWidget(): CodeEditorWrapper {
-        return this._editor;
-    }
-
-    /**
-     * Get the CodeEditor used by this widget.
-     */
-    get editor(): CodeEditor.IEditor {
-        return this._editor.editor;
-    }
 
     /**
      * Dispose of the resources held by the widget.
@@ -148,7 +139,8 @@ export class SlicedCell extends Widget {
         super.dispose();
     }
 
-    protected _editor: CodeEditorWrapper = null;
+    protected _editor: CodeMirror.Editor = null;
+    protected _codeMirrorWidget: Widget;
 }
 
 /**
@@ -163,7 +155,7 @@ export class DiffedSlicedCell extends SlicedCell {
         super(options);
         this.addClass(DIFFED_SLICED_CELL_CLASS);
 
-        let codeMirrorDoc: CodeMirror.Doc = (this._editor.editor as CodeMirrorEditor).doc;
+        let codeMirrorDoc: CodeMirror.Doc = this._editor.getDoc();
 
         let linesToShow: Array<number> = new Array<number>();
         this.model.diff.updatedRanges.forEach(function(range: CharacterRange) {
@@ -185,6 +177,7 @@ export class DiffedSlicedCell extends SlicedCell {
         linesToShow.sort(function(a, b) { return a - b; });
 
         // Add a class to all text that wasn't changed.
+        /*
         this.model.diff.sameRanges.forEach(function(range: CharacterRange) {
             codeMirrorDoc.markText(
                 codeMirrorDoc.posFromIndex(range.start),
@@ -209,7 +202,7 @@ export class DiffedSlicedCell extends SlicedCell {
         }
         
         let revealMarkers: Array<CodeMirror.TextMarker> = new Array<CodeMirror.TextMarker>();
-        let editor: CodeMirror.Editor = (this._editor.editor as CodeMirrorEditor).editor;
+        let editor: CodeMirror.Editor = this._editor;
 
         // Hide all of the hidden lines.
         let hideRange = function(from: CodeMirror.Position, to: CodeMirror.Position) {
@@ -253,6 +246,7 @@ export class DiffedSlicedCell extends SlicedCell {
                 }
             }
         }
+        */
 
         // TODO(andrewhead): set this as a configuration parameter.
         // If there is no new code in this cell, hide it.
@@ -274,11 +268,6 @@ export namespace SlicedCell {
          * The model used by the widget.
          */
         model: ISlicedCellModel;
-        
-        /**
-         * Factory for creating editor cells.
-         */
-        editorFactory: CodeEditor.Factory;
     }
 }
 
@@ -293,18 +282,17 @@ export class CellArea extends Widget {
         super()
         this.addClass(CELL_AREA_CLASS);
 
-        let model = (this.model = options.model);
-        let prompt = (this._prompt = new InputPrompt());
+        // let model = (this.model = options.model);
+        // let prompt = (this._prompt = new InputPrompt());
 
-        prompt.executionCount = model.executionCount ? model.executionCount.toString() : "";
-        prompt.addClass(INPUT_AREA_PROMPT_CLASS);
+        // prompt.executionCount = model.executionCount ? model.executionCount.toString() : "";
+        // prompt.addClass(INPUT_AREA_PROMPT_CLASS);
 
         let layout = (this.layout = new PanelLayout());
-        layout.addWidget(prompt);
+        // layout.addWidget(prompt);
 
         let cellOptions: SlicedCell.IOptions = {
-            model: options.model,
-            editorFactory: options.editorFactory
+            model: options.model
         };
         if (options.showDiff) {
             layout.addWidget(new SlicedCell(cellOptions));
@@ -318,14 +306,7 @@ export class CellArea extends Widget {
      */
     readonly model: ISlicedCellModel;
 
-    /**
-     * Get the prompt node used by the cell.
-     */
-    get promptNode(): HTMLElement {
-        return this._prompt.node;
-    }
-
-    private _prompt: InputPrompt;
+    // private _prompt: InputPrompt;
 }
 
 /**
@@ -340,11 +321,6 @@ export namespace CellArea {
          * The model used by the widget.
          */
         model: ISlicedCellModel;
-
-        /**
-         * Factory for creating editor cells.
-         */
-        editorFactory: CodeEditor.Factory;
 
         /**
          * Whether to show a differenced version of the cell.

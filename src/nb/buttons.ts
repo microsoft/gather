@@ -134,10 +134,11 @@ export class GatherToClipboardButton extends GatherButton {
      * Properties for initializing the gather button.
      */
     readonly CLASS_NAME = "jp-Toolbar-gathertoclipboardbutton";
-    readonly label = "Cells";
+    // readonly label = "Cells";
+    readonly label = "Clipboard";
     readonly actionName = "gather-to-clipboard";
     readonly action = {
-        icon: 'fa-clone',
+        icon: 'fa-clipboard',
         help: 'Gather code to clipboard',
         help_index: 'gather-to-clipboard',
         handler: () => { this.onClick() }
@@ -180,6 +181,54 @@ export class GatherToNotebookButton extends GatherButton {
             this._gatherModel.requestStateChange(GatherState.GATHER_TO_NOTEBOOK);
         } else {
             window.alert("To gather, you must first select some definitions or results from the notebook.");
+        }
+    }
+}
+
+/**
+ * A button to gather and display versions of code.
+ */
+export class GatherHistoryButton extends GatherButton {
+    /**
+     * Properties for initializing the gather button.
+     */
+    readonly CLASS_NAME = "jp-Toolbar-gatherhistorybutton";
+    readonly label = "Revisions";
+    readonly actionName = "gather-history";
+    readonly action = {
+        icon: 'fa-history',
+        help: 'Gather versions of this code',
+        help_index: 'gather-history',
+        handler: () => { this.onClick() }
+    }
+
+    /**
+     * Handle click action.
+     */
+    onClick() {
+        if (this._gatherModel.selectedSlices.length == 1) {
+            this._gatherModel.requestStateChange(GatherState.GATHER_HISTORY);
+        } else if (this._gatherModel.selectedSlices.length == 0) {
+            window.alert("To gather, you must first select some definitions or results from the notebook.");
+        } else if (this._gatherModel.selectedSlices.length > 1) {
+            window.alert("To gather history, you can only select one variable or result.");
+        }
+    }
+
+    /**
+     * Listen for changes on the gather model.
+     */
+    onModelChange(event: GatherModelEvent, eventData: GatherEventData, model: GatherModel) {
+        if (event == GatherModelEvent.SLICE_SELECTED || event == GatherModelEvent.SLICE_DESELECTED) {
+            if (model.selectedSlices.length == 1) {
+                if (this._node) {
+                    this._node.addClass(HIGHLIGHTED_BUTTON_CLASS);
+                }
+            } else {
+                if (this._node) {
+                    this._node.removeClass(HIGHLIGHTED_BUTTON_CLASS);
+                }
+            }
         }
     }
 }

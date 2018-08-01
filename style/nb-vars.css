@@ -6,3 +6,24 @@
   --brand-color1: #64b5f6;
   --brand-color0: #42a5f5;
 }
+
+.jp-Notebook-revisionbrowser {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1000;
+  padding-top: 4%;
+  background-color: rgba(0, 0, 0, .6);
+}
+
+.jp-Notebook-revisionbrowser-exit {
+  color: white;
+  font-weight: bold;
+  font-size: xx-large;
+  cursor: pointer;
+  position: absolute;
+  right: 10px;
+  top: 0px;
+}

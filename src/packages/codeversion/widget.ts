@@ -2,7 +2,6 @@ import { PanelLayout } from '@phosphor/widgets';
 import { Widget } from '@phosphor/widgets';
 import { ICodeVersionModel } from './model';
 import { CellArea } from '../slicedcell';
-import { CodeEditor } from '@jupyterlab/codeeditor';
 
 /**
  * The class name added to code version widgets
@@ -20,13 +19,11 @@ export class CodeVersion extends Widget {
         super();
         this.addClass(CODE_VERSION_CLASS);
         this.model = options.model;
-        let editorFactory = (this.editorFactory = options.editorFactory);
 
         let layout = (this.layout = new PanelLayout());
         for (let cellModel of this.model.cells) {
             let options: CellArea.IOptions = {
                 model: cellModel,
-                editorFactory,
                 showDiff: this.model.isLatest
             };
             layout.addWidget(new CellArea(options));
@@ -37,11 +34,6 @@ export class CodeVersion extends Widget {
      * The model used by the widget.
      */
     readonly model: ICodeVersionModel;
-
-    /**
-     * The editor factory instance used by the widget.
-     */
-    readonly editorFactory: CodeEditor.Factory;
 }
 
 /**
@@ -56,10 +48,5 @@ export namespace CodeVersion {
          * The model used by the widget.
          */
         model: ICodeVersionModel;
-
-        /**
-         * Factory for creating editor cells.
-         */
-        editorFactory: CodeEditor.Factory;
     }
 }

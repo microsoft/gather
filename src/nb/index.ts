@@ -10,13 +10,15 @@ import { MarkerManager, ICell, CellEditorResolver, CellOutputResolver } from '..
 import { GatherModel } from '../packages/gather/model';
 import { GatherController } from '../packages/gather/controller';
 
-import { GatherToClipboardButton, ClearButton, GatherToNotebookButton, MergeButton } from './buttons';
+import { GatherToClipboardButton, ClearButton, GatherToNotebookButton, MergeButton, GatherHistoryButton } from './buttons';
 import { ICellClipboard, IClipboardListener } from '../packages/gather/clipboard';
 import { INotebookOpener } from '../packages/gather/opener';
 import { initLogger } from '../utils/log';
 
+import 'codemirror/mode/python/python';
 import '../../style/nb-vars.css';
 import '../../style/index.css';
+import { RevisionBrowser } from './RevisionBrowser';
 
 
 /**
@@ -311,6 +313,7 @@ export function load_ipython_extension() {
     // Set up toolbar with gather actions.
     let gatherToClipboardButton = new GatherToClipboardButton(gatherModel);
     let gatherToNotebookButton = new GatherToNotebookButton(gatherModel);
+    let gatherHistoryButton = new GatherHistoryButton(gatherModel);
     let clearButton = new ClearButton(gatherModel);
 
     // Create buttons for gathering.
@@ -318,11 +321,14 @@ export function load_ipython_extension() {
         gatherToClipboardButton.action, gatherToClipboardButton.actionName, GATHER_PREFIX);
     let gatherToNotebookFullActionName = Jupyter.actions.register(
         gatherToNotebookButton.action, gatherToNotebookButton.actionName, GATHER_PREFIX);
+    let gatherHistoryFullActionName = Jupyter.actions.register(
+        gatherHistoryButton.action, gatherHistoryButton.actionName, GATHER_PREFIX);
     let clearFullActionName = Jupyter.actions.register(
         clearButton.action, clearButton.actionName, GATHER_PREFIX);
     let buttonsGroup = Jupyter.toolbar.add_buttons_group([
         { label: gatherToClipboardButton.label, action: gatherToClipboardFullActionName },
         { label: gatherToNotebookButton.label, action: gatherToNotebookFullActionName },
+        { label: gatherHistoryButton.label, action: gatherHistoryFullActionName },
         { label: clearButton.label, action: clearFullActionName }
     ]);
     
@@ -335,7 +341,8 @@ export function load_ipython_extension() {
     // Finish initializing the buttons.
     gatherToClipboardButton.node = new Widget({ node: buttonsGroup.children()[1] });
     gatherToNotebookButton.node = new Widget({ node: buttonsGroup.children()[2] });
-    clearButton.node = new Widget({ node: buttonsGroup.children()[3] });
+    gatherHistoryButton.node = new Widget({ node: buttonsGroup.children()[3] });
+    clearButton.node = new Widget({ node: buttonsGroup.children()[4] });
     
     let mergeButton = new MergeButton(Jupyter.actions, Jupyter.notebook);
     let mergeFullActionName = Jupyter.actions.register(
@@ -343,6 +350,10 @@ export function load_ipython_extension() {
     let mergeButtonGroup = Jupyter.toolbar.add_buttons_group(
         [{ label: mergeButton.label, action: mergeFullActionName }]);
     mergeButton.node = new Widget({ node: mergeButtonGroup.children()[0] });
+
+    // Add widget for viewing history
+    let revisionBrowser = new RevisionBrowser(gatherModel);
+    document.body.appendChild(revisionBrowser.node);
 
     // When pasting gathered cells, select those cells. This is hacky: we add a flag to the
     // gathered cells so we can find them right after the paste, as there is no listener for

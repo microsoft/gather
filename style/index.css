@@ -11,10 +11,12 @@
    padding-right: 4px;
  }
 
- .jp-Toolbar-gathertoclipboardbutton.jp-Toolbar-button-glow, .jp-Toolbar-gathertonotebookbutton.jp-Toolbar-button-glow {
+ .jp-Toolbar-gathertoclipboardbutton.jp-Toolbar-button-glow,
+ .jp-Toolbar-gathertonotebookbutton.jp-Toolbar-button-glow, 
+ .jp-Toolbar-gatherhistorybutton.jp-Toolbar-button-glow {
    background-color: var(--brand-color5);
    border-color: var(--brand-color1);
-   box-shadow: 0 0 10px var(--brand-color1);
+   box-shadow: 0 0 3px var(--brand-color1);
  }
 
  .jp-Toolbar-clearbutton.jp-Toolbar-button-glow, .jp-Toolbar-mergebutton.jp-Toolbar-button-glow {
@@ -106,4 +108,9 @@
 /* Notifications */
 .jp-Toolbar-notification {
   margin-top: -3px;
+}
+
+/* General PhosphorJS rules */
+.p-mod-hidden {
+  display: none;
 }

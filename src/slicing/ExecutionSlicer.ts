@@ -92,7 +92,7 @@ export class ExecutionLogSlicer {
                 // XXX: Whole cell specified by an unreasonably large character range.
                 } else {
                     seedLocations = new LocationSet({
-                        first_line: 0, first_column: 0, last_line: 10000, last_column: 10000
+                        first_line: 1, first_column: 1, last_line: 10000, last_column: 10000
                     });
                 }
 

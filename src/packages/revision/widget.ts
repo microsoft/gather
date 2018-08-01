@@ -1,8 +1,5 @@
 import { PanelLayout } from '@phosphor/widgets';
 import { Widget } from '@phosphor/widgets';
-import { CodeEditor } from '@jupyterlab/codeeditor';
-import { OutputArea, OutputAreaModel } from '@jupyterlab/outputarea';
-import { RenderMimeRegistry } from '@jupyterlab/rendermime';
 import { IRevisionModel } from './model';
 import { CodeVersion } from '../codeversion';
 
@@ -27,8 +24,8 @@ export class Revision<TOutputModel> extends Widget {
         super();
         this.addClass(REVISION_CLASS);
         let model = (this.model = options.model);
-        let rendermime = (this.rendermime = options.rendermime);
-        let editorFactory = (this.editorFactory = options.editorFactory);
+        // let rendermime = (this.rendermime = options.rendermime);
+        // let editorFactory = (this.editorFactory = options.editorFactory);
 
         let layout = (this.layout = new PanelLayout());
         
@@ -51,7 +48,7 @@ export class Revision<TOutputModel> extends Widget {
                     hour: "numeric",
                     minute: "2-digit"
                 });
-            headerText += (" (" + timeString + ", " + dateString + ")");
+            headerText += (" (" + dateString + " " + timeString + ")");
         }
         header.textContent = headerText;
         let headerWidget: Widget = new Widget({ node: header });
@@ -60,14 +57,15 @@ export class Revision<TOutputModel> extends Widget {
 
         layout.addWidget(new CodeVersion({
             model: model.source,
-            editorFactory: editorFactory
         }));
+        /*
         if (model.results instanceof OutputAreaModel) {
             layout.addWidget(new OutputArea({
                 model: model.results,
                 rendermime: rendermime
             }));
         }
+        */
     }
 
     /**
@@ -78,12 +76,7 @@ export class Revision<TOutputModel> extends Widget {
     /**
      * The rendermime instance used by the widget.
      */
-    readonly rendermime: RenderMimeRegistry;
-    
-    /**
-     * The editor factory instance used by the widget.
-     */
-    readonly editorFactory: CodeEditor.Factory;
+    // readonly rendermime: RenderMimeRegistry;
 }
 
 /**
@@ -102,11 +95,6 @@ export namespace Revision {
         /**
          * The mime renderer for this widget.
          */
-        rendermime: RenderMimeRegistry;
-
-        /**
-         * Factory for creating editor cells.
-         */
-        editorFactory: CodeEditor.Factory;
+        // rendermime: RenderMimeRegistry;
     }
 }

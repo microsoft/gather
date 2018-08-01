@@ -11,7 +11,7 @@ import { DocumentRegistry } from '@jupyterlab/docregistry';
 import { FileEditor } from '@jupyterlab/fileeditor';
 import { NotebookPanel, INotebookModel, Notebook, INotebookTracker } from '@jupyterlab/notebook';
 import { IObservableList } from '@jupyterlab/observables';
-import { RenderMimeRegistry, standardRendererFactories as initialFactories, IOutputModel } from '@jupyterlab/rendermime';
+import { IOutputModel } from '@jupyterlab/rendermime';
 
 import { ToolbarCheckbox } from './ToolboxCheckbox';
 import { HistoryViewer, buildHistoryModel } from '../packages/history';
@@ -306,9 +306,7 @@ function activateExtension(app: JupyterLab, palette: ICommandPalette, notebooks:
             let historyModel = buildHistoryModel<IOutputModel>(activeCell.model.id, slicedExecutions);
 
             let widget = new HistoryViewer({
-                model: historyModel,
-                rendermime: new RenderMimeRegistry({ initialFactories }),
-                editorFactory: notebooks.activeCell.contentFactory.editorFactory
+                model: historyModel
             });
 
             if (!widget.isAttached) {

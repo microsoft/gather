@@ -6,7 +6,7 @@ import { CharacterRange } from '../codeversion/characterrange';
 import { CodeDiffModel } from '../codeversion/codediff';
 import { SlicedCellModel } from '../slicedcell/model';
 import { SlicedExecution } from '../../slicing/ExecutionSlicer';
-import { ICell, IOutputterCell, instanceOfIOutputterCell } from '../cell/model';
+import { ICell, IOutputterCell, instanceOfIOutputterCell, CellSlice } from '../cell/model';
 let diff_match_patch = require('./diff-match-patch').diff_match_patch;
 
 /**
@@ -63,9 +63,9 @@ export function buildHistoryModel<TOutputModel>(
     // recent version, save a mapping from cells' IDs to their content, so we can look them up to
     // make comparisons between versions of cells.
     let lastestVersion = executionVersions[executionVersions.length - 1];
-    let latestCellVersions: { [cellId: string]: ICell } = {};
+    let latestCellVersions: { [cellId: string]: CellSlice } = {};
     lastestVersion.cellSlices.forEach((cellSlice) => {
-        latestCellVersions[cellSlice.cell.id] = cellSlice.cell;
+        latestCellVersions[cellSlice.cell.id] = cellSlice;
     });
 
     // Compute diffs between each of the previous revisions and the current revision.
@@ -84,10 +84,10 @@ export function buildHistoryModel<TOutputModel>(
             let recentCellVersion = latestCellVersions[cell.id];
             let latestText: string = "";
             if (recentCellVersion) {
-                latestText = recentCellVersion.text;
+                latestText = recentCellVersion.textSlice;
             }
 
-            let thisVersionText: string = cell.text;
+            let thisVersionText: string = cellSlice.textSlice;
             let diff: Array<[number, string]> = diffMatchPatch.diff_main(latestText, thisVersionText);
             diffMatchPatch.diff_cleanupSemantic(diff);
             let cellDiff: CodeDiffModel = diffMatchPatchDiffToCodeDiff(diff);
@@ -99,10 +99,15 @@ export function buildHistoryModel<TOutputModel>(
             // TODO: mark up character ranges, not entire lines, as being in the slice or not.
             let sliceLines: number[] = [];
             sliceLocations.forEach((loc) => {
+                /*
                 for (let lineNumber = loc.first_line - 1; lineNumber <= loc.last_line - 1; lineNumber++) {
                     if (sliceLines.indexOf(lineNumber) != -1) {
                         sliceLines.push(lineNumber);
                     }
+                }
+                */
+               for (let lineNumber = loc.first_line - 1; lineNumber <= loc.last_line - 1; lineNumber++) {
+                    sliceLines.push(lineNumber);
                 }
             });
 
@@ -117,7 +122,8 @@ export function buildHistoryModel<TOutputModel>(
             let slicedCell: SlicedCellModel = new SlicedCellModel({
                 cellId: cell.id,
                 executionCount: cell.executionCount,
-                sourceCode: thisVersionText,
+                // sourceCode: thisVersionText,
+                sourceCode: cellSlice.textSlice,
                 diff: cellDiff,
                 cellInSlice: (sliceLines.length > 0),
                 sliceRanges: sliceRanges

@@ -1,14 +1,17 @@
 import { DefSelection, SliceSelection, EditorDef, OutputSelection } from "./selections";
 import { ICell } from "../cell";
 import { log } from "../../utils/log";
+import { SlicedExecution } from "../../slicing/ExecutionSlicer";
 
 /**
  * Available states for the gathering application.
  */
 export enum GatherState {
+    RESET,
     SELECTING,
     GATHER_TO_CLIPBOARD,
-    GATHER_TO_NOTEBOOK
+    GATHER_TO_NOTEBOOK,
+    GATHER_HISTORY
 };
 
 /**
@@ -121,6 +124,13 @@ export class GatherModel {
     }
 
     /**
+     * Get the list of currently-selected defs.
+     */
+    get selectedDefs(): ReadonlyArray<DefSelection> {
+        return this._selectedDefs;
+    }
+
+    /**
      * Add a def to the list of selected def.
      */
     selectDef(def: DefSelection) {
@@ -166,6 +176,43 @@ export class GatherModel {
     }
 
     /**
+     * Store all execution slices for a def selection
+     */
+    addSelectedDefSlices(defSelection: DefSelection, ...slices: SlicedExecution[]) {
+        this._selectedDefSlices.push([defSelection, slices]);
+    }
+
+    /**
+     * Get the first-added list of slices for this selected def.
+     */
+    getSelectedDefSlices(defSelection: DefSelection): SlicedExecution[] {
+        for (let selectedDefSlices of this._selectedDefSlices) {
+            if (selectedDefSlices[0] == defSelection) {
+                return selectedDefSlices[1];
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Remove all slices for a def selection from the model.
+     */
+    removeSelectedDefSlices(defSelection: DefSelection) {
+        for (let i = this._selectedDefSlices.length - 1; i >= 0; i--) {
+            if (this._selectedDefSlices[i][0] == defSelection) {
+                this._selectedDefSlices.splice(i, 1);
+            }
+        }
+    }
+
+    /**
+     * Get the list of currently-selected outputs.
+     */
+    get selectedOutputs(): ReadonlyArray<OutputSelection> {
+        return this._selectedOutputs;
+    }
+
+    /**
      * Add an output to the list of selected outputs.
      */
     selectOutput(output: OutputSelection) {
@@ -199,6 +246,36 @@ export class GatherModel {
     }
 
     /**
+     * Store all execution slices for an output selection
+     */
+    addSelectedOutputSlices(outputSelection: OutputSelection, ...slices: SlicedExecution[]) {
+        this._selectedOutputSlices.push([outputSelection, slices]);
+    }
+
+    /**
+     * Get the first-added list of slices for this selected output.
+     */
+    getSelectedOutputSlices(outputSelection: OutputSelection): SlicedExecution[] {
+        for (let selectedOutputSlices of this._selectedOutputSlices) {
+            if (selectedOutputSlices[0] == outputSelection) {
+                return selectedOutputSlices[1];
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Remove all slices for an output selection from the model.
+     */
+    removeSelectedOutputSlices(outputSelection: OutputSelection) {
+        for (let i = this._selectedOutputSlices.length - 1; i >= 0; i--) {
+            if (this._selectedOutputSlices[i][0] == outputSelection) {
+                this._selectedOutputSlices.splice(i, 1);
+            }
+        }
+    }
+
+    /**
      * Get a list of currently selected slices (readonly).
      */
     get selectedSlices(): ReadonlyArray<SliceSelection> {
@@ -212,6 +289,8 @@ export class GatherModel {
     private _selectedDefs: DefSelection[] = [];
     private _selectedOutputs: OutputSelection[] = [];
     private _sliceSelections: SliceSelection[] = [];
+    private _selectedDefSlices: [DefSelection, SlicedExecution[]][] = [];
+    private _selectedOutputSlices: [OutputSelection, SlicedExecution[]][] = [];
 }
 
 /**
