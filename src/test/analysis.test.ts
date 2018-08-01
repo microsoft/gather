@@ -409,7 +409,6 @@ describe('getDefs', () => {
                 let defs = getDefNamesFromStatement("obj.func()");
                 expect(defs).to.deep.equal([]);
             });
-
         });
 
     });
@@ -435,9 +434,21 @@ describe('getUses', () => {
     describe('detects uses', () => {
         
         it('of functions', () => {
-            let defs = getUseNames("func()");
-            expect(defs).to.include("func");
+            let uses = getUseNames("func()");
+            expect(uses).to.include("func");
         });
+    });
 
+    // Eventually we might want to do something smarter here, like be able to detect uses of
+    // global variables. Outta scope for now.
+    describe('ignores uses', () => {
+
+        it('in functions', () => {
+            let uses = getUseNames(
+                "def func(arg):",
+                "    print(a)"
+            );
+            expect(uses.length).to.equal(0);
+        });
     });
 });

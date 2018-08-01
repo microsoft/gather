@@ -349,6 +349,9 @@ export function getUses(statement: ast.ISyntaxNode, _: SymbolTable): RefSet {
             uses = uses.union(sources).union(statement.op ? targets : new RefSet());
             break;
         }
+        case ast.DEF:
+        case ast.CLASS:
+            break;
         default: {
             const usedNames = gatherNames(statement);
             uses = new RefSet(...usedNames.items.map(([name, node]) => {
