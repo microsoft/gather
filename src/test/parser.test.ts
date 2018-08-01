@@ -59,4 +59,14 @@ describe('ast walker', () => {
         ].join('\n'));
         walk(tree);
     });
+
+    it('doesn\'t crash on with-statements', () => {
+        let tree = parse([
+            'with sns.axes_style("white"):',
+            '    pass',
+            ''
+        ].join('\n'));
+        console.log(tree);
+        walk(tree);
+    });
 });

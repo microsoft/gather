@@ -708,7 +708,7 @@ except_clause
 // with_stmt: 'with' with_item (',' with_item)*  ':' suite
 with_stmt
     : 'with' with_item ':' suite
-        { $$ = { type: 'with',  items: $2, code: $4, location: @$ } }
+        { $$ = { type: 'with',  items: [ $2 ], code: $4, location: @$ } }
     | 'with' with_item with_stmt0 ':' suite
         { 
             $2 = [ $2 ].concat( $3 )
