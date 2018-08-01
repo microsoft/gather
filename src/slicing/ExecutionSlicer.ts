@@ -75,7 +75,7 @@ export class ExecutionLogSlicer {
      * Get slices of the necessary code for all executions of a cell.
      * Relevant line numbers are relative to the cell's start line (starting at first line = 0).
      */
-    public sliceAllExecutions(cell: ICell, seedLocations?: LocationSet): SlicedExecution[] {
+    public sliceAllExecutions(cell: ICell, pSeedLocations?: LocationSet): SlicedExecution[] {
 
         return this.executionLog
             .filter((execution) => execution.cellId == cell.id)
@@ -85,28 +85,31 @@ export class ExecutionLogSlicer {
                 // Build the program up to that cell.
                 let program = this.programBuilder.buildTo(execution.cellId, execution.executionCount);
 
+                let seedLocations;
+                if (pSeedLocations) {
+                    seedLocations = pSeedLocations;
                 // If seed locations weren't specified, slice the whole cell.
                 // XXX: Whole cell specified by an unreasonably large character range.
-                if (!seedLocations) {
+                } else {
                     seedLocations = new LocationSet({
                         first_line: 0, first_column: 0, last_line: 10000, last_column: 10000
                     });
                 }
-                // If seed locations were specified, set them relative to the last cell's position in program.
-                else {
-                    let lastCellLines = program.cellToLineMap[execution.cellId][execution.executionCount];
-                    let lastCellStart = Math.min(...lastCellLines.items);
-                    seedLocations = new LocationSet(
-                        ...seedLocations.items.map((loc) => {
-                            return {
-                                first_line: lastCellStart + loc.first_line - 1,
-                                first_column: loc.first_column,
-                                last_line: lastCellStart + loc.last_line - 1,
-                                last_column: loc.last_column
-                            };
-                        })
-                    );
-                }
+
+                // Set seed locations were specified relative to the last cell's position in program.
+                let lastCellLines = program.cellToLineMap[execution.cellId][execution.executionCount];
+                let lastCellStart = Math.min(...lastCellLines.items);
+                seedLocations = new LocationSet(
+                    ...seedLocations.items.map((loc) => {
+                        return {
+                            first_line: lastCellStart + loc.first_line - 1,
+                            first_column: loc.first_column,
+                            last_line: lastCellStart + loc.last_line - 1,
+                            last_column: loc.last_column
+                        };
+                    })
+                );
+
                 let sliceLocations = slice(program.code, seedLocations).items
                 .sort((loc1, loc2) => loc1.first_line - loc2.first_line);
 
