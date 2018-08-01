@@ -1,6 +1,6 @@
 import { CodeEditor } from '@jupyterlab/codeeditor';
 import { IModelDB } from '@jupyterlab/observables';
-import { CharacterRange, CodeDiffModel } from '../codeversion';
+import { Diff } from '../history/diff';
 
 /**
  * The definition of a model object for a sliced cell.
@@ -25,17 +25,7 @@ export interface ISlicedCellModel extends CodeEditor.IModel {
      * A text diff between the cell's contents in this version and the contents in the most
      * recent version of the cell.
      */
-    readonly diff: CodeDiffModel;
-
-    /**
-     * Whether the cell is included in a source slice.
-     */
-    readonly cellInSlice: boolean;
-
-    /**
-     * The part of the cell's code are in the slice.
-     */
-    readonly sliceRanges: Array<CharacterRange>;
+    readonly diff: Diff;
 }
 
 /**
@@ -52,8 +42,6 @@ export class SlicedCellModel extends CodeEditor.Model implements ISlicedCellMode
         this._executionCount = options.executionCount;
         this._sourceCode = options.sourceCode;
         this._diff = options.diff;
-        this._cellInSlice = options.cellInSlice;
-        this._sliceRanges = options.sliceRanges;
 
         let text = this._sourceCode;
         this.value.text = text as string;
@@ -84,30 +72,14 @@ export class SlicedCellModel extends CodeEditor.Model implements ISlicedCellMode
      * Get the difference between the cell contents in this version of the cell, and the contents
      * from the most recent version.
      */
-    get diff(): CodeDiffModel {
+    get diff(): Diff {
         return this._diff;
-    }
-
-    /**
-     * Get whether this cell is included in the slice.
-     */
-    get cellInSlice(): boolean {
-        return this._cellInSlice;
-    }
-
-    /**
-     * Get the ranges of the cell's code that are in the slice.
-     */
-    get sliceRanges(): Array<CharacterRange> {
-        return this._sliceRanges;
     }
 
     private _cellId: string;
     private _executionCount: number;
     private _sourceCode: string;
-    private _diff:CodeDiffModel;
-    private _cellInSlice: boolean;
-    private _sliceRanges: Array<CharacterRange>;
+    private _diff:Diff;
 }
 
 /**
@@ -137,17 +109,7 @@ export namespace SlicedCellModel {
          * A text diff between the cell's contents in this version and the contents in the most
          * recent version of the cell.
          */
-        diff: CodeDiffModel;
-
-        /**
-         * Whether the cell is included in a source slice.
-         */
-        cellInSlice: boolean;
-
-        /**
-         * The part of the cell's code are in the slice.
-         */
-        sliceRanges: Array<CharacterRange>;
+        diff: Diff;
 
         /**
          * An IModelDB in which to store cell data.

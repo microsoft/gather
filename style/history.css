@@ -20,10 +20,12 @@
   margin-left: 10px;
   margin-right: 10px;
   display: inline-block;
+  vertical-align: top;
 }
 
 .jp-Revision-header {
   background-color: white;
+  border: 1px solid black;
   font-size: medium;
   padding-left: 1ex;
   padding-right: 1ex;
@@ -69,6 +71,24 @@
 .jp-SlicedCell-editor-hidetext {
   opacity: .5;
   font-style: italic;
+}
+
+.jp-DiffedCell-editor-aftertext {
+  background-color: #e0ffe5;
+}
+
+.jp-DiffedCell-editor-aftertext.jp-DiffedCell-editor-changedtext {
+  font-weight: bold;
+  background-color: #bcffc7;
+}
+
+.jp-DiffedCell-editor-beforetext {
+  background-color: #ffe5e5;
+}
+
+.jp-DiffedCell-editor-beforetext.jp-DiffedCell-editor-changedtext {
+  font-weight: bold;
+  background-color: #ffbaba;
 }
 
 /* Output prompt (so we can show tool buttons) */

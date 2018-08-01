@@ -1,7 +1,6 @@
 import { PanelLayout } from '@phosphor/widgets';
 import { Widget } from '@phosphor/widgets';
 import { ISlicedCellModel } from './model';
-import { CharacterRange } from '../codeversion';
 import CodeMirror = require('codemirror');
 
 
@@ -23,11 +22,23 @@ const SLICED_CELL_EDITOR_CLASS = 'jp-SlicedCell-editor';
 /**
  * The class name added to editor text that was updated.
  */
-const SLICED_CELL_UPDATED_TEXT_CLASS = 'jp-SlicedCell-editor-updatedtext';
+// const SLICED_CELL_UPDATED_TEXT_CLASS = 'jp-SlicedCell-editor-updatedtext';
 
 /**
- * The class name added to editor text that hasn't been updated.
+ * The class name added to editor text from before version of text.
  */
+const DIFFED_CELL_BEFORE_TEXT_CLASS = 'jp-DiffedCell-editor-beforetext';
+
+/**
+ * The class name added to editor text from after version of text.
+ */
+const DIFFED_CELL_AFTER_TEXT_CLASS = 'jp-DiffedCell-editor-aftertext';
+
+/**
+ * The class name added to all text that has changed between versions.
+ */
+const DIFFED_CELL_CHANGED_TEXT_CLASS = 'jp-DiffedCell-editor-changedtext';
+
 // const SLICED_CELL_UNCHANGED_TEXT_CLASS = 'jp-SlicedCell-editor-unchangedtext';
 
 /**
@@ -48,7 +59,7 @@ const SLICED_CELL_UPDATED_TEXT_CLASS = 'jp-SlicedCell-editor-updatedtext';
 /**
  * Number of lines of context to show before and after updated code.
  */
-const CONTEXT_SIZE = 1;
+// const CONTEXT_SIZE = 1;
 
 /**
  * The class name given to cell area widgets.
@@ -113,11 +124,7 @@ export class SlicedCell extends Widget {
     initializeEditor() {
         // XXX: If I don't call this method with a delay, the text doesn't appear.
         let codeMirrorEditor: CodeMirror.Editor = this._editor;
-        // let codeMirrorWidget = this._codeMirrorWidget
         setTimeout(function() {
-            // codeMirrorEditor.setOption('mode', 'ipython');
-            // codeMirrorEditor.setOption('mode', 'python');
-            // codeMirrorWidget.show();
             codeMirrorEditor.refresh();
         }, 1);
     }
@@ -157,7 +164,38 @@ export class DiffedSlicedCell extends SlicedCell {
 
         let codeMirrorDoc: CodeMirror.Doc = this._editor.getDoc();
 
-        let linesToShow: Array<number> = new Array<number>();
+        console.log(this.model.diff);
+
+        // Mark up differences
+        for (let beforeLine of this.model.diff.beforeLines) {
+            this._editor.addLineClass(beforeLine - 1, "background",
+                DIFFED_CELL_BEFORE_TEXT_CLASS);
+        }
+        for (let afterLine of this.model.diff.afterLines) {
+            this._editor.addLineClass(afterLine - 1, "background",
+                DIFFED_CELL_AFTER_TEXT_CLASS);
+        }
+        for (let loc of this.model.diff.changeLocations) {
+            codeMirrorDoc.markText(
+                { line: loc.first_line - 1, ch: loc.first_column },
+                { line: loc.last_line - 1, ch: loc.last_column },
+                { className: DIFFED_CELL_CHANGED_TEXT_CLASS }
+            );
+            let versionClass;
+            if (this.model.diff.beforeLines.indexOf(loc.first_line) != -1) {
+                versionClass = DIFFED_CELL_BEFORE_TEXT_CLASS;
+            } else if (this.model.diff.afterLines.indexOf(loc.first_line) != -1) {
+                versionClass = DIFFED_CELL_AFTER_TEXT_CLASS;
+            }
+            codeMirrorDoc.markText(
+                { line: loc.first_line - 1, ch: loc.first_column },
+                { line: loc.last_line - 1, ch: loc.last_column },
+                { className: versionClass }
+            )
+        }
+
+        // let linesToShow: Array<number> = new Array<number>();
+        /*
         this.model.diff.updatedRanges.forEach(function(range: CharacterRange) {
 
             // Build a list of lines that should be showing in the cell.
@@ -175,6 +213,7 @@ export class DiffedSlicedCell extends SlicedCell {
                 { className: SLICED_CELL_UPDATED_TEXT_CLASS });
         });
         linesToShow.sort(function(a, b) { return a - b; });
+        */
 
         // Add a class to all text that wasn't changed.
         /*
@@ -250,9 +289,9 @@ export class DiffedSlicedCell extends SlicedCell {
 
         // TODO(andrewhead): set this as a configuration parameter.
         // If there is no new code in this cell, hide it.
-        if (linesToShow.length == 0) {
+        // if (linesToShow.length == 0) {
             // this.hide();
-        }
+        // }
     }
 }
 

@@ -66,7 +66,6 @@ describe('ast walker', () => {
             '    pass',
             ''
         ].join('\n'));
-        console.log(tree);
         walk(tree);
     });
 });

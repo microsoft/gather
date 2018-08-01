@@ -29,11 +29,10 @@ export class HistoryViewer<TOutputModel> extends Widget {
 
         this._model = options.model;
         // let rendermime = (this.rendermime = options.rendermime);
-        // let editorFactory = (this.editorFactory = options.editorFactory);
 
         // Add revisions from most recent to oldest.
         let layout = (this.layout = new PanelLayout());
-        for (let i = this._model.revisions.length - 1; i >= 0; i--) {
+        for (let i = 0; i < this._model.revisions.length; i++) {
             let revisionModel = this._model.revisions[i];
             layout.addWidget(new Revision({
                 model: revisionModel,
