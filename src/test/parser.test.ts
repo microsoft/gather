@@ -1,5 +1,5 @@
 // import * as python3 from '../parsers/python/python3';
-import { parse } from '../parsers/python/python_parser';
+import { parse, walk } from '../parsers/python/python_parser';
 import { expect } from 'chai';
 
 describe('python parser', () => {
@@ -12,6 +12,10 @@ describe('python parser', () => {
 
     it('can also parse calls on objects', () => {
         parse('obj.prop\n');
+    });
+
+    it('can parse scientific notation', () => {
+        parse('1e5\n');
     });
 
     it('parses a dictionary with a `comp_for`', () => {
@@ -40,5 +44,19 @@ describe('python parser', () => {
             last_line: 1,
             last_column: 10
         });
+    });
+});
+
+describe('ast walker', () => {
+
+    it('doesn\'t crash on try-execpt blocks', () => {
+        let tree = parse([
+            'try:',
+            '    pass',
+            'except:',
+            '    pass',
+            ''
+        ].join('\n'));
+        walk(tree);
     });
 });

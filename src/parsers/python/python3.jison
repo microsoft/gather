@@ -68,7 +68,7 @@ floatnumber             {exponentfloat}|{pointfloat}
 exponentfloat           ({digit}+|{pointfloat}){exponent}
 pointfloat              ({digit}*{fraction})|({digit}+".")
 fraction                "."{digit}+
-exponent                [e|E][\+|\-]({digit})+
+exponent                [e|E][\+|\-]?({digit})+
 
 %s INITIAL DEDENTS INLINE
 
@@ -698,7 +698,7 @@ try_excepts
 // make sure that the default except clause is last
 except_clause
     : 'except'
-        { $$ = { cond: null} }
+        { $$ = { cond: null } }
     | 'except' test
         { $$ = { cond: $2 } }
     | 'except' test 'as' NAME

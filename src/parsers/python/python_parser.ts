@@ -412,8 +412,9 @@ export function walk(node: ISyntaxNode, walkListener?: IWalkListener): ISyntaxNo
  */
 function walkRecursive(node: ISyntaxNode, ancestors?: ISyntaxNode[], walkListener?: IWalkListener): ISyntaxNode[] {
 
-    if(!node) {
+    if (node == undefined || node == null) {
         console.error("Node undefined. Ancestors:", ancestors);
+        return [];
     }
 
     ancestors.push(node);
@@ -448,7 +449,9 @@ function walkRecursive(node: ISyntaxNode, ancestors?: ISyntaxNode[], walkListene
             break;
         case TRY:
             children = node.code
-                .concat(flatten(node.excepts.map(e => [e.cond].concat(e.code))))
+                .concat(flatten(node.excepts.map(e => {
+                    return (e.cond ? [e.cond] : []).concat(e.code);
+                })))
                 .concat(node.else || [])
                 .concat(node.finally || [])
             break;
