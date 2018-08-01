@@ -36,7 +36,8 @@ describe('detects dataflow dependencies', () => {
             "a = 4",
             "b = a"
         );
-        expect(deps).to.deep.equal([[4, 3]]);
+        expect(deps).to.deep.include([4, 3]);
+        expect(deps).to.not.deep.include([4, 1]);
     });
 
     it('links between statements, not symbol locations', () => {
@@ -277,7 +278,7 @@ describe('getDefs', () => {
         it('for assignments', () => {
             let defs = getDefsFromStatement("a = 1");
             expect(defs[0]).to.include({ type: SymbolType.VARIABLE, name: "a" });
-        })
+        });
 
         it('for imports', () => {
             let defs = getDefsFromStatement("import lib");
@@ -287,7 +288,7 @@ describe('getDefs', () => {
         it('for from-imports', () => {
             let defs = getDefsFromStatement("from mod import func");
             expect(defs[0]).to.include({ type: SymbolType.IMPORT, name: "func" });    
-        })
+        });
 
         it('for function declarations', () => {
             let defs = getDefsFromStatement([
@@ -311,6 +312,27 @@ describe('getDefs', () => {
                 type: SymbolType.CLASS,
                 name: "C",
                 location: { first_line: 1, first_column: 0, last_line: 4, last_column: -1 }
+            });
+        });
+
+        describe('that are weak (marked as updates)', () => {
+
+            it('for dictionary assignments', () => {
+                let defs = getDefsFromStatement([
+                    "d['a'] = 1"
+                ].join("\n"));
+                expect(defs.length).to.equal(1);
+                expect(defs[0].level).to.equal(ReferenceType.UPDATE);
+                expect(defs[0].name).to.equal("d"); 
+            });
+
+            it('for property assignments', () => {
+                let defs = getDefsFromStatement([
+                    "obj.a = 1"
+                ].join("\n"));
+                expect(defs.length).to.equal(1);
+                expect(defs[0].level).to.equal(ReferenceType.UPDATE);
+                expect(defs[0].name).to.equal("obj");
             });
         });
 

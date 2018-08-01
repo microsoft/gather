@@ -201,6 +201,38 @@ class CallNamesListener implements ast.IWalkListener {
     readonly defs: RefSet = new RefSet();
 }
 
+/**
+ * Tree walk listener for collecting definitions in the target of an assignment.
+ */
+class TargetsDefListener implements ast.IWalkListener {
+
+    constructor(statement: ast.ISyntaxNode) {
+        this._statement = statement;
+    }
+
+    // TODO: Include the level of each name...
+    onEnterNode(node: ast.ISyntaxNode, type: string, ancestors: ast.ISyntaxNode[]) {
+        if (type == ast.NAME) {
+            let level = ReferenceType.DEFINITION;
+            if (ancestors.some((a) => a.type == ast.DOT)) {
+                level = ReferenceType.UPDATE;
+            } else if (ancestors.some((a) => a.type ==  ast.INDEX)) {
+                level = ReferenceType.UPDATE;
+            }
+            this.defs.add({
+                type: SymbolType.VARIABLE,
+                level: level,
+                location: node.location,
+                name: (node as ast.IName).id,
+                statement: this._statement
+            });
+        }
+    }
+
+    private _statement: ast.ISyntaxNode;
+    readonly defs: RefSet = new RefSet();
+}
+
 export function getDefs(
     statement: ast.ISyntaxNode, symbolTable: SymbolTable, slicerConfig?: SlicerConfig): RefSet {
 
@@ -254,16 +286,13 @@ export function getDefs(
             break;
         }
         case ast.ASSIGN: {
-            const targetNames = gatherNames(statement.targets);
-            defs.add(...targetNames.items.map(([name, node]) => {
-                return {
-                    type: SymbolType.VARIABLE,
-                    level: ReferenceType.DEFINITION,
-                    name: name,
-                    location: node.location,
-                    statement: statement
-                };
-            }));
+            let targetsDefListener = new TargetsDefListener(statement);
+            if (statement.targets) {
+                for (let target of statement.targets) {
+                    ast.walk(target, targetsDefListener);
+                }
+            }
+            defs = defs.union(targetsDefListener.defs);
             break;
         }
         case ast.DEF: {
