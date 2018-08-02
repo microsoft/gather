@@ -10,7 +10,7 @@
 
 /* Revision browser */
 .jp-HistoryViewer {
-  width: 90%;
+  width: 100%;
   height: 95%;
   margin: auto;
   text-align: center;
@@ -25,13 +25,21 @@
 .jp-HistoryViewer-referenceversion {
   max-width: 30%;
   background-color: rgba(255, 255, 255, .3);
-  margin-right: 50px;
+  /* margin-right: 50px; */
 }
 
 .jp-HistoryViewer-olderversions {
   max-width: 60%;
   height: 100%;
+  margin-left: 30px;
   overflow-x: auto;
+  mask-image: linear-gradient(left,  rgba(0,0,0,0) 0%, rgba(0,0,0,1) 5%, rgba(0,0,0,1) 95%, rgba(0,0,0,0) 100%);
+  -webkit-mask-image: -webkit-linear-gradient(left,  rgba(0,0,0,0) 0%, rgba(0,0,0,1) 5%, rgba(0,0,0,1) 95%, rgba(0,0,0,0) 100%)
+}
+
+.jp-HistoryViewer-olderversions-revisions {
+  padding-left: 5%;
+  padding-right: 5%; /* Chosen to match the gradient size */
   white-space: nowrap;
 }
 
@@ -119,6 +127,30 @@
 .jp-DiffedCell-editor-beforetext.jp-DiffedCell-editor-changedtext {
   font-weight: bold;
   background-color: #ffbaba;
+}
+
+/* Buttons for gathering from revision browser */
+.jp-Revision-buttons {
+  flex-direction: row;
+  display: flex;
+  margin-bottom: 0.5em;
+}
+
+.jp-Revision-button {
+  flex-grow: 1;
+  text-align: center;
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1.42857143;
+}
+
+.jp-Revision-button:not(:last-child) {
+  margin-right: 1px;
+}
+
+.jp-Revision-button span.jp-Revision-button-label {
+  margin-left: 6px;
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
 }
 
 /* Output prompt (so we can show tool buttons) */

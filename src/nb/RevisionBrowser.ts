@@ -19,7 +19,10 @@ export class RevisionBrowser extends Widget implements IGatherObserver {
 
         // Add button for exiting the revision browser.
         let exitButton = document.createElement("div");
-        exitButton.textContent = "X";
+        let icon = document.createElement("i");
+        icon.classList.add("fa", "fa-window-close");
+        exitButton.appendChild(icon);
+        // exitButton.textContent = "X";
         exitButton.onclick = () => { this.dismiss(); };
         let exitWidget = new Widget({ node: exitButton });
         exitWidget.addClass("jp-Notebook-revisionbrowser-exit");
@@ -62,7 +65,7 @@ export class RevisionBrowser extends Widget implements IGatherObserver {
             cellId = outputSelections[0].cell.id;
         }
         if (slices && cellId) {
-            let historyModel = buildHistoryModel<JSON>(cellId, slices);
+            let historyModel = buildHistoryModel<JSON>(model, cellId, slices);
             // This currently uses code borrowed from Jupyter Lab (for rendering MIME and creating
             // the default editor factory). Not ideal. Fix up soon.
             let historyViewer = new HistoryViewer<JSON>({

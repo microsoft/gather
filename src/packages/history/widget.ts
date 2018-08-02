@@ -14,6 +14,8 @@ const REFERENCE_VERSION_CLASS = 'jp-HistoryViewer-referenceversion';
 
 const OLDER_VERSIONS_CLASS = 'jp-HistoryViewer-olderversions';
 
+const OLDER_VERSIONS_CONTENTS_CLASS = 'jp-HistoryViewer-olderversions-revisions';
+
 /**
  * A widget for showing the history of a result and how it was produced.
  */
@@ -47,17 +49,22 @@ export class HistoryViewer<TOutputModel> extends Widget {
         layout.addWidget(referenceVersion);
 
         // Add pane for older versions.
-        let olderVersions = new Widget({ node: document.createElement("div") });
-        olderVersions.addClass(OLDER_VERSIONS_CLASS);
-        olderVersions.layout = new PanelLayout();
-        for (let i = this._model.revisions.length - 2; i >= 0; i--) {
-            let revisionModel = this._model.revisions[i];
-            (olderVersions.layout as PanelLayout).addWidget(new Revision({
-                model: revisionModel,
-                // rendermime: rendermime,
-            }));
+        if (this._model.revisions.length > 1) {
+            let olderVersions = new Widget({ node: document.createElement("div") });
+            olderVersions.addClass(OLDER_VERSIONS_CLASS);
+            let olderVersionsContents = new Widget({ node: document.createElement("div") });
+            olderVersionsContents.addClass(OLDER_VERSIONS_CONTENTS_CLASS);
+            olderVersions.node.appendChild(olderVersionsContents.node);
+            olderVersionsContents.layout = new PanelLayout();
+            for (let i = this._model.revisions.length - 2; i >= 0; i--) {
+                let revisionModel = this._model.revisions[i];
+                (olderVersionsContents.layout as PanelLayout).addWidget(new Revision({
+                    model: revisionModel,
+                    // rendermime: rendermime,
+                }));
+            }
+            layout.addWidget(olderVersions);
         }
-        layout.addWidget(olderVersions);
     }
 
     /**

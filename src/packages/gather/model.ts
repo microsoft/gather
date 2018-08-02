@@ -26,7 +26,7 @@ export enum GatherModelEvent {
     OUTPUT_SELECTED,
     OUTPUT_DESELECTED,
     SLICE_SELECTED,
-    SLICE_DESELECTED
+    SLICE_DESELECTED,
 };
 
 /**
@@ -276,10 +276,31 @@ export class GatherModel {
     }
 
     /**
-     * Get a list of currently selected slices (readonly).
+     * Get a list of currently highlighted slices (readonly).
      */
     get selectedSlices(): ReadonlyArray<SliceSelection> {
         return this._sliceSelections;
+    }
+
+    /**
+     * Add slices that have been chosen for gathering.
+     */
+    addChosenSlices(...slices: SlicedExecution[]) {
+        this._chosenSlices.push(...slices);
+    }
+
+    /**
+     * Remove all slices that were chosen for gathering.
+     */
+    resetChosenSlices() {
+        this._chosenSlices = [];
+    }
+    
+    /**
+     * Get a list of slices chosen for gathering.
+     */
+    get chosenSlices(): ReadonlyArray<SlicedExecution> {
+        return this._chosenSlices;
     }
 
     private _state: GatherState = GatherState.SELECTING;
@@ -291,6 +312,7 @@ export class GatherModel {
     private _sliceSelections: SliceSelection[] = [];
     private _selectedDefSlices: [DefSelection, SlicedExecution[]][] = [];
     private _selectedOutputSlices: [OutputSelection, SlicedExecution[]][] = [];
+    private _chosenSlices: SlicedExecution[] = [];
 }
 
 /**

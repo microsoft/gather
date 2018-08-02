@@ -164,8 +164,6 @@ export class DiffedSlicedCell extends SlicedCell {
 
         let codeMirrorDoc: CodeMirror.Doc = this._editor.getDoc();
 
-        console.log(this.model.diff);
-
         // Mark up differences
         for (let beforeLine of this.model.diff.beforeLines) {
             this._editor.addLineClass(beforeLine - 1, "background",

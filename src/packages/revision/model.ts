@@ -1,4 +1,6 @@
 import { ICodeVersionModel } from '../codeversion/model';
+import { SlicedExecution } from '../../slicing/ExecutionSlicer';
+import { GatherModel } from '../gather';
 
 /**
  * The definition of a model object for a code version.
@@ -13,6 +15,16 @@ export interface IRevisionModel<TOutputModel> {
      * The source code for this revision.
      */
     readonly source: ICodeVersionModel;
+
+    /**
+     * The model holding gathering state.
+     */
+    readonly gatherModel: GatherModel;
+
+    /**
+     * The slice the revision was made from.
+     */
+    readonly slice: SlicedExecution;
 
     /**
      * The result of the computation.
@@ -40,6 +52,8 @@ export class RevisionModel<TOutputModel> implements IRevisionModel<TOutputModel>
     constructor(options: RevisionModel.IOptions<TOutputModel>) {
         this.versionIndex = options.versionIndex;
         this._source = options.source;
+        this._slice = options.slice;
+        this._gatherModel = options.gatherModel;
         this._results = options.results;
         this.isLatest = options.isLatest;
         this._timeCreated = options.timeCreated;
@@ -53,6 +67,20 @@ export class RevisionModel<TOutputModel> implements IRevisionModel<TOutputModel>
      */
     get source(): ICodeVersionModel {
         return this._source;
+    }
+
+    /**
+     * Get the slice the revision was created from.
+     */
+    get slice(): SlicedExecution {
+        return this._slice;
+    }
+
+    /**
+     * Get the model that holds gathering state.
+     */
+    get gatherModel(): GatherModel {
+        return this._gatherModel;
     }
 
     /**
@@ -70,6 +98,8 @@ export class RevisionModel<TOutputModel> implements IRevisionModel<TOutputModel>
     }
 
     private _source: ICodeVersionModel;
+    private _slice: SlicedExecution;
+    private _gatherModel: GatherModel;
     private _results: TOutputModel[];
     private _timeCreated: Date;
 }
@@ -86,6 +116,16 @@ export namespace RevisionModel {
          * A slice of the source code for this revision.
          */
         source?: ICodeVersionModel;
+
+        /**
+         * The slice the revision was made from.
+         */
+        slice: SlicedExecution;
+
+        /**
+         * A model holding the state for gathering.
+         */
+        gatherModel: GatherModel;
 
         /**
          * A unique index for this version---lower indexes were made earlier.

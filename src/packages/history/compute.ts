@@ -5,12 +5,14 @@ import { SlicedCellModel } from '../slicedcell/model';
 import { SlicedExecution } from '../../slicing/ExecutionSlicer';
 import { ICell, IOutputterCell, instanceOfIOutputterCell, CellSlice } from '../cell/model';
 import { textdiff } from './diff';
+import { GatherModel } from '../gather';
 
 
 /**
  * Build a history model of how a cell was computed across notebook snapshots.
  */
 export function buildHistoryModel<TOutputModel>(
+    gatherModel: GatherModel,
     selectedCellId: string,
     executionVersions: SlicedExecution[]
 ): HistoryModel<TOutputModel> {
@@ -76,6 +78,8 @@ export function buildHistoryModel<TOutputModel>(
         let revisionModel = new RevisionModel<TOutputModel>({
             versionIndex: versionIndex + 1,  // Version index should start at 1
             source: codeVersionModel,
+            slice: executionVersion,
+            gatherModel: gatherModel,
             results: results,
             isLatest: isLatestVersion,
             timeCreated: executionVersion.executionTime

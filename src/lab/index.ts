@@ -26,6 +26,7 @@ import { NotificationWidget } from '../packages/notification/widget';
 
 import '../../style/lab-vars.css';
 import '../../style/index.css';
+import { GatherModel } from '../packages/gather';
 
 /**
  * Try to only write Jupyter Lab-specific implementation code in this file.
@@ -303,7 +304,8 @@ function activateExtension(app: JupyterLab, palette: ICommandPalette, notebooks:
             let slicer = executionLogger.executionSlicer;
             let cellModel = activeCell.model as ICodeCellModel;
             let slicedExecutions = slicer.sliceAllExecutions(new LabCell(cellModel));
-            let historyModel = buildHistoryModel<IOutputModel>(activeCell.model.id, slicedExecutions);
+            // TODO: Update this with a real gather-model.
+            let historyModel = buildHistoryModel<IOutputModel>(new GatherModel(), activeCell.model.id, slicedExecutions);
 
             let widget = new HistoryViewer({
                 model: historyModel

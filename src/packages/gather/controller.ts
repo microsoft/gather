@@ -29,7 +29,7 @@ export class GatherController implements IGatherObserver {
         if (eventType == GatherModelEvent.STATE_CHANGED) {
             let newState = eventData as GatherState;
             if (newState == GatherState.GATHER_TO_CLIPBOARD || newState == GatherState.GATHER_TO_NOTEBOOK) {
-                let slices = model.selectedSlices.map((s) => s.slice);
+                let slices = model.chosenSlices;
                 let mergedSlice = slices[0].merge(...slices.slice(1));
                 if (newState == GatherState.GATHER_TO_CLIPBOARD) {
                     this._cellClipboard.copy(mergedSlice);
@@ -38,12 +38,11 @@ export class GatherController implements IGatherObserver {
                     this._notebookOpener.openNotebookForSlice(mergedSlice);
                     model.requestStateChange(GatherState.SELECTING);
                 }
-            } else if (newState == GatherState.GATHER_HISTORY) {
-                // TODO: compute a new historical slice.
             } else if (newState == GatherState.RESET) {
                 // When a reset is selected, clear selections and transition to selection mode.
                 model.deselectAllDefs();
                 model.deselectAllOutputs();
+                model.resetChosenSlices();
                 model.requestStateChange(GatherState.SELECTING);
             }
         }

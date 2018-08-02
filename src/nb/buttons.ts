@@ -149,6 +149,7 @@ export class GatherToClipboardButton extends GatherButton {
      */
     onClick() {
         if (this._gatherModel.selectedSlices.length >= 1) {
+            this._gatherModel.addChosenSlices(...this._gatherModel.selectedSlices.map((sel) => sel.slice));
             this._gatherModel.requestStateChange(GatherState.GATHER_TO_CLIPBOARD);
         } else {
             window.alert("To gather, you must first select some definitions or results from the notebook.");
@@ -178,6 +179,7 @@ export class GatherToNotebookButton extends GatherButton {
      */
     onClick() {
         if (this._gatherModel.selectedSlices.length >= 1) {
+            this._gatherModel.addChosenSlices(...this._gatherModel.selectedSlices.map((sel) => sel.slice));
             this._gatherModel.requestStateChange(GatherState.GATHER_TO_NOTEBOOK);
         } else {
             window.alert("To gather, you must first select some definitions or results from the notebook.");
@@ -254,7 +256,6 @@ export class ClearButton extends GatherButton {
      * Handle click event
      */
     onClick() {
-        this._gatherModel.deselectAllDefs();
-        this._gatherModel.deselectAllOutputs();
+        this._gatherModel.requestStateChange(GatherState.RESET);
     }
 }
