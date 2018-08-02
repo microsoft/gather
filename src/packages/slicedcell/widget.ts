@@ -88,8 +88,10 @@ export class SlicedCell extends Widget {
         let codeMirror = CodeMirror(codeMirrorElement, {
             value: this.model.sourceCode,
             mode: "python",
-            readOnly: true
+            readOnly: "nocursor",  // don't allow interaction with cell's contents
+            scrollbarStyle: "null"  // don't show scrollbars
         });
+        codeMirror.on("mousedown", (_: CodeMirror.Editor, event: MouseEvent) => { return true; });
         let codeMirrorWidget = new Widget({ node: codeMirror.getWrapperElement() });
         this._editor = codeMirror;
         this._codeMirrorWidget = codeMirrorWidget;

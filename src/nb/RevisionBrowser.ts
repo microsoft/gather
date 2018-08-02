@@ -2,7 +2,7 @@ import { Widget, PanelLayout } from "@phosphor/widgets";
 import { IGatherObserver, GatherModel, GatherModelEvent, GatherEventData, GatherState } from "../packages/gather";
 import { buildHistoryModel, HistoryViewer } from "../packages/history";
 import { IOutputRenderer } from "../packages/revision";
-import { Cell, OutputArea } from "base/js/namespace";
+import { OutputArea } from "base/js/namespace";
 
 
 /**
@@ -15,54 +15,22 @@ const REVISION_BROWSER_CLASS = "jp-Notebook-revisionbrowser";
  */
 const REVISION_OUTPUT_CLASS = "jp-Notebook-revisionbrowser-output";
 
-/**
- * Fetches an cell on demand.
- */
-export interface CellFetcher {
-    /**
-     * Get a cell that's currently in an active notebook.
-     */
-    getExistingCell(): Cell;
-}
 
 /**
  * Renders output models for notebooks as new cells.
  */
 class OutputRenderer implements IOutputRenderer<OutputArea> {
     /**
-     * Construct a new output renderer.
-     * Provide an existing cell widget to help generate new outputs.
-     */
-    constructor(cellFetcher: CellFetcher) {
-        this._cellFetcher = cellFetcher;
-    }
-
-    /**
      * Render HTML element for this output.
      */
     render(output: OutputArea): HTMLElement {
-        /* let existingCell = this._cellFetcher.getExistingCell();
-        if (existingCell) {
-            return new OutputArea({
-                config: existingCell.config,
-                selector: output,
-                prompt_area: false,
-                events: existingCell.events,
-                keyboard_manager: existingCell.keyboard_manager
-            }).element[0];
-        }
-        return null; */
-        console.log(this._cellFetcher);
         let clone = $(output.element[0].cloneNode(true));
-        
         // Remove output prompts to make it more pretty.
         clone.find("div.prompt").remove();
         clone.find("div.run_this_cell").remove();
         clone.addClass(REVISION_OUTPUT_CLASS);
         return clone[0] as HTMLElement;
     }
-
-    private _cellFetcher: CellFetcher;
 }
 
 /**
@@ -72,13 +40,13 @@ export class RevisionBrowser extends Widget implements IGatherObserver {
     /**
      * Construct a new revision browser.
      */
-    constructor(gatherModel: GatherModel, cellFetcher: CellFetcher) {
+    constructor(gatherModel: GatherModel) {
         super();
         this.addClass(REVISION_BROWSER_CLASS);
 
         gatherModel.addObserver(this);
         this._gatherModel = gatherModel;
-        this._outputRenderer = new OutputRenderer(cellFetcher);
+        this._outputRenderer = new OutputRenderer();
 
         // Add button for exiting the revision browser.
         let exitButton = document.createElement("div");
