@@ -30,6 +30,16 @@ const REVISION_BUTTON_LABEL_CLASS = 'jp-Revision-button-label';
 const REVISION_BUTTON_CLASS = 'jp-Revision-button';
 
 /**
+ * Interface for rendering output models into HTML elements.
+ */
+export interface IOutputRenderer<TOutputModel> {
+    /**
+     * Render an HTML element for an output model.
+     */
+    render(outputModel: TOutputModel): HTMLElement;
+}
+
+/**
  * A widget for showing revision of an execution.
  */
 export class Revision<TOutputModel> extends Widget {
@@ -40,8 +50,7 @@ export class Revision<TOutputModel> extends Widget {
         super();
         this.addClass(REVISION_CLASS);
         let model = (this.model = options.model);
-        // let rendermime = (this.rendermime = options.rendermime);
-        // let editorFactory = (this.editorFactory = options.editorFactory);
+        let outputRenderer = options.outputRenderer;
 
         let layout = (this.layout = new PanelLayout());
         
@@ -51,7 +60,6 @@ export class Revision<TOutputModel> extends Widget {
         if (this.model.isLatest) {
             headerText = "Latest";
         } else {
-            // headerText = "Version " + this.model.versionIndex;
             headerText = "Older";
         }
         if (this.model.timeCreated) {
@@ -116,25 +124,21 @@ export class Revision<TOutputModel> extends Widget {
         layout.addWidget(new CodeVersion({
             model: model.source,
         }));
-        /*
-        if (model.results instanceof OutputAreaModel) {
-            layout.addWidget(new OutputArea({
-                model: model.results,
-                rendermime: rendermime
-            }));
+
+        if (model.output) {
+            let outputElement = outputRenderer.render(model.output);
+            if (outputElement) {
+                layout.addWidget(new Widget({
+                    node: outputElement
+                }));
+            }
         }
-        */
     }
 
     /**
      * The model used by the widget.
      */
     readonly model: IRevisionModel<TOutputModel>;
-
-    /**
-     * The rendermime instance used by the widget.
-     */
-    // readonly rendermime: RenderMimeRegistry;
 }
 
 /**
@@ -151,8 +155,8 @@ export namespace Revision {
         model: IRevisionModel<TOutputModel>;
 
         /**
-         * The mime renderer for this widget.
+         * The output renderer for this widget.
          */
-        // rendermime: RenderMimeRegistry;
+        outputRenderer: IOutputRenderer<TOutputModel>;
     }
 }

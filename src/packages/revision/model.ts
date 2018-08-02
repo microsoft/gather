@@ -29,7 +29,7 @@ export interface IRevisionModel<TOutputModel> {
     /**
      * The result of the computation.
      */
-    readonly results: TOutputModel[];
+    readonly output: TOutputModel;
 
     /**
      * Whether this revision is the latest revision.
@@ -54,7 +54,7 @@ export class RevisionModel<TOutputModel> implements IRevisionModel<TOutputModel>
         this._source = options.source;
         this._slice = options.slice;
         this._gatherModel = options.gatherModel;
-        this._results = options.results;
+        this._output = options.output;
         this.isLatest = options.isLatest;
         this._timeCreated = options.timeCreated;
     }
@@ -86,8 +86,8 @@ export class RevisionModel<TOutputModel> implements IRevisionModel<TOutputModel>
     /**
      * Get the result of this computation.
      */
-    get results(): TOutputModel[] {
-        return this._results;
+    get output(): TOutputModel {
+        return this._output;
     }
 
     /**
@@ -100,7 +100,7 @@ export class RevisionModel<TOutputModel> implements IRevisionModel<TOutputModel>
     private _source: ICodeVersionModel;
     private _slice: SlicedExecution;
     private _gatherModel: GatherModel;
-    private _results: TOutputModel[];
+    private _output: TOutputModel;
     private _timeCreated: Date;
 }
 
@@ -135,7 +135,7 @@ export namespace RevisionModel {
         /**
          * The display data for the result at this version.
          */
-        results?: TOutputModel[];
+        output?: TOutputModel;
 
         /**
          * Whether this revision is the latest revision.

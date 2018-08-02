@@ -55,7 +55,7 @@ export function buildHistoryModel<TOutputModel>(
             slicedCellModels.push(slicedCell);
         })
 
-        let results: TOutputModel[] = null;
+        let output: TOutputModel = null;
         let selectedCell: ICell = null;
         executionVersion.cellSlices.map(cs => cs.cell).forEach(function (cellModel) {
             if (cellModel.id == selectedCellId) {
@@ -64,9 +64,8 @@ export function buildHistoryModel<TOutputModel>(
         });
         if (selectedCell && instanceOfIOutputterCell(selectedCell)) {
             let selectedOutputterCell = selectedCell as IOutputterCell<TOutputModel>;
-            if (selectedCell.outputs &&
-                selectedCell.outputs.length > 0) {
-                results = selectedOutputterCell.outputs;
+            if (selectedCell.output) {
+                output = selectedOutputterCell.output;
             }
         }
 
@@ -80,7 +79,7 @@ export function buildHistoryModel<TOutputModel>(
             source: codeVersionModel,
             slice: executionVersion,
             gatherModel: gatherModel,
-            results: results,
+            output: output,
             isLatest: isLatestVersion,
             timeCreated: executionVersion.executionTime
         });

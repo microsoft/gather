@@ -304,11 +304,12 @@ function activateExtension(app: JupyterLab, palette: ICommandPalette, notebooks:
             let slicer = executionLogger.executionSlicer;
             let cellModel = activeCell.model as ICodeCellModel;
             let slicedExecutions = slicer.sliceAllExecutions(new LabCell(cellModel));
-            // TODO: Update this with a real gather-model.
+            // TODO: Update this with a real gather-model and real output renderer.
             let historyModel = buildHistoryModel<IOutputModel>(new GatherModel(), activeCell.model.id, slicedExecutions);
 
             let widget = new HistoryViewer({
-                model: historyModel
+                model: historyModel,
+                outputRenderer: { render: () => null }
             });
 
             if (!widget.isAttached) {

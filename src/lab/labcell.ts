@@ -12,7 +12,7 @@ export function copyICodeCellModel(cell: ICodeCellModel): ICodeCellModel {
 /**
  * Implementation of SliceableCell for Jupyter Lab. Wrapper around the ICodeCellModel.
  */
-export class LabCell implements IOutputterCell<IOutputModel> {
+export class LabCell implements IOutputterCell<IOutputModel[]> {
 
     constructor(model: ICodeCellModel) {
         this._model = model;
@@ -47,10 +47,10 @@ export class LabCell implements IOutputterCell<IOutputModel> {
     }
 
     get hasError(): boolean {
-        return this.outputs.some(o => o.type === 'error');
+        return this.output.some(o => o.type === 'error');
     }
 
-    get outputs(): IOutputModel[] {
+    get output(): IOutputModel[] {
         let outputs = [];
         if (this._model.outputs) {
             for (let i = 0; i < this._model.outputs.length; i++) {

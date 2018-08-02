@@ -1,5 +1,5 @@
 import { IOutputterCell } from "../packages/cell";
-import { CodeCell, Output, notebook } from 'base/js/namespace';
+import { CodeCell, OutputArea, notebook } from 'base/js/namespace';
 
 /**
  * Create a new cell with the same ID and content.
@@ -20,7 +20,7 @@ export function copyCodeCell(cell: CodeCell): CodeCell {
 /**
  * Implementation of SliceableCell for Jupyter Lab. Wrapper around the ICodeCellModel.
  */
-export class NotebookCell implements IOutputterCell<Output> {
+export class NotebookCell implements IOutputterCell<OutputArea> {
 
     constructor(model: CodeCell) {
         this._model = model;
@@ -55,16 +55,16 @@ export class NotebookCell implements IOutputterCell<Output> {
     }
 
     get hasError(): boolean {
-        return this.outputs.some(o => o.output_type === 'error');
+        return this.output.outputs.some(o => o.output_type === 'error');
     }
 
     get editor(): CodeMirror.Editor {
         return this._model.code_mirror;
     }
 
-    get outputs(): Output[] {
+    get output(): OutputArea {
         if (this._model.output_area) {
-            return this._model.output_area.outputs;
+            return this._model.output_area;
         } else {
             return undefined;
         }

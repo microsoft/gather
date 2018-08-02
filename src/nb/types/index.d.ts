@@ -40,6 +40,7 @@ declare namespace Jupyter {
     interface Cell {
         cell_id: string;
         cell_type: 'code' | 'markdown';
+        config: Config;
         element: JQuery;
         notebook: Notebook;
         metadata: CellMetadata;
@@ -54,7 +55,12 @@ declare namespace Jupyter {
 
     interface OutputArea {
         outputs: Output[];
+        element: JQuery;
     }
+    interface OutputAreaConstructor {
+        new(options: any): OutputArea;
+    }
+    var OutputArea: OutputAreaConstructor;
 
     interface CodeCell extends Cell {
         cell_type: 'code';

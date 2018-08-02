@@ -1,7 +1,69 @@
 import { Widget, PanelLayout } from "@phosphor/widgets";
 import { IGatherObserver, GatherModel, GatherModelEvent, GatherEventData, GatherState } from "../packages/gather";
 import { buildHistoryModel, HistoryViewer } from "../packages/history";
+import { IOutputRenderer } from "../packages/revision";
+import { Cell, OutputArea } from "base/js/namespace";
 
+
+/**
+ * Class for the revision browser widget.
+ */
+const REVISION_BROWSER_CLASS = "jp-Notebook-revisionbrowser";
+
+/**
+ * Class for output areas in the revision browser.
+ */
+const REVISION_OUTPUT_CLASS = "jp-Notebook-revisionbrowser-output";
+
+/**
+ * Fetches an cell on demand.
+ */
+export interface CellFetcher {
+    /**
+     * Get a cell that's currently in an active notebook.
+     */
+    getExistingCell(): Cell;
+}
+
+/**
+ * Renders output models for notebooks as new cells.
+ */
+class OutputRenderer implements IOutputRenderer<OutputArea> {
+    /**
+     * Construct a new output renderer.
+     * Provide an existing cell widget to help generate new outputs.
+     */
+    constructor(cellFetcher: CellFetcher) {
+        this._cellFetcher = cellFetcher;
+    }
+
+    /**
+     * Render HTML element for this output.
+     */
+    render(output: OutputArea): HTMLElement {
+        /* let existingCell = this._cellFetcher.getExistingCell();
+        if (existingCell) {
+            return new OutputArea({
+                config: existingCell.config,
+                selector: output,
+                prompt_area: false,
+                events: existingCell.events,
+                keyboard_manager: existingCell.keyboard_manager
+            }).element[0];
+        }
+        return null; */
+        console.log(this._cellFetcher);
+        let clone = $(output.element[0].cloneNode(true));
+        
+        // Remove output prompts to make it more pretty.
+        clone.find("div.prompt").remove();
+        clone.find("div.run_this_cell").remove();
+        clone.addClass(REVISION_OUTPUT_CLASS);
+        return clone[0] as HTMLElement;
+    }
+
+    private _cellFetcher: CellFetcher;
+}
 
 /**
  * Window that lets the user browse revisions of code.
@@ -10,12 +72,13 @@ export class RevisionBrowser extends Widget implements IGatherObserver {
     /**
      * Construct a new revision browser.
      */
-    constructor(gatherModel: GatherModel) {
+    constructor(gatherModel: GatherModel, cellFetcher: CellFetcher) {
         super();
-        this.addClass("jp-Notebook-revisionbrowser");
+        this.addClass(REVISION_BROWSER_CLASS);
 
         gatherModel.addObserver(this);
         this._gatherModel = gatherModel;
+        this._outputRenderer = new OutputRenderer(cellFetcher);
 
         // Add button for exiting the revision browser.
         let exitButton = document.createElement("div");
@@ -65,11 +128,13 @@ export class RevisionBrowser extends Widget implements IGatherObserver {
             cellId = outputSelections[0].cell.id;
         }
         if (slices && cellId) {
-            let historyModel = buildHistoryModel<JSON>(model, cellId, slices);
+            let historyModel = buildHistoryModel<OutputArea>(
+                model, cellId, slices);
             // This currently uses code borrowed from Jupyter Lab (for rendering MIME and creating
             // the default editor factory). Not ideal. Fix up soon.
-            let historyViewer = new HistoryViewer<JSON>({
-                model: historyModel
+            let historyViewer = new HistoryViewer<OutputArea>({
+                model: historyModel,
+                outputRenderer: this._outputRenderer
             });
             this._historyViewer = historyViewer;
             (this.layout as PanelLayout).addWidget(historyViewer);
@@ -84,5 +149,6 @@ export class RevisionBrowser extends Widget implements IGatherObserver {
     }
 
     private _gatherModel: GatherModel;
-    private _historyViewer: HistoryViewer<JSON>;
+    private _outputRenderer: OutputRenderer;
+    private _historyViewer: HistoryViewer<OutputArea>;
 }

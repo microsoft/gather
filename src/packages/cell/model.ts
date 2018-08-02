@@ -17,7 +17,7 @@ export interface ICell {
  */
 export interface IOutputterCell<TOutputModel> extends ICell {
     is_outputter_cell: boolean;
-    outputs: TOutputModel[];
+    output: TOutputModel;
 }
 
 /**

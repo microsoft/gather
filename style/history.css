@@ -129,6 +129,30 @@
   background-color: #ffbaba;
 }
 
+/* Revision cell outputs */
+.jp-Notebook-revisionbrowser-output div.output_area div.output_subarea {
+  background-color: white;
+  width: 100%;
+  max-width: 100%;
+  max-height: 200px;
+  overflow-y: auto;
+  overflow-x: auto;
+  border-right: 1px solid black;
+  border-left: 1px solid black;
+}
+
+.jp-Notebook-revisionbrowser-output div.output_area:last-child div.output_subarea {
+  border-bottom: 1px solid black;
+}
+
+.jp-Notebook-revisionbrowser-output div.output_area:first-child div.output_subarea {
+  border-top: 1px solid black;
+}
+
+.jp-Notebook-revisionbrowser-output .output_area:first-child {
+  margin-top: 1em;
+}
+
 /* Buttons for gathering from revision browser */
 .jp-Revision-buttons {
   flex-direction: row;
