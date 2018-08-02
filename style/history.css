@@ -11,16 +11,42 @@
 /* Revision browser */
 .jp-HistoryViewer {
   width: 90%;
+  height: 95%;
   margin: auto;
   text-align: center;
 }
 
-.jp-Revision {
+.jp-HistoryViewer .jp-HistoryViewer-referenceversion,
+.jp-HistoryViewer .jp-HistoryViewer-olderversions {
+  display: inline-block;
+  vertical-align: top;
+}
+
+.jp-HistoryViewer-referenceversion {
   max-width: 30%;
+  background-color: rgba(255, 255, 255, .3);
+  margin-right: 50px;
+}
+
+.jp-HistoryViewer-olderversions {
+  max-width: 60%;
+  height: 100%;
+  overflow-x: auto;
+  white-space: nowrap;
+}
+
+.jp-Revision {
+  max-width: 400px;
   margin-left: 10px;
   margin-right: 10px;
   display: inline-block;
   vertical-align: top;
+  padding-top: 0.5em;
+  padding-bottom: 0.5em;
+}
+
+.jp-HistoryViewer-referenceversion .jp-Revision-header {
+  font-weight: bold;
 }
 
 .jp-Revision-header {
@@ -32,6 +58,7 @@
   padding-top: 0.5em;
   padding-bottom: 0.5em;
   margin-bottom: 0.5em;
+  margin-top: 0;
 }
 
 .jp-CellArea {
@@ -45,11 +72,14 @@
   width: 100%;
 }
 
+.jp-CellArea:not(:last-child) {
+  margin-bottom: 0.5em;
+}
+
 .jp-SlicedCell .jp-SlicedCell-editor {
   border: 1px solid black;
   background-color: #f5f5f5;
   text-align: left;
-  margin-bottom: 0.5em;
   width: 100%;
 }
 

@@ -15,7 +15,7 @@
   height: 100%;
   z-index: 1000;
   padding-top: 4%;
-  background-color: rgba(0, 0, 0, .6);
+  background-color: rgba(0, 0, 0, .7);
 }
 
 .jp-Notebook-revisionbrowser-exit {
@@ -24,6 +24,6 @@
   font-size: xx-large;
   cursor: pointer;
   position: absolute;
-  right: 10px;
-  top: 0px;
+  right: 30px;
+  top: 20px;
 }

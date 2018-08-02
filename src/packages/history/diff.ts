@@ -35,6 +35,8 @@ export function textdiff(before: string, after: string): Diff {
     diffMatchPatch.diff_cleanupSemantic(diff);
 
     // Plaintext for the diff representation.
+    let beforeHasText = before.length > 0;
+    let afterHasText = after.length > 0;
     let beforeLine = "";
     let afterLine = "";
     let diffLines: DiffLine[] = [];
@@ -43,6 +45,8 @@ export function textdiff(before: string, after: string): Diff {
 
     function addLines(beforeLine: string, afterLine: string, beforeLineChanges?: CharacterRange[],
             afterLineChanges?: CharacterRange[]) {
+        beforeLineChanges = beforeLineChanges || [];
+        afterLineChanges = afterLineChanges || [];
         if (beforeLine == afterLine) {
             diffLines.push({ text: beforeLine, version: "both", changeRanges: [] });
         } else {
@@ -79,7 +83,7 @@ export function textdiff(before: string, after: string): Diff {
                 beforeLine += substringLine;
                 afterLine += substringLine;
                 if (!isLastLine) {
-                    addLines(beforeLine, afterLine);
+                    addLines(beforeLine, afterLine, beforeLineChanges, afterLineChanges);
                     beforeLine = "";
                     afterLine = "";
                 }
@@ -104,6 +108,8 @@ export function textdiff(before: string, after: string): Diff {
     }
 
     // Add any residual before and after lines to the text.
+    beforeLine = beforeHasText ? beforeLine : undefined;
+    afterLine = afterHasText ? afterLine : undefined;
     addLines(beforeLine, afterLine, beforeLineChanges, afterLineChanges);
 
     let beforeLineNumbers: number[] = [];

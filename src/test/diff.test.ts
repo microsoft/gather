@@ -1,7 +1,7 @@
 import { expect } from "chai";
 import { textdiff } from "../packages/history/diff";
 
-describe.only('textdiff', () => {
+describe('textdiff', () => {
 
     it('returns the original text if before and after are the same', () => {
         const before = "hello world";
@@ -56,4 +56,23 @@ describe.only('textdiff', () => {
             last_column: 7
         })
     });
+
+    it("finds changes on multiple lines", () => {
+        const before = "line a\nline b";
+        const after = "line A\nline B";
+        let diff = textdiff(before, after);
+        expect(diff.text).to.equal("line a\nline b\nline A\nline B");
+        let changeLocationLines = diff.changeLocations.map((l) => l.first_line);
+        expect(changeLocationLines).to.include(1);
+        expect(changeLocationLines).to.include(2);
+        expect(changeLocationLines).to.include(3);
+        expect(changeLocationLines).to.include(4);
+    });
+
+    it("doesn\'t include blank lines", () => {
+        const before = "";
+        const after = "line";
+        let diff = textdiff(before, after);
+        expect(diff.text).to.equal("line");
+    })
 })

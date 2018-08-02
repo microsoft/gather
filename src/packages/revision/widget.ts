@@ -35,7 +35,7 @@ export class Revision<TOutputModel> extends Widget {
             headerText = "Latest";
         } else {
             // headerText = "Version " + this.model.versionIndex;
-            headerText = "Old";
+            headerText = "Older";
         }
         if (this.model.timeCreated) {
             let dateString: string = this.model.timeCreated.toLocaleDateString(

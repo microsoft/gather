@@ -10,6 +10,10 @@ const HISTORY_VIEWER_CLASS = 'jp-HistoryViewer';
 
 const HISTORY_VIEWER_ICON_CLASS = 'jp-HistoryViewerIcon';
 
+const REFERENCE_VERSION_CLASS = 'jp-HistoryViewer-referenceversion';
+
+const OLDER_VERSIONS_CLASS = 'jp-HistoryViewer-olderversions';
+
 /**
  * A widget for showing the history of a result and how it was produced.
  */
@@ -32,13 +36,28 @@ export class HistoryViewer<TOutputModel> extends Widget {
 
         // Add revisions from most recent to oldest.
         let layout = (this.layout = new PanelLayout());
-        for (let i = 0; i < this._model.revisions.length; i++) {
+
+        // Add pane for reference (most recent) version.
+        let referenceVersion = new Widget({ node: document.createElement("div") });
+        referenceVersion.addClass(REFERENCE_VERSION_CLASS);
+        referenceVersion.layout = new PanelLayout();
+        (referenceVersion.layout as PanelLayout).addWidget(new Revision({
+            model: this._model.revisions[this._model.revisions.length - 1]
+        }));
+        layout.addWidget(referenceVersion);
+
+        // Add pane for older versions.
+        let olderVersions = new Widget({ node: document.createElement("div") });
+        olderVersions.addClass(OLDER_VERSIONS_CLASS);
+        olderVersions.layout = new PanelLayout();
+        for (let i = this._model.revisions.length - 2; i >= 0; i--) {
             let revisionModel = this._model.revisions[i];
-            layout.addWidget(new Revision({
+            (olderVersions.layout as PanelLayout).addWidget(new Revision({
                 model: revisionModel,
                 // rendermime: rendermime,
             }));
         }
+        layout.addWidget(olderVersions);
     }
 
     /**
