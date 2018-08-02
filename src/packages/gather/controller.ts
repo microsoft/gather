@@ -36,6 +36,7 @@ export class GatherController implements IGatherObserver {
                     model.requestStateChange(GatherState.RESET);
                 } else if (newState == GatherState.GATHER_TO_NOTEBOOK) {
                     this._notebookOpener.openNotebookForSlice(mergedSlice);
+                    model.resetChosenSlices();
                     model.requestStateChange(GatherState.SELECTING);
                 }
             } else if (newState == GatherState.RESET) {
