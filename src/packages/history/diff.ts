@@ -16,6 +16,12 @@ export type Diff = {
     changeLocations: ILocation[];
 }
 
+type DiffLine = {
+    text: string;
+    version: "before"|"after"|"both";
+    changeRanges: CharacterRange[];
+}
+
 /**
  * Difference two versions of text. This outputs:
  * - a buffer of line-by-line text of a pairwise diff
@@ -29,51 +35,26 @@ export function textdiff(before: string, after: string): Diff {
     diffMatchPatch.diff_cleanupSemantic(diff);
 
     // Plaintext for the diff representation.
-    let text = "";
     let beforeLine = "";
     let afterLine = "";
-    let beforeLines: number[] = [];
-    let afterLines: number[] = []
+    let diffLines: DiffLine[] = [];
     let beforeLineChanges: CharacterRange[] = [];
     let afterLineChanges: CharacterRange[] = [];
-    let changeLocations: ILocation[] = [];
 
     function addLines(beforeLine: string, afterLine: string, beforeLineChanges?: CharacterRange[],
             afterLineChanges?: CharacterRange[]) {
         if (beforeLine == afterLine) {
-            text += beforeLine + "\n";
+            diffLines.push({ text: beforeLine, version: "both", changeRanges: [] });
         } else {
             if (beforeLine != null) {
-                let lineIndex = text.split('\n').length;
-                beforeLines.push(lineIndex);
-                if (beforeLineChanges) {
-                    for (let range of beforeLineChanges) {
-                        addChange(changeLocations, lineIndex, range.start, lineIndex, range.end);
-                    }
-                }
-                text += beforeLine + "\n";
+                diffLines.push({ text: beforeLine, version: "before", changeRanges: beforeLineChanges.concat() });
+                beforeLineChanges = [];
             }
             if (afterLine != null) {
-                let lineIndex = text.split('\n').length;
-                afterLines.push(lineIndex);
-                if (afterLineChanges) {
-                    for (let range of afterLineChanges) {
-                        addChange(changeLocations, lineIndex, range.start, lineIndex, range.end);
-                    }
-                }
-                text += afterLine + "\n";
+                diffLines.push({ text: afterLine, version: "after", changeRanges: afterLineChanges.concat() });
+                afterLineChanges = [];
             }
         }
-    }
-
-    function addChange(changeList: ILocation[], first_line: number, first_column: number,
-        last_line: number, last_column: number) {
-        changeList.push({
-            first_line: first_line,
-            first_column: first_column,
-            last_line: last_line,
-            last_column: last_column
-        })
     }
 
     // Sort diff segments so that "before" segments always appear before "after" segments.
@@ -90,26 +71,30 @@ export function textdiff(before: string, after: string): Diff {
         let substring: string = segment[1];
         let substringLines = substring.split('\n');
 
-        for (let substringLine of substringLines) {
-            let isLastLine = (substringLine == substringLines[substringLines.length - 1]);
+        for (let l = 0; l < substringLines.length; l++) {
+            let substringLine = substringLines[l];
+            let isLastLine = (l == substringLines.length - 1);
+            let isInitialNewline = (l == 0 && substringLine == "");
             if (action == 0) {  // same in both versions
-                beforeLine += substring;
-                afterLine += substring;
+                beforeLine += substringLine;
+                afterLine += substringLine;
                 if (!isLastLine) {
                     addLines(beforeLine, afterLine);
                     beforeLine = "";
                     afterLine = "";
                 }
             } else if (action == -1) {  // in before, not after
-                beforeLineChanges.push({ start: beforeLine.length, end: beforeLine.length + substring.length });
-                beforeLine += substring;
+                if (isInitialNewline) substringLine = "⏎";
+                beforeLineChanges.push({ start: beforeLine.length, end: beforeLine.length + substringLine.length });
+                beforeLine += substringLine;
                 if (!isLastLine) {
                     addLines(beforeLine, null, beforeLineChanges);
                     beforeLine = "";
                 }
             } else if (action == 1) {  // in after, not before
-                afterLineChanges.push({ start: afterLine.length, end: afterLine.length + substring.length });
-                afterLine += substring;
+                if (isInitialNewline) substringLine = "⏎";
+                afterLineChanges.push({ start: afterLine.length, end: afterLine.length + substringLine.length });
+                afterLine += substringLine;
                 if (!isLastLine) {
                     addLines(null, afterLine, null, afterLineChanges);
                     afterLine = "";
@@ -120,15 +105,39 @@ export function textdiff(before: string, after: string): Diff {
 
     // Add any residual before and after lines to the text.
     addLines(beforeLine, afterLine, beforeLineChanges, afterLineChanges);
-    
-    // Remove the last newline
-    let textLines = text.split('\n');
-    text = textLines.slice(0, textLines.length - 1).join('\n');
+
+    let beforeLineNumbers: number[] = [];
+    let afterLineNumbers: number[] = [];
+    let changeLocations: ILocation[] = [];
+
+    // All "before" diff lines should go before "after" diff lines.
+    diffLines.sort((diffLine1, diffLine2) => {
+        if (diffLine1.version == "both" || diffLine2.version == "both") return 0;
+        else if (diffLine1.version == diffLine2.version) return 0;
+        else return diffLine1.version == "before" ? -1: 1;
+    });
+
+    let diffTextLines = [];
+    for (let i = 0; i < diffLines.length; i++) {
+        let diffLine = diffLines[i];
+        let lineNumber = i + 1;
+        diffTextLines.push(diffLine.text);
+        if (diffLine.version == "before") beforeLineNumbers.push(lineNumber);
+        if (diffLine.version == "after") afterLineNumbers.push(lineNumber);
+        for (let range of diffLine.changeRanges) {
+            changeLocations.push({
+                first_line: lineNumber,
+                first_column: range.start,
+                last_line: lineNumber,
+                last_column: range.end
+            });
+        }
+    }
 
     return {
-        text: text,
-        beforeLines: beforeLines,
-        afterLines: afterLines,
+        text: diffTextLines.join("\n"),
+        beforeLines: beforeLineNumbers,
+        afterLines: afterLineNumbers,
         changeLocations: changeLocations
     };
 }

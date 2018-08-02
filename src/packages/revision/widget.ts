@@ -35,14 +35,14 @@ export class Revision<TOutputModel> extends Widget {
             headerText = "Latest";
         } else {
             // headerText = "Version " + this.model.versionIndex;
-            headerText = "";
+            headerText = "Old";
         }
         if (this.model.timeCreated) {
             let dateString: string = this.model.timeCreated.toLocaleDateString(
                 undefined, {
                     day: "numeric",
                     month: "long",
-                    year: "numeric"
+                    // year: "numeric"
                 });
             let timeString: string = this.model.timeCreated.toLocaleTimeString(
                 undefined, {
