@@ -154,9 +154,7 @@ class ResultsHighlighter {
         Jupyter.notebook.events.on('finished_execute.CodeCell', (_: Jupyter.Event, data: { cell: CodeCell }) => {
             let cell = data.cell;
             let nbCell = new NotebookCell(cell);
-            if (!nbCell.hasError) {
-                gatherModel.lastExecutedCell = nbCell;
-            }
+            gatherModel.lastExecutedCell = nbCell;
         });
 
         document.body.addEventListener("mouseup", (event: MouseEvent) => {

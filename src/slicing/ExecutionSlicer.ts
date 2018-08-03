@@ -79,7 +79,6 @@ export class ExecutionLogSlicer {
 
         return this.executionLog
             .filter((execution) => execution.cellId == cell.id)
-            .filter((execution) => !execution.hasError)
             .map((execution) => {
 
                 // Build the program up to that cell.

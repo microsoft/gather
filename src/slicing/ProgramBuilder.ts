@@ -78,7 +78,7 @@ export class ProgramBuilder {
 
         let sortedCells = this._cells
             .filter(cell => cell.executionCount != null && cell.executionCount <= lastCell.executionCount)
-            .filter(cell => !cell.hasError)
+            .filter(cell => !cell.hasError || cell.id == cellId)  // can have error only if it's the last cell
             .sort((cell1, cell2) => cell1.executionCount - cell2.executionCount);
 
         let code = "";
