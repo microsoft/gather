@@ -7,11 +7,13 @@ describe('SlicedExecution', () => {
 
     function cell(id: string, executionCount: number, ...codeLines: string[]): ICell {
         let newCell = {
+            is_cell: true,
             id: id,
             executionCount: executionCount,
             text: codeLines.join('\n'),
             hasError: false,
             isCode: true,
+            gathered: false,
             copy: () => newCell
         };
         return newCell;

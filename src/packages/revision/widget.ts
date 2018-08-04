@@ -3,6 +3,7 @@ import { Widget } from '@phosphor/widgets';
 import { IRevisionModel } from './model';
 import { CodeVersion } from '../codeversion';
 import { GatherState } from '../gather';
+import { log } from '../../utils/log';
 
 /**
  * The class name added to revision widgets
@@ -89,25 +90,7 @@ export class Revision<TOutputModel> extends Widget {
             else if (minutes > 0) headerText = relativeTime(minutes, "minute");
             else if (seconds > 0) headerText = relativeTime(seconds, "second");
             else headerText = "Milliseconds ago";
-
         }
-        
-        /*
-        if (this.model.timeCreated) {
-            let dateString: string = this.model.timeCreated.toLocaleDateString(
-                undefined, {
-                    day: "numeric",
-                    month: "long",
-                    // year: "numeric"
-                });
-            let timeString: string = this.model.timeCreated.toLocaleTimeString(
-                undefined, {
-                    hour: "numeric",
-                    minute: "2-digit"
-                });
-            headerText += (" (" + dateString + " " + timeString + ")");
-        }
-        */
 
         header.textContent = headerText;
         let headerWidget: Widget = new Widget({ node: header });
@@ -129,6 +112,11 @@ export class Revision<TOutputModel> extends Widget {
         notebookLabel.appendChild(notebookText);
         notebookButton.node.appendChild(notebookLabel);
         notebookButton.node.onclick = () => {
+            log("Revision browser: Gathering version to notebook", {
+                slice: this.model.slice,
+                versionIndex: this.model.versionIndex,
+                isLatest: this.model.isLatest
+            });
             let gatherModel = this.model.gatherModel;
             gatherModel.addChosenSlices(this.model.slice);
             gatherModel.requestStateChange(GatherState.GATHER_TO_NOTEBOOK);
@@ -145,6 +133,11 @@ export class Revision<TOutputModel> extends Widget {
         copyLabel.appendChild(copyText);
         copyButton.node.appendChild(copyLabel);
         copyButton.node.onclick = () => {
+            log("Revision browser: Gathering version to clipboard", {
+                slice: this.model.slice,
+                versionIndex: this.model.versionIndex,
+                isLatest: this.model.isLatest
+            });
             let gatherModel = this.model.gatherModel;
             gatherModel.addChosenSlices(this.model.slice);
             gatherModel.requestStateChange(GatherState.GATHER_TO_CLIPBOARD);

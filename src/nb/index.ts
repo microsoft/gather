@@ -1,6 +1,6 @@
 import Jupyter = require('base/js/namespace');
 import * as utils from "base/js/utils";
-import { Cell, CodeCell, notification_area, Notebook } from 'base/js/namespace';
+import { Cell, CodeCell, notification_area, OutputArea, Notebook } from 'base/js/namespace';
 import { Widget } from '@phosphor/widgets';
 
 import { NotebookCell, copyCodeCell } from './NotebookCell';
@@ -13,12 +13,13 @@ import { GatherController } from '../packages/gather/controller';
 import { GatherToClipboardButton, ClearButton, GatherToNotebookButton, MergeButton, GatherHistoryButton } from './buttons';
 import { ICellClipboard, IClipboardListener } from '../packages/gather/clipboard';
 import { INotebookOpener } from '../packages/gather/opener';
-import { initLogger } from '../utils/log';
+import * as log from '../utils/log';
+import { RevisionBrowser } from './RevisionBrowser';
 
 import 'codemirror/mode/python/python';
 import '../../style/nb-vars.css';
 import '../../style/index.css';
-import { RevisionBrowser } from './RevisionBrowser';
+import { IReplacer } from '../utils/replacers';
 
 
 /**
@@ -31,10 +32,98 @@ var notificationWidget: Jupyter.NotificationWidget;
  */
 var executionHistory: ExecutionHistory;
 
+function getCellOutputLogData(outputArea: OutputArea) {
+    // TODO: consider checking for HTML tables.
+    let outputData = [];
+    if (outputArea && outputArea.outputs && outputArea.outputs.length > 0) {
+        for (let output of outputArea.outputs) {
+            let type = output.output_type;
+            let mimeTags: string[] = [];
+            let data = output.data;
+            if (data && Object.keys(data)) {
+                mimeTags = Object.keys(data);
+            }
+            outputData.push({ type, mimeTags });
+        }
+    }
+}
+
 /**
- * Initialize logging.
+ * Replaces Jupyter notebook cell widgets with cleaned-up JSON.
  */
-initLogger({ ajax: utils.ajax });
+class NbCellReplacer implements IReplacer {
+    replace(_: string, value: any): any {
+        if (value instanceof CodeCell) {
+            return {
+                type: "code",
+                id: value.cell_id,
+                executionCount: value.input_prompt_number,
+                lineCount: value.code_mirror.getValue().split("\n").length,
+                gathered: value.metadata && value.metadata.gathered,
+                output: getCellOutputLogData(value.output_area)
+            }
+        } else if (value instanceof Cell) {
+            return {
+                type: "other",
+                id: value.cell_id,
+                executionCount: null,
+                lineCount: value.code_mirror.getValue().split("\n").length,
+                gathered: value.metadata && value.metadata.gathered
+            }
+        }
+        return value;
+    }
+}
+
+/**
+ * Replaces our notebook cell wrappers with cleaned-up JSON.
+ */
+class NotebookCellReplacer implements IReplacer {
+    replace(_: string, value: any): any {
+        if (value instanceof NotebookCell) {
+            let outputData = getCellOutputLogData(value.output);
+            return {
+                id: value.id,
+                executionCount: value.executionCount,
+                lineCount: value.text.split("\n").length,
+                output: outputData,
+                hasError: value.hasError,
+                gathered: value.gathered
+            }
+        }
+        return value;
+    }
+}
+
+/**
+ * Collects log information about the notebook for each log call.
+ */
+class NbStatePoller implements log.IStatePoller {
+    /**
+     * Construct a new poller for notebook state.
+     */
+    constructor(notebook: Notebook) {
+        this._notebook = notebook;
+    }
+
+    /**
+     * Collect state information about the notebook.
+     */
+    poll(): any {
+        return {
+            gathered: this._notebook.metadata && this._notebook.metadata.gathered,
+            numCells: this._notebook.get_cells().length,
+            codeCellIds: this._notebook.get_cells()
+                .filter((c) => c.cell_type == "code")
+                .map((c) => [c.cell_id, (c as CodeCell).input_prompt_number]),
+            numLines: this._notebook.get_cells()
+                .filter((c) => c.cell_type == "code")
+                .reduce((lineCount, c) => { return lineCount + c.code_mirror.getValue().split("\n").length }, 0)
+        }
+    }
+
+    private _notebook: Notebook;
+}
 
 /**
  * Saves each cell execution to a history.
@@ -69,6 +158,63 @@ class ExecutionHistory {
                 this._cellWithUndefinedCount = cell;
             }
         });
+    }
+}
+
+/**
+ * Logs edit and execution events in the notebook.
+ */
+class NotebookEventLogger {
+    /**
+     * Construct a new event logger for the notebook.
+     */
+    constructor(notebook: Notebook) {
+        notebook.events.on('create.Cell', (_: Jupyter.Event, data: { cell: Cell, index: number }) => {
+            log.log("Created cell", { cell: data.cell, index: data.index });
+        })
+        notebook.events.on('change.Cell', (_: Jupyter.Event, data: { cell: Cell, change: CodeMirror.EditorChange }) => {
+            let change = data.change;
+            log.log("Changed contents of cell", {
+                cell: data.cell,
+                newCharacters: change.text.reduce((len, line) => { return len + line.length }, 0),
+                removedCharacters: change.text.reduce((len, line) => { return len + line.length }, 0)
+            });
+        });
+        notebook.events.on('select.Cell', (_: Jupyter.Event, data: { cell: Cell, extendSelection: boolean }) => {
+            log.log("Cell selected", { cell: data.cell, extendSelection: data.extendSelection });
+        });
+        notebook.events.on('delete.Cell', (_: Jupyter.Event, data: { cell: Cell, index: number }) => {
+            log.log("Deleted cell", { cell: data.cell, index: data.index });
+        });
+        // To my knowledge, the cell that this saves will have the most recent version of the output.
+        notebook.events.on('finished_execute.CodeCell', (_: Jupyter.Event, data: { cell: CodeCell }) => {
+            log.log("Executed cell", { cell: data.cell });
+        });
+        notebook.events.on('kernel_restarting.Kernel', () => {
+            log.log("Restarting kernel");
+        });
+        notebook.events.on('checkpoint_created.Notebook', () => {
+            log.log("Created checkpoint");
+        });
+        notebook.events.on('checkpoint_failed.Notebook', () => {
+            log.log("Failed to create checkpoint");
+        });
+        // XXX: Triggered by both restoring a checkpoint and deleting it. Weird.
+        notebook.events.on('notebook_restoring.Notebook', () => {
+            log.log("Attempting to restore checkpoint");
+        });
+        notebook.events.on('checkpoint_restore_failed.Notebook', () => {
+            log.log("Failed to restore checkpoint");
+        });
+        notebook.events.on('checkpoint_restored.Notebook', () => {
+            log.log("Succeeded at restoring checkpoint");
+        });
+        notebook.events.on('checkpoint_delete_failed.Notebook', () => {
+            log.log("Failed to delete checkpoint");
+        });
+        notebook.events.on('checkpoint_deleted.Notebook', () => {
+            log.log("Succeeeded at deleting checkpoint");
+        })
     }
 }
 
@@ -166,10 +312,10 @@ class ResultsHighlighter {
 /**
  * Convert program slice to list of cell JSONs
  */
-function sliceToCellJson(slice: SlicedExecution, annotate?: boolean): CellJson[] {
+function sliceToCellJson(slice: SlicedExecution, annotatePaste?: boolean): CellJson[] {
     const SHOULD_SLICE_CELLS = true;
     const SHOULD_OMIT_NONTERMINAL_OUTPUT = true;
-    annotate = annotate || false;
+    annotatePaste = annotatePaste || false;
     return slice.cellSlices
     .map((cellSlice, i) => {
         let slicedCell = cellSlice.cell;
@@ -182,8 +328,10 @@ function sliceToCellJson(slice: SlicedExecution, annotate?: boolean): CellJson[]
             // This new cell hasn't been executed yet. So don't mark it as having been executed.
             cellJson.execution_count = null;
             // Add a flag to distinguish gathered cells from other cells.
-            if (annotate) {
-                cellJson.metadata.gathered = true;
+            cellJson.metadata.gathered = true;
+            // Add a flag so we can tell if this cell was just pasted, so we can merge it.
+            if (annotatePaste) {
+                cellJson.metadata.justPasted = true;
             }
             // If this isn't the last cell, don't include its output.
             if (SHOULD_OMIT_NONTERMINAL_OUTPUT && i != slice.cellSlices.length - 1) {
@@ -257,6 +405,7 @@ class NotebookOpener implements INotebookOpener {
         // Make boilerplate, empty notebook JSON.
         let notebookJson = this._notebook.toJSON();
         notebookJson.cells = [];
+        notebookJson.metadata.gathered = true;
 
         // Replace the notebook model's cells with the copied cells.
         if (slice) {
@@ -281,6 +430,17 @@ const GATHER_PREFIX = 'gather_extension';
 
 export function load_ipython_extension() {
     console.log('extension started');
+
+    /**
+     * Initialize logging.
+     */
+    log.initLogger({ ajax: utils.ajax });
+    log.registerReplacers(
+        new NbCellReplacer(),
+        new NotebookCellReplacer()
+    );
+    log.registerPollers(new NbStatePoller(Jupyter.notebook));
+    new NotebookEventLogger(Jupyter.notebook);
 
     // Object containing global UI state.
     let gatherModel = new GatherModel();
@@ -354,17 +514,17 @@ export function load_ipython_extension() {
     document.body.appendChild(revisionBrowser.node);
 
     // When pasting gathered cells, select those cells. This is hacky: we add a flag to the
-    // gathered cells so we can find them right after the paste, as there is no listener for
-    // pasting gathered cells in the notebook API.
+    // gathered cells (justPasted) so we can find them right after the paste, as there is no
+    // listener for pasting gathered cells in the notebook API.
     Jupyter.notebook.events.on('select.Cell', (_: Jupyter.Event, data: { cell: Cell }) => {
         
         let cell = data.cell;
-        if (cell.metadata.gathered) {
+        if (cell.metadata.justPasted) {
 
             // Select all of the gathered cells.
             let gatheredCellIndexes = cell.notebook.get_cells()
             .map((c, i): [Cell, number] => [c, i])
-            .filter(([c, i]) => c.metadata.gathered)
+            .filter(([c, i]) => c.metadata.justPasted)
             .map(([c, i]) => i);
             let firstGatheredIndex = Math.min(...gatheredCellIndexes);
             let lastGatheredIndex = Math.max(...gatheredCellIndexes);
@@ -374,23 +534,12 @@ export function load_ipython_extension() {
             // We won't use the `gathered` flag on these cells anymore, so remove them from the cells.
             cell.notebook.get_cells()
             .forEach((c) => {
-                if (c.metadata.gathered) {
-                    delete c.metadata.gathered;
+                if (c.metadata.justPasted) {
+                    delete c.metadata.justPasted;
                 }
             });
         }
     });    
-
-    // Add UI elements
-    // const menu = $('#menus ul.navbar-nav');
-    // const gather = $('<li class="dropdown"></li>').appendTo(menu);
-    // $('<a href="#" class="dropdown-toggle" data-toggle="dropdown">Gather</a>').appendTo(gather);
-    // const list = $('<ul id="gather_menu" class="dropdown-menu"></ul>').appendTo(gather);
-    // $('<li id="gather-to-notebook" title="Gather to notebook"><a href="#">Gather to notebook</a></li>')
-    //     .click(() => { gatherToNotebook(Jupyter.notebook) }).appendTo(list);
-    // $('<li id="gather-to-script" title="Gather to script"><a href="#">Gather to script</a></li>').appendTo(list);
-    // $('<li id="gather-to-clipboard title="Gather to clipboard"><a href="#">Gather to clipboard</a></li>')
-    //     .click(() => gatherToClipboard()).appendTo(list);
     
     notificationWidget = notification_area.new_notification_widget("gather");
 }

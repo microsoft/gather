@@ -70,10 +70,18 @@ export class NotebookCell implements IOutputterCell<OutputArea> {
         }
     }
 
+    get gathered(): boolean {
+        if (this._model.metadata && this._model.metadata.gathered) {
+            return this._model.metadata.gathered;
+        }
+        return false;
+    }
+
     copy(): NotebookCell {
         return new NotebookCell(copyCodeCell(this._model));
     }
 
+    is_cell: boolean = true;
     is_outputter_cell: boolean = true;
     private _model: CodeCell;
 }

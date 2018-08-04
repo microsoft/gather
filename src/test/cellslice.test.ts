@@ -6,6 +6,7 @@ describe('CellSlice', () => {
 
     it('yields a text slice based on a set of locations', () => {
         let cellSlice = new CellSlice({
+            is_cell: true,
             id: "id",
             text: [
                 "a = 1",
@@ -17,6 +18,7 @@ describe('CellSlice', () => {
             hasError: false,
             executionCount: 1,
             isCode: true,
+            gathered: false,
             copy: () => null
         }, new LocationSet(
             { first_line: 1, first_column: 0, last_line: 1, last_column: 5 },
@@ -31,6 +33,7 @@ describe('CellSlice', () => {
 
     it('yields entire lines if requested', () => {
         let cellSlice = new CellSlice({
+            is_cell: true,
             id: "id",
             text: [
                 "a = 1",
@@ -42,6 +45,7 @@ describe('CellSlice', () => {
             hasError: false,
             executionCount: 1,
             isCode: true,
+            gathered: false,
             copy: () => null
         }, new LocationSet(
             { first_line: 1, first_column: 0, last_line: 1, last_column: 5 },

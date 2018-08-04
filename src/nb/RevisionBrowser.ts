@@ -3,6 +3,7 @@ import { IGatherObserver, GatherModel, GatherModelEvent, GatherEventData, Gather
 import { buildHistoryModel, HistoryViewer } from "../packages/history";
 import { IOutputRenderer } from "../packages/revision";
 import { OutputArea } from "base/js/namespace";
+import { log } from "../utils/log";
 
 
 /**
@@ -95,6 +96,11 @@ export class RevisionBrowser extends Widget implements IGatherObserver {
             slices = model.getSelectedOutputSlices(outputSelections[0]);
             cellId = outputSelections[0].cell.id;
         }
+        log("Bringing up the revision browser for selection", {
+            cellId, slices,
+            selectedDefs: model.selectedDefs,
+            selectedOutputs: model.selectedOutputs
+        });
         if (slices && cellId) {
             let historyModel = buildHistoryModel<OutputArea>(
                 model, cellId, slices);
@@ -113,6 +119,7 @@ export class RevisionBrowser extends Widget implements IGatherObserver {
      * Dismiss this widget.
      */
     dismiss() {
+        log("Dismissing revision browser");
         this._gatherModel.requestStateChange(GatherState.SELECTING);
     }
 

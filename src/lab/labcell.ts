@@ -60,11 +60,16 @@ export class LabCell implements IOutputterCell<IOutputModel[]> {
         }
     }
 
+    get gathered(): boolean {
+        return this._model.metadata.get("gathered") as boolean;
+    }
+
     copy(): LabCell {
         let clonedModel = copyICodeCellModel(this._model);
         return new LabCell(clonedModel);
     }
 
+    is_cell: boolean = true;
     is_outputter_cell: boolean = true;
     private _model: ICodeCellModel;
 }

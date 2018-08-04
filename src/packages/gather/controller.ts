@@ -4,6 +4,7 @@ import { DefSelection, OutputSelection } from "./selections";
 import { LocationSet } from "../../slicing/Slice";
 import { ICellClipboard } from "./clipboard";
 import { INotebookOpener } from "./opener";
+import { log } from "../../utils/log";
 
 /**
  * Controller for updating the gather model.
@@ -32,9 +33,11 @@ export class GatherController implements IGatherObserver {
                 let slices = model.chosenSlices;
                 let mergedSlice = slices[0].merge(...slices.slice(1));
                 if (newState == GatherState.GATHER_TO_CLIPBOARD) {
+                    log("Gathering to clipboard", { slice: mergedSlice });
                     this._cellClipboard.copy(mergedSlice);
                     model.requestStateChange(GatherState.RESET);
                 } else if (newState == GatherState.GATHER_TO_NOTEBOOK) {
+                    log("Gathering to notebook", { slice: mergedSlice });
                     this._notebookOpener.openNotebookForSlice(mergedSlice);
                     model.resetChosenSlices();
                     model.requestStateChange(GatherState.SELECTING);

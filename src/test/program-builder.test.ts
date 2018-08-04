@@ -7,7 +7,8 @@ describe('program builder', () => {
 
     function createCell(id: string, executionCount: number, ...codeLines: string[]): ICell {
         let text = codeLines.join("\n");
-        return { id, executionCount, text: text, hasError: false, isCode: true, copy: () => null };
+        return { is_cell: true, id, executionCount, text: text, hasError: false, isCode: true,
+            gathered: false, copy: () => null };
     }
 
     let programBuilder: ProgramBuilder;

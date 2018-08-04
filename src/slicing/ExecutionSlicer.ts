@@ -77,13 +77,19 @@ export class ExecutionLogSlicer {
      */
     public sliceAllExecutions(cell: ICell, pSeedLocations?: LocationSet): SlicedExecution[] {
 
+        // Make a map from cells to their execution times.
+        let cellExecutionTimes:  { [cellId: string]: { [executionCount: number]: Date } } = {};
+        for (let execution of this.executionLog) {
+            if (!cellExecutionTimes[execution.cellId]) cellExecutionTimes[execution.cellId] = {};
+            cellExecutionTimes[execution.cellId][execution.executionCount] = execution.executionTime;
+        }
+
         return this.executionLog
             .filter((execution) => execution.cellId == cell.id)
             .map((execution) => {
 
                 // Build the program up to that cell.
                 let program = this.programBuilder.buildTo(execution.cellId, execution.executionCount);
-
                 let seedLocations;
                 if (pSeedLocations) {
                     seedLocations = pSeedLocations;
@@ -136,8 +142,13 @@ export class ExecutionLogSlicer {
                 });
 
                 let cellSlices = cellOrder.map((sliceCell): CellSlice => {
+                    let executionTime = undefined;
+                    if (cellExecutionTimes[sliceCell.id] && cellExecutionTimes[sliceCell.id][sliceCell.executionCount]) {
+                        executionTime = cellExecutionTimes[sliceCell.id][sliceCell.executionCount];
+                    }
                     return new CellSlice(sliceCell,
-                        cellSliceLocations[sliceCell.id][sliceCell.executionCount]);
+                        cellSliceLocations[sliceCell.id][sliceCell.executionCount],
+                        executionTime);
                 });
                 return new SlicedExecution(execution.executionTime, cellSlices);
             });

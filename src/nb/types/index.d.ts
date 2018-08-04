@@ -18,6 +18,7 @@ declare namespace Jupyter {
         enable_paste: () => void;
         paste_enabled: boolean;
         toJSON: () => NotebookJson;
+        metadata: NotebookMetadata;
     }
 
     interface Dialog {
@@ -48,9 +49,14 @@ declare namespace Jupyter {
         events: Events;
         keyboard_manager: KeyboardManager;
     }
+    interface CellConstructor {
+        new(options: any): Cell;
+    }
+    var Cell: CellConstructor;
 
     interface Output {
         output_type: string;
+        data: { [mimeType: string]: any }
     }
 
     interface OutputArea {
@@ -153,9 +159,19 @@ declare namespace Jupyter {
 // toJSON method on notebooks.
 declare interface NotebookJson {
     cells: CellJson[];
+    metadata: NotebookJsonMetadata;
+}
+
+declare interface NotebookMetadata {
+    gathered?: boolean;
 }
 
 declare interface CellMetadata {
+    gathered?: boolean;
+    justPasted?: boolean;
+}
+
+declare interface NotebookJsonMetadata {
     gathered?: boolean;
 }
 
@@ -169,6 +185,7 @@ declare interface CellJson {
 
 declare interface CellJsonMetadata {
     gathered?: boolean;
+    justPasted?: boolean;
 }
 
 // declare const Jupyter: Jupyter.JupyterStatic;

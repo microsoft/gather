@@ -4,12 +4,18 @@ import { LocationSet } from "../../slicing/Slice";
  * Generic interface for accessing cell data.
  */
 export interface ICell {
+    is_cell: boolean;
     id: string;
     executionCount: number;
     hasError: boolean;
     isCode: boolean;
     text: string;
+    gathered: boolean;
     copy: () => ICell // deep copy if holding a model.
+}
+
+export function instanceOfICell(object: any): object is ICell {
+    return object && typeof(object) == "object" && "is_cell" in object;
 }
 
 /**
@@ -24,7 +30,7 @@ export interface IOutputterCell<TOutputModel> extends ICell {
  * Type checker for IOutputterCell.
  */
 export function instanceOfIOutputterCell<TOutputModel>(object: any): object is IOutputterCell<TOutputModel> {
-    return "is_outputter_cell" in object;
+    return object && typeof(object) == "object" && "is_outputter_cell" in object;
 }
 
 /**
@@ -35,9 +41,10 @@ export class CellSlice {
     /**
      * Construct an instance of a cell slice.
      */
-    constructor(cell: ICell, slice: LocationSet) {
+    constructor(cell: ICell, slice: LocationSet, executionTime?: Date) {
         this.cell = cell;
         this._slice = slice;
+        this.executionTime = executionTime;
     }
 
     /**
@@ -101,5 +108,6 @@ export class CellSlice {
     }
 
     readonly cell: ICell;
+    readonly executionTime: Date;
     private _slice: LocationSet;
 }

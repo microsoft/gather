@@ -10,6 +10,7 @@ import { MagicsRewriter } from "../../slicing/MagicsRewriter";
 import { GatherModel, IGatherObserver, GatherEventData, GatherModelEvent, EditorDef, DefSelection, OutputSelection } from "../gather";
 import { ICell } from "./model";
 import { SlicedExecution } from "../../slicing/ExecutionSlicer";
+import { log } from "../../utils/log";
 
 /**
  * Class for a highlighted, clickable output.
@@ -189,6 +190,7 @@ export class MarkerManager implements IGatherObserver {
                 this._model.addEditorDef({ def: def, editor: editor, cell: cell });
             });
         });
+        log("Highlighted definitions", { numActive: this._defMarkers.length });
     }
 
     /**
@@ -207,6 +209,7 @@ export class MarkerManager implements IGatherObserver {
             });
             this._outputMarkers.push(outputMarker);
         }
+        log("Highlighted outputs", { numActive: this._outputMarkers.length });
     }
 
     /**
@@ -218,17 +221,21 @@ export class MarkerManager implements IGatherObserver {
             let sliceLocations = cellSlice.slice;
             let editor = this._cellEditorResolver.resolve(cell);
             if (editor) {
+                let numLines = 0;
                 sliceLocations.items.forEach((loc) => {
                     for (let lineNumber = loc.first_line - 1; lineNumber <= loc.last_line -1; lineNumber++) {
+                        numLines += 1;
                         let lineHandle = editor.addLineClass(lineNumber, "background", DEPENDENCY_CLASS);
                         this._dependencyLineMarkers.push({ editor: editor, lineHandle: lineHandle });
                     }
                 });
+                log("Added lines for def (may be overlapping)", { numLines });
             }
         });
     }
 
     private _clearDependencyLineMarkers() {
+        log("Cleared all dependency line markers");
         this._dependencyLineMarkers.forEach((marker) => {
             marker.editor.removeLineClass(marker.lineHandle, "background", DEPENDENCY_CLASS);
         })
@@ -259,6 +266,7 @@ class OutputMarker {
                 this.toggleSelected();
                 this._onToggle(this._selected);
             }
+            log("Clicked on output area", { outputIndex, cell, toggledOn: this._selected });
         }
     }
 
@@ -309,6 +317,7 @@ class DefMarker {
             if (editorMarkers.indexOf(this.marker) != -1) {
                 if (this.clickHandler) {
                     this.toggleSelected();
+                    log("Clicked on definition", { toggledOn: this._selected, cell: this.cell });
                     this.clickHandler(this.cell, this.location, this._selected);
                 }
                 event.preventDefault();

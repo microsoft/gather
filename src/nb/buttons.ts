@@ -1,6 +1,7 @@
 import { GatherModel, IGatherObserver, GatherModelEvent, GatherEventData, GatherState } from "../packages/gather";
 import { Widget } from "@phosphor/widgets";
 import { Action, Actions, Notebook } from "base/js/namespace";
+import { log } from "../utils/log";
 
 
 /**
@@ -31,7 +32,11 @@ export class MergeButton implements Button {
         icon: 'fa-compress',
         help: 'Merge selected cells',
         help_index: 'merge-cells',
-        handler: () => { this._actions.call("jupyter-notebook:merge-cells"); }
+        handler: () => {
+            let selectedCells = this._notebook.get_selected_cells();
+            log("Button: Mergin cells", { selectedCells: selectedCells });
+            this._actions.call("jupyter-notebook:merge-cells");
+        }
     };
 
     /**
@@ -149,9 +154,13 @@ export class GatherToClipboardButton extends GatherButton {
      */
     onClick() {
         if (this._gatherModel.selectedSlices.length >= 1) {
+            log("Button: Clicked gather to clipboard with selections", {
+                selectedDefs: this._gatherModel.selectedDefs,
+                selectedOutputs: this._gatherModel.selectedOutputs });
             this._gatherModel.addChosenSlices(...this._gatherModel.selectedSlices.map((sel) => sel.slice));
             this._gatherModel.requestStateChange(GatherState.GATHER_TO_CLIPBOARD);
         } else {
+            log("Button: Clicked gather to clipboard without selections");
             window.alert("To gather, you must first select some definitions or results from the notebook.");
         }
     }
@@ -179,9 +188,13 @@ export class GatherToNotebookButton extends GatherButton {
      */
     onClick() {
         if (this._gatherModel.selectedSlices.length >= 1) {
+            log("Button: Clicked gather to notebook with selections", {
+                selectedDefs: this._gatherModel.selectedDefs,
+                selectedOutputs: this._gatherModel.selectedOutputs });
             this._gatherModel.addChosenSlices(...this._gatherModel.selectedSlices.map((sel) => sel.slice));
             this._gatherModel.requestStateChange(GatherState.GATHER_TO_NOTEBOOK);
         } else {
+            log("Button: Clicked gather to clipboard without selections");
             window.alert("To gather, you must first select some definitions or results from the notebook.");
         }
     }
@@ -209,10 +222,15 @@ export class GatherHistoryButton extends GatherButton {
      */
     onClick() {
         if (this._gatherModel.selectedSlices.length == 1) {
+            log("Button: Clicked gather to history with a selection", {
+                selectedDefs: this._gatherModel.selectedDefs,
+                selectedOutputs: this._gatherModel.selectedOutputs });
             this._gatherModel.requestStateChange(GatherState.GATHER_HISTORY);
         } else if (this._gatherModel.selectedSlices.length == 0) {
+            log("Button: Clicked gather to history without any selections");
             window.alert("To gather, you must first select some definitions or results from the notebook.");
         } else if (this._gatherModel.selectedSlices.length > 1) {
+            log("Button: Clicked gather to history with too many selections");
             window.alert("To gather history, you can only select one variable or result.");
         }
     }
@@ -256,6 +274,9 @@ export class ClearButton extends GatherButton {
      * Handle click event
      */
     onClick() {
+        log("Button: Clicked to clear selections", {
+            selectedDefs: this._gatherModel.selectedDefs,
+            selectedOutputs: this._gatherModel.selectedOutputs });
         this._gatherModel.requestStateChange(GatherState.RESET);
     }
 }

@@ -17,6 +17,9 @@ export type DefSelection = {
     editorDef: EditorDef,
     cell: ICell
 }
+export function instanceOfDefSelection(object: any): object is DefSelection {
+    return object && typeof(object) == "object" && "editorDef" in object && "cell" in object;
+}
 
 /**
  * A slice selected for a def.
@@ -41,4 +44,7 @@ export type EditorDef = {
 export type OutputSelection = {
     outputIndex: number,
     cell: ICell
+}
+export function instanceOfOutputSelection(object: any): object is OutputSelection {
+    return object && typeof(object) == "object" && "outputIndex" in object && "cell" in object;
 }
