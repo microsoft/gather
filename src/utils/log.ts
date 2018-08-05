@@ -55,12 +55,19 @@ export function registerReplacers(...replacers: IReplacer[]) {
  * This is the main place we'll make sure we aren't logging anything sensitive.
  */
 function replaceEntry(key: string, value: any) {
-    console.log("Considering key", key);
-    let newValue = value;
+    // We try to replace `this[key]` instead of `value` as this lets us pass in the value before
+    // its `toJSON` method has been called. But if none of the replacers do anything to this
+    // unprocessed value, use the processed `value` that JSON.stringify provides (i.e. that 
+    // turns functions to nulls, Dates to strings, etc.) 
+    let unprocessedValue = this[key];
+    let newValue = unprocessedValue;
     for (let replacer of _replacers.concat(_defaultReplacers)) {
-        // We use `this[key]` instead of `value` as this lets us pass in the value before its
-        // `toJSON` method has been called.
-        newValue = replacer.replace(key, this[key]);
+        newValue = replacer.replace(key, newValue);
+    }
+    // If the value hasn't been transformed by the replacers, then return the version that was
+    // processed by JSON.stringify (`value`).
+    if (unprocessedValue == newValue) {
+        return value;
     }
     return newValue;
 }

@@ -38,7 +38,7 @@ export class CellReplacer implements IReplacer {
 /**
  * Replaces def selections with bare information.
  */
-export class DefSelectionReplacer implements DefSelectionReplacer {
+export class DefSelectionReplacer implements IReplacer {
     replace(_: string, value: any) {
         if (instanceOfDefSelection(value)) {
             return {

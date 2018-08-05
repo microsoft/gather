@@ -31,7 +31,7 @@ export class SlicedExecution {
                 let cell = cellSlice.cell;
                 if (!cellSlices.hasOwnProperty(cell.id)) cellSlices[cell.id] = {};
                 if (!cellSlices[cell.id].hasOwnProperty(cell.executionCount)) {
-                    let newCellSlice = new CellSlice(cell.copy(), new LocationSet());
+                    let newCellSlice = new CellSlice(cell.copy(), new LocationSet(), cellSlice.executionTime);
                     cellSlices[cell.id][cell.executionCount] = newCellSlice;
                     mergedCellSlices.push(newCellSlice);
                 }

@@ -177,7 +177,7 @@ class NotebookEventLogger {
             log.log("Changed contents of cell", {
                 cell: data.cell,
                 newCharacters: change.text.reduce((len, line) => { return len + line.length }, 0),
-                removedCharacters: change.text.reduce((len, line) => { return len + line.length }, 0)
+                removedCharacters: change.removed.reduce((len, line) => { return len + line.length }, 0)
             });
         });
         notebook.events.on('select.Cell', (_: Jupyter.Event, data: { cell: Cell, extendSelection: boolean }) => {
