@@ -2,6 +2,7 @@ import { GatherModel, IGatherObserver, GatherModelEvent, GatherEventData, Gather
 import { Widget } from "@phosphor/widgets";
 import { Action, Actions, Notebook } from "base/js/namespace";
 import { log } from "../utils/log";
+import { nbCellToJson } from "./NotebookCell";
 
 
 /**
@@ -34,7 +35,9 @@ export class MergeButton implements Button {
         help_index: 'merge-cells',
         handler: () => {
             let selectedCells = this._notebook.get_selected_cells();
-            log("Button: Mergin cells", { selectedCells: selectedCells });
+            log("Button: Merging cells", {
+                selectedCells: selectedCells.map((c) => nbCellToJson(c))
+            });
             this._actions.call("jupyter-notebook:merge-cells");
         }
     };

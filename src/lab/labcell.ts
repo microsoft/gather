@@ -1,4 +1,4 @@
-import { IOutputterCell } from "../packages/cell";
+import { AbstractOutputterCell } from "../packages/cell";
 import { ICodeCellModel, CodeCellModel } from "@jupyterlab/cells";
 import { IOutputModel } from "@jupyterlab/rendermime";
 
@@ -12,9 +12,10 @@ export function copyICodeCellModel(cell: ICodeCellModel): ICodeCellModel {
 /**
  * Implementation of SliceableCell for Jupyter Lab. Wrapper around the ICodeCellModel.
  */
-export class LabCell implements IOutputterCell<IOutputModel[]> {
+export class LabCell extends AbstractOutputterCell<IOutputModel[]> {
 
     constructor(model: ICodeCellModel) {
+        super();
         this._model = model;
     }
     

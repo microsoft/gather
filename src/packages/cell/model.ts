@@ -14,12 +14,41 @@ export interface ICell {
     copy: () => ICell // deep copy if holding a model.
 }
 
+/**
+ * Abstract class for accessing cell data.
+ */
+export abstract class AbstractCell implements ICell {
+
+    abstract is_cell: boolean;
+    abstract id: string;
+    abstract executionCount: number;
+    abstract hasError: boolean;
+    abstract isCode: boolean;
+    abstract text: string;
+    abstract gathered: boolean;
+    abstract copy(): AbstractCell;
+
+    /**
+     * Output descriptive (unsensitive) data about this cell.
+     */
+    toJSON(): any {
+        return {
+            id: this.id,
+            executionCount: this.executionCount,
+            lineCount: this.text.split("\n").length,
+            isCode: this.isCode,
+            hasError: this.hasError,
+            gathered: this.gathered
+        };
+    }
+}
+
 export function instanceOfICell(object: any): object is ICell {
     return object && typeof(object) == "object" && "is_cell" in object;
 }
 
 /**
- * Cell interface with data.
+ * Cell interface with output data.
  */
 export interface IOutputterCell<TOutputModel> extends ICell {
     is_outputter_cell: boolean;
@@ -31,6 +60,16 @@ export interface IOutputterCell<TOutputModel> extends ICell {
  */
 export function instanceOfIOutputterCell<TOutputModel>(object: any): object is IOutputterCell<TOutputModel> {
     return object && typeof(object) == "object" && "is_outputter_cell" in object;
+}
+
+/**
+ * Abstract class for a cell with output data.
+ */
+export abstract class AbstractOutputterCell<TOutputModel>
+        extends AbstractCell implements IOutputterCell<TOutputModel> {
+
+    readonly is_outputter_cell: boolean = true;
+    abstract output: TOutputModel;
 }
 
 /**

@@ -148,7 +148,7 @@ export class MarkerManager implements IGatherObserver {
             { line: def.location.last_line - 1, ch: def.location.last_column },
             { className: DEFINITION_CLASS }
         );
-        let defSelection = { editorDef: editorDef, cell: editorDef.cell };
+        let defSelection = new DefSelection({ editorDef: editorDef, cell: editorDef.cell });
         let clickHandler = (_: ICell, __: ILocation, selected: boolean) => {
             if (selected) {
                 this._model.selectDef(defSelection);

@@ -1,5 +1,5 @@
-import { IOutputterCell } from "../packages/cell";
-import { CodeCell, OutputArea, notebook } from 'base/js/namespace';
+import { AbstractOutputterCell } from "../packages/cell";
+import { CodeCell, OutputArea, notebook, Cell } from 'base/js/namespace';
 
 /**
  * Create a new cell with the same ID and content.
@@ -20,9 +20,10 @@ export function copyCodeCell(cell: CodeCell): CodeCell {
 /**
  * Implementation of SliceableCell for Jupyter Lab. Wrapper around the ICodeCellModel.
  */
-export class NotebookCell implements IOutputterCell<OutputArea> {
+export class NotebookCell extends AbstractOutputterCell<OutputArea> {
 
     constructor(model: CodeCell) {
+        super();
         this._model = model;
     }
     
@@ -81,7 +82,56 @@ export class NotebookCell implements IOutputterCell<OutputArea> {
         return new NotebookCell(copyCodeCell(this._model));
     }
 
+    toJSON(): any {
+        let baseJson = super.toJSON();
+        baseJson.output = getCellOutputLogData(this.output);
+    }
+
     is_cell: boolean = true;
     is_outputter_cell: boolean = true;
     private _model: CodeCell;
+}
+
+/**
+ * Get the JSON for a Jupyter notebook internal representation of an output area.
+ */
+function getCellOutputLogData(outputArea: OutputArea) {
+    // TODO: consider checking for HTML tables.
+    let outputData = [];
+    if (outputArea && outputArea.outputs && outputArea.outputs.length > 0) {
+        for (let output of outputArea.outputs) {
+            let type = output.output_type;
+            let mimeTags: string[] = [];
+            let data = output.data;
+            if (data && Object.keys(data)) {
+                mimeTags = Object.keys(data);
+            }
+            outputData.push({ type, mimeTags });
+        }
+    }
+}
+
+/**
+ * Convert from Jupyter notebook's internal cell representation to an unsensitized summary
+ * of the cell's contents.
+ */
+export function nbCellToJson(cell: Cell): any {
+    if (cell instanceof CodeCell) {
+        return {
+            type: "code",
+            id: cell.cell_id,
+            executionCount: cell.input_prompt_number,
+            lineCount: cell.code_mirror.getValue().split("\n").length,
+            gathered: cell.metadata && cell.metadata.gathered,
+            output: getCellOutputLogData(cell.output_area)
+        }
+    } else if (cell instanceof Cell) {
+        return {
+            type: "other",
+            id: cell.cell_id,
+            executionCount: null,
+            lineCount: cell.code_mirror.getValue().split("\n").length,
+            gathered: cell.metadata && cell.metadata.gathered
+        }
+    }
 }

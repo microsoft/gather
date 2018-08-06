@@ -1,9 +1,9 @@
 import Jupyter = require('base/js/namespace');
 import * as utils from "base/js/utils";
-import { Cell, CodeCell, notification_area, OutputArea, Notebook } from 'base/js/namespace';
+import { Cell, CodeCell, notification_area, Notebook } from 'base/js/namespace';
 import { Widget } from '@phosphor/widgets';
 
-import { NotebookCell, copyCodeCell } from './NotebookCell';
+import { NotebookCell, copyCodeCell, nbCellToJson } from './NotebookCell';
 import { ExecutionLogSlicer, SlicedExecution } from '../slicing/ExecutionSlicer';
 import { MarkerManager, ICell, CellEditorResolver, CellOutputResolver } from '../packages/cell';
 
@@ -19,7 +19,6 @@ import { RevisionBrowser } from './RevisionBrowser';
 import 'codemirror/mode/python/python';
 import '../../style/nb-vars.css';
 import '../../style/index.css';
-import { IReplacer } from '../utils/replacers';
 
 
 /**
@@ -31,69 +30,6 @@ var notificationWidget: Jupyter.NotificationWidget;
  * Logs cell executions.
  */
 var executionHistory: ExecutionHistory;
-
-function getCellOutputLogData(outputArea: OutputArea) {
-    // TODO: consider checking for HTML tables.
-    let outputData = [];
-    if (outputArea && outputArea.outputs && outputArea.outputs.length > 0) {
-        for (let output of outputArea.outputs) {
-            let type = output.output_type;
-            let mimeTags: string[] = [];
-            let data = output.data;
-            if (data && Object.keys(data)) {
-                mimeTags = Object.keys(data);
-            }
-            outputData.push({ type, mimeTags });
-        }
-    }
-}
-
-/**
- * Replaces Jupyter notebook cell widgets with cleaned-up JSON.
- */
-class NbCellReplacer implements IReplacer {
-    replace(_: string, value: any): any {
-        if (value instanceof CodeCell) {
-            return {
-                type: "code",
-                id: value.cell_id,
-                executionCount: value.input_prompt_number,
-                lineCount: value.code_mirror.getValue().split("\n").length,
-                gathered: value.metadata && value.metadata.gathered,
-                output: getCellOutputLogData(value.output_area)
-            }
-        } else if (value instanceof Cell) {
-            return {
-                type: "other",
-                id: value.cell_id,
-                executionCount: null,
-                lineCount: value.code_mirror.getValue().split("\n").length,
-                gathered: value.metadata && value.metadata.gathered
-            }
-        }
-        return value;
-    }
-}
-
-/**
- * Replaces our notebook cell wrappers with cleaned-up JSON.
- */
-class NotebookCellReplacer implements IReplacer {
-    replace(_: string, value: any): any {
-        if (value instanceof NotebookCell) {
-            let outputData = getCellOutputLogData(value.output);
-            return {
-                id: value.id,
-                executionCount: value.executionCount,
-                lineCount: value.text.split("\n").length,
-                output: outputData,
-                hasError: value.hasError,
-                gathered: value.gathered
-            }
-        }
-        return value;
-    }
-}
 
 /**
  * Collects log information about the notebook for each log call.
@@ -169,26 +105,32 @@ class NotebookEventLogger {
      * Construct a new event logger for the notebook.
      */
     constructor(notebook: Notebook) {
+        // For each of these events, for all cell data that we want to log, make sure to wrap it
+        // first in an `nbCellToJson`---otherwise, logging may crash from circular dependencies, and
+        // we may log data that wasn't intended to be logged.
         notebook.events.on('create.Cell', (_: Jupyter.Event, data: { cell: Cell, index: number }) => {
-            log.log("Created cell", { cell: data.cell, index: data.index });
+            log.log("Created cell", { cell: nbCellToJson(data.cell), index: data.index });
         })
         notebook.events.on('change.Cell', (_: Jupyter.Event, data: { cell: Cell, change: CodeMirror.EditorChange }) => {
             let change = data.change;
             log.log("Changed contents of cell", {
-                cell: data.cell,
+                cell: nbCellToJson(data.cell),
                 newCharacters: change.text.reduce((len, line) => { return len + line.length }, 0),
                 removedCharacters: change.removed.reduce((len, line) => { return len + line.length }, 0)
             });
         });
         notebook.events.on('select.Cell', (_: Jupyter.Event, data: { cell: Cell, extendSelection: boolean }) => {
-            log.log("Cell selected", { cell: data.cell, extendSelection: data.extendSelection });
+            log.log("Cell selected", {
+                cell: nbCellToJson(data.cell),
+                extendSelection: data.extendSelection
+            });
         });
         notebook.events.on('delete.Cell', (_: Jupyter.Event, data: { cell: Cell, index: number }) => {
-            log.log("Deleted cell", { cell: data.cell, index: data.index });
+            log.log("Deleted cell", { cell: nbCellToJson(data.cell), index: data.index });
         });
         // To my knowledge, the cell that this saves will have the most recent version of the output.
         notebook.events.on('finished_execute.CodeCell', (_: Jupyter.Event, data: { cell: CodeCell }) => {
-            log.log("Executed cell", { cell: data.cell });
+            log.log("Executed cell", { cell: nbCellToJson(data.cell) });
         });
         notebook.events.on('kernel_restarting.Kernel', () => {
             log.log("Restarting kernel");
@@ -435,10 +377,6 @@ export function load_ipython_extension() {
      * Initialize logging.
      */
     log.initLogger({ ajax: utils.ajax });
-    log.registerReplacers(
-        new NbCellReplacer(),
-        new NotebookCellReplacer()
-    );
     log.registerPollers(new NbStatePoller(Jupyter.notebook));
     new NotebookEventLogger(Jupyter.notebook);
 

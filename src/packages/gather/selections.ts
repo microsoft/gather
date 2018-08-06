@@ -12,13 +12,24 @@ export type UserSelection =
 
 /**
  * A def selected in a cell.
+ * Defined as a class so we can add a toJSON method for logging.
  */
-export type DefSelection = {
-    editorDef: EditorDef,
-    cell: ICell
-}
-export function instanceOfDefSelection(object: any): object is DefSelection {
-    return object && typeof(object) == "object" && "editorDef" in object && "cell" in object;
+export class DefSelection {
+    readonly editorDef: EditorDef;
+    readonly cell: ICell;
+
+    constructor(options: { editorDef: EditorDef, cell: ICell }) {
+        this.editorDef = options.editorDef;
+        this.cell = options.cell;
+    }
+
+    toJSON(): any {
+        return {
+            defType: this.editorDef.def.type,
+            defLevel: this.editorDef.def.level,
+            cell: this.cell
+        };
+    }
 }
 
 /**

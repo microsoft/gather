@@ -1,5 +1,3 @@
-import { IReplacer, CellReplacer, DefSelectionReplacer } from "./replacers";
-
 /**
  * Interface for calling Ajax. 
  */
@@ -25,51 +23,6 @@ let _ajaxCaller: AjaxCaller = undefined;
  */
 export function initLogger(ajaxCaller: AjaxCaller) {
     _ajaxCaller = ajaxCaller;
-}
-
-/**
- * List of replacers to be applied to logged objects to clean up the data.
- * Add to this list with `registerReplacer`. These are applied iteratively, so you can chain replacers.
- */
-let _replacers: IReplacer[] = [];
-
-/**
- * Default JSON data replacers. These are run after client-registered replacers.
- */
-let _defaultReplacers: IReplacer[] = [
-    new DefSelectionReplacer(),
-    new CellReplacer()
-];
-
-/**
- * Register a replacer. Useful for notebook / lab-specific loggers.
- * Unlike with the conventional JSON.stringify method, these replacers will be called on values
- * *before* their toJSON() methods have been called.
- */
-export function registerReplacers(...replacers: IReplacer[]) {
-    _replacers.push(...replacers);
-}
-
-/**
- * Replaces entries in a JSON object with something else.
- * This is the main place we'll make sure we aren't logging anything sensitive.
- */
-function replaceEntry(key: string, value: any) {
-    // We try to replace `this[key]` instead of `value` as this lets us pass in the value before
-    // its `toJSON` method has been called. But if none of the replacers do anything to this
-    // unprocessed value, use the processed `value` that JSON.stringify provides (i.e. that 
-    // turns functions to nulls, Dates to strings, etc.) 
-    let unprocessedValue = this[key];
-    let newValue = unprocessedValue;
-    for (let replacer of _replacers.concat(_defaultReplacers)) {
-        newValue = replacer.replace(key, newValue);
-    }
-    // If the value hasn't been transformed by the replacers, then return the version that was
-    // processed by JSON.stringify (`value`).
-    if (unprocessedValue == newValue) {
-        return value;
-    }
-    return newValue;
 }
 
 let _statePollers: IStatePoller[] = [];
@@ -123,7 +76,11 @@ export function log(eventName: string, data?: any) {
 
     // Submit data to logger endpoint.
     _ajaxCaller.ajax("/log", {
-        data: JSON.stringify(postData, replaceEntry),
+        // If there is any sensitive data to be logged, it should first be cleaned through a
+        // `toJSON` method defined on a class, or manually before passing it into this method.
+        // Earlier, we used the replacer argument to JSON.stringify, but it takes too much time
+        // to apply replacers to every value in the resulting JSON.
+        data: JSON.stringify(postData),
         method: "POST",
         error: (_: any, textStatus: string, errorThrown: string) => {
             console.error("Failed to log", textStatus, errorThrown);

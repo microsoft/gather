@@ -38,6 +38,17 @@ npm run build_nb_extension
 npm run install_nb_extension
 ```
 
+#### Troubleshooting
+
+##### The extension UI doesn't get loaded
+
+Sometimes you might reload the page and see that the buttons on the page are missing. I haven't been able to track the cause of the issue. [This Stack Overflow post](https://stackoverflow.com/questions/11991218/undefined-object-being-passed-via-requirejs) suggests the issue might be with circular `require` dependencies. The problem has disappeared when I have:
+
+* Deleted the virtual environment containing Jupyter, and installing it globally, or
+* Removed what I thought might be circular dependencies in the project
+
+But I don't know if either of these *really* fixed the issue. They're worth trying if the gathering UI disappears.
+
 ### Backend (logging) extension (optional)
 
 Then run `jupyter notebook` and the extension will be running.
