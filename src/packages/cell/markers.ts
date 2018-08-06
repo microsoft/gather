@@ -3,7 +3,7 @@
  */
 import { ISyntaxNode, ILocation } from "../../parsers/python/python_parser";
 import { parse } from '../../parsers/python/python3';
-import { getDefs, SymbolType } from "../../slicing/DataflowAnalysis";
+import { getDefs, SymbolType, Ref } from "../../slicing/DataflowAnalysis";
 import { StringSet } from "../../slicing/Set";
 import { SlicerConfig } from "../../slicing/SlicerConfig";
 import { MagicsRewriter } from "../../slicing/MagicsRewriter";
@@ -98,6 +98,7 @@ export class MarkerManager implements IGatherObserver {
         // When a cell is executed, search for definitions and output.
         if (eventType == GatherModelEvent.CELL_EXECUTED) {
             let cell = eventData as ICell;
+            this.clearDefinitionsForCell(cell);
             let editor = this._cellEditorResolver.resolve(cell);
             if (editor) {
                 this.findDefs(editor, cell);
@@ -106,10 +107,32 @@ export class MarkerManager implements IGatherObserver {
             this.highlightOutputs(cell, outputElements);
         }
 
+        // When a cell is deleted or edited, delete all of its def markers.
+        if (eventType == GatherModelEvent.CELL_DELETED || eventType == GatherModelEvent.CELL_EDITED) {
+            let cell = eventData as ICell;
+            this.clearDefinitionsForCell(cell);
+        }
+
         // When definitions are found, highlight them.
         if (eventType == GatherModelEvent.EDITOR_DEF_FOUND) {
             let editorDef = eventData as EditorDef;
             this.highlightDef(editorDef);
+        }
+
+        // When definitions are removed from the model, deselect and remove their markers.
+        if (eventType == GatherModelEvent.EDITOR_DEF_REMOVED) {
+            let editorDef = eventData as EditorDef;
+            for (let i = this._defMarkers.length - 1; i >= 0; i--) {
+                let defMarker = this._defMarkers[i];
+                if (defMarker.def == editorDef.def) {
+                    let defsToDeselect = this._model.selectedDefs.filter((d) => d.editorDef == editorDef);
+                    for (let defToDeselect of defsToDeselect) {
+                        this._model.deselectDef(defToDeselect);
+                    }
+                    defMarker.marker.clear();
+                    this._defMarkers.splice(i, 1);
+                }
+            }
         }
 
         // Whenever a definition is deselected from outside, unhighlight it.
@@ -143,7 +166,7 @@ export class MarkerManager implements IGatherObserver {
         let editor = editorDef.editor;
         let def = editorDef.def;
         let doc = editor.getDoc();
-        let defMarker = doc.markText(
+        let marker = doc.markText(
             { line: def.location.first_line - 1, ch: def.location.first_column },
             { line: def.location.last_line - 1, ch: def.location.last_column },
             { className: DEFINITION_CLASS }
@@ -157,16 +180,20 @@ export class MarkerManager implements IGatherObserver {
             }
         };
         this._defMarkers.push(new DefMarker(
-            defMarker, editor, def.location, def.statement, editorDef.cell, clickHandler));
+            marker, editor, def, def.location, def.statement, editorDef.cell, clickHandler));
+    }
+
+    /**
+     * Clear all def markers that belong to this editor.
+     */
+    clearDefinitionsForCell(cell: ICell) {
+        this._model.removeEditorDefsForCell(cell.id);
     }
 
     /**
      * Highlight all of the definitions in an editor.
      */
     findDefs(editor: CodeMirror.Editor, cell: ICell) {
-
-        // Clear all the old definition markers for this cell.
-        this._defMarkers = this._defMarkers.filter((dm) => dm.editor != editor);
 
         // Clean up the code of magics.
         let code = editor.getValue();
@@ -297,10 +324,11 @@ class OutputMarker {
  */
 class DefMarker {
 
-    constructor(marker: CodeMirror.TextMarker, editor: CodeMirror.Editor, location: ILocation,
+    constructor(marker: CodeMirror.TextMarker, editor: CodeMirror.Editor, def: Ref, location: ILocation,
             statement: ISyntaxNode, cell: ICell,
             clickHandler: (cell: ICell, selection: ILocation, selected: boolean) => void) {
         this.marker = marker;
+        this.def = def;
         this.editor = editor;
         this.location = location;
         this.statement = statement;
@@ -349,6 +377,7 @@ class DefMarker {
     private _selectionMarker: CodeMirror.TextMarker = undefined;
     readonly marker: CodeMirror.TextMarker;
     readonly editor: CodeMirror.Editor;
+    readonly def: Ref;
     readonly location: ILocation;
     readonly statement: ISyntaxNode;
     readonly cell: ICell;

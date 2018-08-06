@@ -83,11 +83,11 @@ class ExecutionHistory {
     private _lastExecutionCount: number;
     private _gatherModel: GatherModel;
 
-    constructor(gatherModel: GatherModel) {
+    constructor(notebook: Notebook, gatherModel: GatherModel) {
         this._gatherModel = gatherModel;
         // We don't know the order that we will receive events for the kernel finishing execution and
         // a cell finishing execution, so this helps us pair execution count to an executed cell.
-        Jupyter.notebook.events.on('shell_reply.Kernel', (
+        notebook.events.on('shell_reply.Kernel', (
                 _: Jupyter.Event, data: { reply: { content: Jupyter.ShellReplyContent }}) => {
             if (this._cellWithUndefinedCount) {
                 console.log("Defining cell execution count after the fact...");
@@ -98,7 +98,7 @@ class ExecutionHistory {
                 this._lastExecutionCount = data.reply.content.execution_count;
             }
         });
-        Jupyter.notebook.events.on('finished_execute.CodeCell', (_: Jupyter.Event, data: { cell: CodeCell }) => {
+        notebook.events.on('finished_execute.CodeCell', (_: Jupyter.Event, data: { cell: CodeCell }) => {
             let cellClone = copyCodeCell(data.cell);
             const cell = new NotebookCell(cellClone);
             if (this._lastExecutionCount) {
@@ -110,7 +110,7 @@ class ExecutionHistory {
             }
         });
         // Clear the history and selections whenever the kernel has been restarted.Z
-        Jupyter.notebook.events.on('kernel_restarting.Kernel', () => {
+        notebook.events.on('kernel_restarting.Kernel', () => {
             this.executionSlicer.reset();
             this._gatherModel.requestStateChange(GatherState.RESET);
         });
@@ -133,11 +133,16 @@ class NotebookEventLogger {
         })
         notebook.events.on('change.Cell', (_: Jupyter.Event, data: { cell: Cell, change: CodeMirror.EditorChange }) => {
             let change = data.change;
-            log.log("Changed contents of cell", {
-                cell: nbCellToJson(data.cell),
-                newCharacters: change.text.reduce((len, line) => { return len + line.length }, 0),
-                removedCharacters: change.removed.reduce((len, line) => { return len + line.length }, 0)
-            });
+            // Ignore all `setValue` events---these are invoked programatically, like when a new
+            // cell is created, or when a cell is executed. The other types of events are more
+            // relevant (cut, paste, +input, +delete).
+            if (change.origin != "setValue") {
+                log.log("Changed contents of cell", {
+                    cell: nbCellToJson(data.cell),
+                    newCharacters: change.text.reduce((len, line) => { return len + line.length }, 0),
+                    removedCharacters: change.removed.reduce((len, line) => { return len + line.length }, 0)
+                });
+            }
         });
         notebook.events.on('select.Cell', (_: Jupyter.Event, data: { cell: Cell, extendSelection: boolean }) => {
             log.log("Cell selected", {
@@ -208,6 +213,7 @@ function getCellWidget(notebook: Notebook, cellId: string, executionCount?: numb
 
 /**
  * Resolve the active editors for cells in Jupyter notebook.
+ * This only works for cells that are still in the notebook---i.e. breaks for deleted cells.
  */
 class NotebookCellEditorResolver implements CellEditorResolver {
     /**
@@ -264,12 +270,25 @@ class ResultsHighlighter {
 
     private _markerManager: MarkerManager;
 
-    constructor(gatherModel: GatherModel, markerManager: MarkerManager) {
+    constructor(notebook: Notebook, gatherModel: GatherModel, markerManager: MarkerManager) {
         this._markerManager = markerManager;
-        Jupyter.notebook.events.on('finished_execute.CodeCell', (_: Jupyter.Event, data: { cell: CodeCell }) => {
-            let cell = data.cell;
-            let nbCell = new NotebookCell(cell);
-            gatherModel.lastExecutedCell = nbCell;
+
+        // Listen to the events that change the cells and update the model to report that the cells
+        // have changed. These events can be used to update the markers.
+        notebook.events.on('finished_execute.CodeCell', (_: Jupyter.Event, data: { cell: CodeCell }) => {
+            gatherModel.lastExecutedCell = new NotebookCell(data.cell);
+        });
+        notebook.events.on('change.Cell', (_: Jupyter.Event, data: { cell: Cell, change: CodeMirror.EditorChange }) => {
+            let change = data.change;
+            // Ignore all `setValue` events---these are invoked programatically.
+            if (change.origin != "setValue" && data.cell instanceof CodeCell) {
+                gatherModel.lastEditedCell = new NotebookCell(data.cell);
+            }
+        });
+        notebook.events.on('delete.Cell', (_: Jupyter.Event, data: { cell: Cell, index: number }) => {
+            if (data.cell instanceof CodeCell) {
+                gatherModel.lastDeletedCell = new NotebookCell(data.cell);
+            }
         });
 
         document.body.addEventListener("mouseup", (event: MouseEvent) => {
@@ -411,11 +430,11 @@ export function load_ipython_extension() {
     let gatherModel = new GatherModel();
 
     // Plugin initializations.
-    executionHistory = new ExecutionHistory(gatherModel);
+    executionHistory = new ExecutionHistory(Jupyter.notebook, gatherModel);
     let markerManager = new MarkerManager(gatherModel,
         new NotebookCellEditorResolver(Jupyter.notebook),
         new NotebookCellOutputResolver(Jupyter.notebook));
-    new ResultsHighlighter(gatherModel, markerManager);
+    new ResultsHighlighter(Jupyter.notebook, gatherModel, markerManager);
 
     // Initialize clipboard for copying cells.
     let clipboard = new Clipboard();

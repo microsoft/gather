@@ -20,7 +20,10 @@ export enum GatherState {
 export enum GatherModelEvent {
     STATE_CHANGED,
     CELL_EXECUTED,
+    CELL_DELETED,
+    CELL_EDITED,
     EDITOR_DEF_FOUND,
+    EDITOR_DEF_REMOVED,
     DEF_SELECTED,
     DEF_DESELECTED,
     OUTPUT_SELECTED,
@@ -95,11 +98,61 @@ export class GatherModel {
     }
 
     /**
+     * Get the last cell that was deleted.
+     */
+    get lastDeletedCell(): ICell {
+        return this._lastDeletedCell;
+    }
+
+    /**
+     * Set the last deleted cell.
+     */
+    set lastDeletedCell(cell: ICell) {
+        this._lastDeletedCell = cell;
+        this.notifyObservers(GatherModelEvent.CELL_DELETED, cell);
+    }
+
+    /**
+     * Get the last cell that was edited.
+     */
+    get lastEditedCell(): ICell {
+        return this._lastEditedCell;
+    }
+
+    /**
+     * Set the last edited cell.
+     */
+    set lastEditedCell(cell: ICell) {
+        this._lastEditedCell = cell;
+        this.notifyObservers(GatherModelEvent.CELL_EDITED, cell);
+    }
+
+    /**
      * Add editor def to the list of editor definitions discoverd.
      */
     addEditorDef(def: EditorDef) {
         this._editorDefs.push(def);
         this.notifyObservers(GatherModelEvent.EDITOR_DEF_FOUND, def);
+    }
+
+    /**
+     * Remove the editor def from the list of editor definitions.
+     */
+    removeEditorDefsForCell(cellId: string) {
+        for (let i = this._editorDefs.length - 1; i >= 0; i--) {
+            let editorDef = this._editorDefs[i];
+            if (editorDef.cell.id == cellId) {
+                this._editorDefs.splice(i, 1);
+                this.notifyObservers(GatherModelEvent.EDITOR_DEF_REMOVED, editorDef);
+            }
+        }
+    }
+
+    /**
+     * Get the list of detected definitions in editors.
+     */
+    get editorDefs(): ReadonlyArray<EditorDef> {
+        return this._editorDefs;
     }
 
     /**
@@ -306,6 +359,8 @@ export class GatherModel {
     private _state: GatherState = GatherState.SELECTING;
     private _observers: IGatherObserver[] = [];
     private _lastExecutedCell: ICell;
+    private _lastDeletedCell: ICell;
+    private _lastEditedCell: ICell;
     private _editorDefs: EditorDef[] = [];
     private _selectedDefs: DefSelection[] = [];
     private _selectedOutputs: OutputSelection[] = [];
