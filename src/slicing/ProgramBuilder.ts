@@ -61,6 +61,13 @@ export class ProgramBuilder {
     }
 
     /**
+     * Reset (removing all cells).
+     */
+    reset() {
+        this._cells = [];
+    }
+
+    /**
      * Build a program from the list of cells. Program will include the cells' contents in
      * execution order. It will omit cells that raised errors (syntax or runtime).
      */

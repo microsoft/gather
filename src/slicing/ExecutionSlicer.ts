@@ -63,6 +63,14 @@ export class ExecutionLogSlicer {
     }
 
     /**
+     * Reset the log, removing log records.
+     */
+    public reset() {
+        this.executionLog = [];
+        this.programBuilder.reset();
+    }
+
+    /**
      * Get slice for the latest execution of a cell.
      */
     public sliceLatestExecution(cell: ICell, seedLocations?: LocationSet): SlicedExecution {
@@ -86,6 +94,7 @@ export class ExecutionLogSlicer {
 
         return this.executionLog
             .filter((execution) => execution.cellId == cell.id)
+            .filter((execution) => execution.executionCount != undefined)
             .map((execution) => {
 
                 // Build the program up to that cell.

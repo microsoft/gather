@@ -7,7 +7,7 @@ import { NotebookCell, copyCodeCell, nbCellToJson } from './NotebookCell';
 import { ExecutionLogSlicer, SlicedExecution } from '../slicing/ExecutionSlicer';
 import { MarkerManager, ICell, CellEditorResolver, CellOutputResolver } from '../packages/cell';
 
-import { GatherModel } from '../packages/gather/model';
+import { GatherModel, GatherState } from '../packages/gather/model';
 import { GatherController } from '../packages/gather/controller';
 
 import { GatherToClipboardButton, ClearButton, GatherToNotebookButton, MergeButton, GatherHistoryButton } from './buttons';
@@ -81,8 +81,10 @@ class ExecutionHistory {
     readonly executionSlicer = new ExecutionLogSlicer();
     private _cellWithUndefinedCount: ICell;
     private _lastExecutionCount: number;
+    private _gatherModel: GatherModel;
 
-    constructor() {
+    constructor(gatherModel: GatherModel) {
+        this._gatherModel = gatherModel;
         // We don't know the order that we will receive events for the kernel finishing execution and
         // a cell finishing execution, so this helps us pair execution count to an executed cell.
         Jupyter.notebook.events.on('shell_reply.Kernel', (
@@ -106,6 +108,11 @@ class ExecutionHistory {
             } else {
                 this._cellWithUndefinedCount = cell;
             }
+        });
+        // Clear the history and selections whenever the kernel has been restarted.Z
+        Jupyter.notebook.events.on('kernel_restarting.Kernel', () => {
+            this.executionSlicer.reset();
+            this._gatherModel.requestStateChange(GatherState.RESET);
         });
     }
 }
@@ -404,7 +411,7 @@ export function load_ipython_extension() {
     let gatherModel = new GatherModel();
 
     // Plugin initializations.
-    executionHistory = new ExecutionHistory();
+    executionHistory = new ExecutionHistory(gatherModel);
     let markerManager = new MarkerManager(gatherModel,
         new NotebookCellEditorResolver(Jupyter.notebook),
         new NotebookCellOutputResolver(Jupyter.notebook));
