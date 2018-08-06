@@ -132,9 +132,6 @@ class NotebookEventLogger {
         notebook.events.on('finished_execute.CodeCell', (_: Jupyter.Event, data: { cell: CodeCell }) => {
             log.log("Executed cell", { cell: nbCellToJson(data.cell) });
         });
-        notebook.events.on('kernel_restarting.Kernel', () => {
-            log.log("Restarting kernel");
-        });
         notebook.events.on('checkpoint_created.Notebook', () => {
             log.log("Created checkpoint");
         });
@@ -156,7 +153,17 @@ class NotebookEventLogger {
         });
         notebook.events.on('checkpoint_deleted.Notebook', () => {
             log.log("Succeeeded at deleting checkpoint");
-        })
+        });
+        // I don't know how a kernel gets killed---its not clear from the notebook interface.
+        notebook.events.on('kernel_killed.Kernel', () => {
+            log.log("Kernel killed");
+        });
+        notebook.events.on('kernel_interrupting.Kernel', () => {
+            log.log("Interrupting the kernel");
+        });
+        notebook.events.on('kernel_restarting.Kernel', () => {
+            log.log("Restarting the kernel");
+        });
     }
 }
 
