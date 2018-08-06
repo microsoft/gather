@@ -57,7 +57,7 @@ export function slice(code: string, seedLocations: LocationSet): LocationSet {
 
     const ast = parse(code);
     const cfg = new ControlFlowGraph(ast);
-    const dfa = dataflowAnalysis(cfg);
+    const dfa = dataflowAnalysis(cfg).flows;
     dfa.add(...cfg.getControlDependencies());
 
     // Include at least the full statements for each seed.
@@ -99,7 +99,7 @@ export function slice(code: string, seedLocations: LocationSet): LocationSet {
 export function sliceLines(code: string, relevantLineNumbers: NumberSet) {
     const ast = parse(code);
     const cfg = new ControlFlowGraph(ast);
-    const dfa = dataflowAnalysis(cfg);
+    const dfa = dataflowAnalysis(cfg).flows;
     dfa.add(...cfg.getControlDependencies());
 
     let lastSize: number;
@@ -150,7 +150,7 @@ export class CellProgram<CellType extends ICell> {
     private followDataflow(direction: DataflowDirection): NumberSet {
         const ast = parse(this.code);
         const cfg = new ControlFlowGraph(ast);
-        const dfa = dataflowAnalysis(cfg);
+        const dfa = dataflowAnalysis(cfg).flows;
         dfa.add(...cfg.getControlDependencies());
 
         const forwardDirection = direction === DataflowDirection.Forward;

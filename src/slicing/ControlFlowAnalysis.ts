@@ -53,6 +53,8 @@ export class ControlFlowGraph {
         let statements: ast.ISyntaxNode[] = [];
         if (node.type == ast.MODULE) {
             statements = Array.isArray(node.code) ? node.code : [ node.code ];
+        } else if (node.type == ast.DEF) {
+            statements = Array.isArray(node.code) ? node.code : [ node.code ];
         }
         [this.entry, this.exit] = this.makeCFG(
             'entry', statements, new Context(null, null, this.makeBlock('exceptional exit')));

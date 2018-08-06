@@ -33,7 +33,7 @@ for (let i = 2; i < process.argv.length; i++) {
 
     const dfa = dataflowAnalysis(cfg);
     if (printDf) {
-        dfa.items.forEach(({ fromNode, toNode }) => {
+        dfa.flows.items.forEach(({ fromNode, toNode }) => {
             console.log(fromNode.location.first_line, '->', toNode.location.first_line);
         });
     }

@@ -12,7 +12,7 @@ describe('detects dataflow dependencies', () => {
 
     function analyze(...codeLines: string[]): Set<IDataflow> {
         let code = codeLines.concat("").join("\n");  // add newlines to end of every line.
-        return dataflowAnalysis(new ControlFlowGraph(parse(code)));
+        return dataflowAnalysis(new ControlFlowGraph(parse(code))).flows;
     }
 
     function analyzeLineDeps(...codeLines: string[]): [number, number][] {
@@ -116,7 +116,7 @@ describe('detects dataflow dependencies', () => {
     function analyzeComplexDeps(...codeLines: string[]) {
         let code = codeLines.concat("").join("\n");  // add newlines to end of every line.
         return dataflowAnalysis(new ControlFlowGraph(parse(code)), complexDepsSliceConfig)
-            .items.map(function(dep): [number, number] { 
+            .flows.items.map(function(dep): [number, number] { 
                 return [dep.toNode.location.first_line, dep.fromNode.location.first_line]
             });
     }
@@ -437,18 +437,27 @@ describe('getUses', () => {
             let uses = getUseNames("func()");
             expect(uses).to.include("func");
         });
-    });
 
-    // Eventually we might want to do something smarter here, like be able to detect uses of
-    // global variables. Outta scope for now.
-    describe('ignores uses', () => {
-
-        it('in functions', () => {
+        it('for undefined symbols in functions', () => {
             let uses = getUseNames(
                 "def func(arg):",
                 "    print(a)"
             );
-            expect(uses.length).to.equal(0);
+            expect(uses).to.include("a");
+        })
+    });
+
+    describe('ignores uses', () => {
+
+        it('for symbols defined within functions', () => {
+            let uses = getUseNames(
+                "def func(arg):",
+                "    print(arg)",
+                "    var = 1",
+                "    print(var)"
+            );
+            expect(uses).to.not.include("arg");
+            expect(uses).to.not.include("var");
         });
     });
 });

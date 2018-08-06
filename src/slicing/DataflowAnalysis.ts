@@ -318,7 +318,7 @@ export function getDefs(
     return defs;
 }
 
-export function getUses(statement: ast.ISyntaxNode, _: SymbolTable): RefSet {
+export function getUses(statement: ast.ISyntaxNode, _: SymbolTable, slicerConfig?: SlicerConfig): RefSet {
 
     let uses = new RefSet();
 
@@ -350,6 +350,11 @@ export function getUses(statement: ast.ISyntaxNode, _: SymbolTable): RefSet {
             break;
         }
         case ast.DEF:
+            let defCfg = new ControlFlowGraph(statement);
+            let argNames = new StringSet(...statement.params.map((p) => p.name));
+            let undefinedRefs = dataflowAnalysis(defCfg, slicerConfig, argNames).undefinedRefs;
+            uses = undefinedRefs.filter((r) => r.level == ReferenceType.USE);
+            break;
         case ast.CLASS:
             break;
         default: {
@@ -373,7 +378,7 @@ export function getUses(statement: ast.ISyntaxNode, _: SymbolTable): RefSet {
 export function getDefsUses(
     statement: ast.ISyntaxNode, symbolTable: SymbolTable, slicerConfig?: SlicerConfig): IDefUseInfo {
     let defSet = getDefs(statement, symbolTable, slicerConfig);
-    let useSet = getUses(statement, symbolTable);
+    let useSet = getUses(statement, symbolTable, slicerConfig);
     return {
         defs: defSet,
         uses: useSet
@@ -386,10 +391,19 @@ function getDataflowId(df: IDataflow) {
     return locString(df.fromNode.location) + '->' + locString(df.toNode.location);
 }
 
-function createFlowsFrom(fromSet: RefSet, toSet: RefSet, fromStatement: ast.ISyntaxNode) {
-    const newFlows = toSet.filter((to) => fromSet.items.some((f) => f.name == to.name))
-        .map(getDataflowId, (to) => ({ fromNode: to.statement, toNode: fromStatement }));
-    return newFlows;
+function createFlowsFrom(fromSet: RefSet, toSet: RefSet, fromStatement: ast.ISyntaxNode):
+        [Set<IDataflow>, Set<Ref>] {
+    let refsDefined = new RefSet();
+    let newFlows = new Set<IDataflow>(getDataflowId);
+    for (let from of fromSet.items) {
+        for (let to of toSet.items) {
+            if (to.name == from.name) {
+                refsDefined.add(from);
+                newFlows.add({ fromNode: to.statement, toNode: fromStatement });
+            }
+        }
+    }
+    return [ newFlows, refsDefined ];
 }
 
 let DEPENDENCY_RULES = [
@@ -399,6 +413,8 @@ let DEPENDENCY_RULES = [
     { from: ReferenceType.INITIALIZATION, to: [ ReferenceType.DEFINITION, ReferenceType.GLOBAL_CONFIG ] },
     { from: ReferenceType.GLOBAL_CONFIG, to: [ ReferenceType.DEFINITION, ReferenceType.GLOBAL_CONFIG ] }
 ];
+
+let TYPES_WITH_DEPENDENCIES = DEPENDENCY_RULES.map((r) => r.from);
 
 let KILL_RULES = [
     // Which types of references "kill" which other types of references?
@@ -439,10 +455,17 @@ function updateDefsForLevel(defsForLevel: RefSet, level: string, newRefs: { [lev
     return defsForLevel.minus(killSet).union(genSet);
 }
 
-export function dataflowAnalysis(cfg: ControlFlowGraph, slicerConfig?: SlicerConfig): Set<IDataflow> {
+export type DataflowAnalysisResult = {
+    flows: Set<IDataflow>,
+    undefinedRefs: RefSet
+};
+
+export function dataflowAnalysis(cfg: ControlFlowGraph,
+        slicerConfig?: SlicerConfig, namesDefined?: StringSet): DataflowAnalysisResult {
     
     let symbolTable: SymbolTable = { moduleNames: new StringSet() };
     const workQueue: Block[] = cfg.blocks.reverse();
+    let undefinedRefs = new RefSet();
 
     let defsForLevelByBlock: { [level: string]: { [blockId: number]: RefSet } } = {}
     for (let level of Object.keys(ReferenceType)) {
@@ -478,6 +501,9 @@ export function dataflowAnalysis(cfg: ControlFlowGraph, slicerConfig?: SlicerCon
             for (let level of Object.keys(ReferenceType)) { statementRefs[level] = new RefSet(); }
             for (let def of definedHere.items) {
                 statementRefs[def.level].add(def);
+                if (TYPES_WITH_DEPENDENCIES.indexOf(def.level) != -1) {
+                    undefinedRefs.add(def);
+                }
             }
             // Only add uses that aren't actually defs.
             for (let use of usedHere.items) {
@@ -489,6 +515,7 @@ export function dataflowAnalysis(cfg: ControlFlowGraph, slicerConfig?: SlicerCon
                         d.location.last_column == use.location.last_column;
                         })) {
                     statementRefs[ReferenceType.USE].add(use);
+                    undefinedRefs.add(use);
                 }
             }
 
@@ -496,7 +523,13 @@ export function dataflowAnalysis(cfg: ControlFlowGraph, slicerConfig?: SlicerCon
             let newFlows = new Set<IDataflow>(getDataflowId);
             for (let level of Object.keys(ReferenceType)) {
                 // For everything that's defined coming into this block, if it's used in this block, save connection.
-                newFlows.add(...createFlowsFrom(statementRefs[level], defsForLevel[level], statement).items);
+                let result = createFlowsFrom(statementRefs[level], defsForLevel[level], statement);
+                let flowsCreated = result[0].items;
+                let defined = result[1];
+                newFlows.add(...flowsCreated);
+                for (let ref of defined.items) {
+                    undefinedRefs.remove(ref);
+                }
             }
             dataflows = dataflows.union(newFlows);
 
@@ -518,5 +551,19 @@ export function dataflowAnalysis(cfg: ControlFlowGraph, slicerConfig?: SlicerCon
             }
         }
     }
-    return dataflows;
+
+    // Check to see if any of the undefined names were defined coming into the graph. If so,
+    // don't report them as being undefined.
+    if (namesDefined) {
+        for (let ref of undefinedRefs.items) {
+            if (namesDefined.items.some((n) => n == ref.name)) {
+                undefinedRefs.remove(ref);
+            }
+        }
+    }
+
+    return {
+        flows: dataflows,
+        undefinedRefs: undefinedRefs
+    };
 }
