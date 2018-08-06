@@ -164,6 +164,7 @@ declare interface NotebookJson {
 
 declare interface NotebookMetadata {
     gathered?: boolean;
+    gatheringId?: string;
 }
 
 declare interface CellMetadata {
@@ -196,6 +197,7 @@ declare module "base/js/namespace" {
 
 declare namespace Utils {
     function ajax(url: string|any, settings: any): XMLHttpRequest;
+    function uuid(): string;
 }
 
 declare module "base/js/utils" {

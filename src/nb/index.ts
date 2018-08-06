@@ -40,6 +40,16 @@ class NbStatePoller implements log.IStatePoller {
      */
     constructor(notebook: Notebook) {
         this._notebook = notebook;
+        // If this notebook doesn't have a UUID, assign one. We'll want to use this to
+        // disambiguate between the notebooks developers are using gathering in.
+        if (!this._notebook.metadata) {
+            this._notebook.metadata = {};
+        }
+        if (!this._notebook.metadata.gatheringId) {
+            // This UUID will stay the same across sessions (i.e. when you reload the notebook),
+            // as long as the notebook was saved after the UUID was assigned.
+            this._notebook.metadata.gatheringId = utils.uuid();
+        }
     }
 
     /**
@@ -47,14 +57,17 @@ class NbStatePoller implements log.IStatePoller {
      */
     poll(): any {
         return {
-            gathered: this._notebook.metadata && this._notebook.metadata.gathered,
-            numCells: this._notebook.get_cells().length,
-            codeCellIds: this._notebook.get_cells()
-                .filter((c) => c.cell_type == "code")
-                .map((c) => [c.cell_id, (c as CodeCell).input_prompt_number]),
-            numLines: this._notebook.get_cells()
-                .filter((c) => c.cell_type == "code")
-                .reduce((lineCount, c) => { return lineCount + c.code_mirror.getValue().split("\n").length }, 0)
+            notebook: {
+                gathered: this._notebook.metadata && this._notebook.metadata.gathered,
+                uuid: (this._notebook.metadata ? this._notebook.metadata.gatheringId : undefined),
+                numCells: this._notebook.get_cells().length,
+                codeCellIds: this._notebook.get_cells()
+                    .filter((c) => c.cell_type == "code")
+                    .map((c) => [c.cell_id, (c as CodeCell).input_prompt_number]),
+                numLines: this._notebook.get_cells()
+                    .filter((c) => c.cell_type == "code")
+                    .reduce((lineCount, c) => { return lineCount + c.code_mirror.getValue().split("\n").length }, 0)
+            }
         }
     }
 
