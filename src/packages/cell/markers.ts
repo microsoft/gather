@@ -11,6 +11,7 @@ import { GatherModel, IGatherObserver, GatherEventData, GatherModelEvent, Editor
 import { ICell } from "./model";
 import { SlicedExecution } from "../../slicing/ExecutionSlicer";
 import { log } from "../../utils/log";
+import { LineHandle } from "../../../node_modules/@types/codemirror";
 
 /**
  * Class for a highlighted, clickable output.
@@ -31,6 +32,11 @@ const DEFINITION_CLASS = "jp-InputArea-editor-nametext";
  * Class for selected variable definition text.
  */
 const DEFINITION_SELECTED_CLASS = "jp-InputArea-editor-nametext-selected";
+
+/**
+ * Class for a line holding a variable definition.
+ */
+const DEFINITION_LINE_SELECTED_CLASS = "jp-InputArea-editor-nameline-selected";
 
 /**
  * Class for a data dependency.
@@ -78,6 +84,7 @@ export class MarkerManager implements IGatherObserver {
     private _cellEditorResolver: CellEditorResolver;
     private _cellOutputResolver: CellOutputResolver;
     private _defMarkers: DefMarker[] = [];
+    private _defLineHandles: DefLineHandle[] = [];
     private _outputMarkers: OutputMarker[] = [];
     private _dependencyLineMarkers: DependencyLineMarker[] = [];
 
@@ -135,6 +142,17 @@ export class MarkerManager implements IGatherObserver {
             }
         }
 
+        // Whenever a definition is selected, add a marker to its line.
+        if (eventType == GatherModelEvent.DEF_SELECTED) {
+            let defSelection = eventData as DefSelection;
+            let editor = defSelection.editorDef.editor;
+            let def = defSelection.editorDef.def;
+            let lineHandle = editor.addLineClass(
+                def.location.first_line - 1, "background", DEFINITION_LINE_SELECTED_CLASS
+            );
+            this._defLineHandles.push({ def: def, lineHandle: lineHandle });
+        }
+
         // Whenever a definition is deselected from outside, unhighlight it.
         if (eventType == GatherModelEvent.DEF_DESELECTED) {
             let defSelection = eventData as DefSelection;
@@ -142,6 +160,15 @@ export class MarkerManager implements IGatherObserver {
                 return defSelection.editorDef.def.location == marker.location &&
                     defSelection.cell.id == marker.cell.id;
             }).forEach((marker) => marker.deselect());
+
+            let editorDef = defSelection.editorDef;
+            for (let i = this._defLineHandles.length - 1; i >= 0; i--) {
+                let defLineHandle = this._defLineHandles[i];
+                if (defLineHandle.def == editorDef.def) {
+                    editorDef.editor.removeLineClass(
+                        defLineHandle.lineHandle, "background", DEFINITION_LINE_SELECTED_CLASS);
+                }
+            }
         }
 
         // Whenever an output is deselected from outside, unhighlight it.
@@ -163,9 +190,12 @@ export class MarkerManager implements IGatherObserver {
     }
 
     highlightDef(editorDef: EditorDef) {
+
         let editor = editorDef.editor;
         let def = editorDef.def;
         let doc = editor.getDoc();
+
+        // Add marker for the definition symbol.
         let marker = doc.markText(
             { line: def.location.first_line - 1, ch: def.location.first_column },
             { line: def.location.last_line - 1, ch: def.location.last_column },
@@ -318,6 +348,14 @@ class OutputMarker {
     private _element: HTMLElement;
     private _onToggle: (selected: boolean) => void;
     private _selected: boolean = false;
+}
+
+/**
+ * Line handle for a definition line.
+ */
+type DefLineHandle = {
+    def: Ref;
+    lineHandle: LineHandle;
 }
 
 /**
