@@ -20,6 +20,7 @@ type DiffLine = {
     text: string;
     version: "before"|"after"|"both";
     changeRanges: CharacterRange[];
+    index: number;
 }
 
 /**
@@ -48,14 +49,14 @@ export function textdiff(before: string, after: string): Diff {
         beforeLineChanges = beforeLineChanges || [];
         afterLineChanges = afterLineChanges || [];
         if (beforeLine == afterLine) {
-            diffLines.push({ text: beforeLine, version: "both", changeRanges: [] });
+            diffLines.push({ text: beforeLine, version: "both", changeRanges: [], index: diffLines.length });
         } else {
             if (beforeLine != null) {
-                diffLines.push({ text: beforeLine, version: "before", changeRanges: beforeLineChanges.concat() });
+                diffLines.push({ text: beforeLine, version: "before", changeRanges: beforeLineChanges.concat(), index: diffLines.length });
                 beforeLineChanges = [];
             }
             if (afterLine != null) {
-                diffLines.push({ text: afterLine, version: "after", changeRanges: afterLineChanges.concat() });
+                diffLines.push({ text: afterLine, version: "after", changeRanges: afterLineChanges.concat(), index: diffLines.length });
                 afterLineChanges = [];
             }
         }
@@ -117,9 +118,12 @@ export function textdiff(before: string, after: string): Diff {
     let changeLocations: ILocation[] = [];
 
     // All "before" diff lines should go before "after" diff lines.
+    // All other lines should preserve their original order.
     diffLines.sort((diffLine1, diffLine2) => {
-        if (diffLine1.version == "both" || diffLine2.version == "both") return 0;
-        else if (diffLine1.version == diffLine2.version) return 0;
+        if ((diffLine1.version == "both" || diffLine2.version == "both") ||
+            (diffLine1.version == diffLine2.version)) {
+            return diffLine1.index - diffLine2.index;
+        }
         else return diffLine1.version == "before" ? -1: 1;
     });
 
