@@ -60,6 +60,7 @@
 
 .jp-Revision-notebook {
   height: 100%;
+  overflow-y: auto;
   background-color: white;
   padding-left: 20px;
   padding-right: 20px;
