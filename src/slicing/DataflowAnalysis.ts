@@ -141,8 +141,20 @@ class CallNamesListener implements ast.IWalkListener {
             }
             this._slicerConfig.functionConfigs
             .filter((config) => config.pattern.functionName == name)
+            .filter((config) => {
+                if (!config.pattern.instanceNames) return true;
+                if (callNode.func.type == ast.DOT &&
+                    callNode.func.value.type == ast.NAME) {
+                    let instanceName = (callNode.func.value as ast.IName).id
+                    return config.pattern.instanceNames.indexOf(instanceName) != -1;
+                }
+                return false;
+            })
             .forEach((config) => {
                 if (config.instanceEffect && callNode.func.type == ast.DOT) {
+                    if (config.pattern.instanceNames) {
+
+                    }
                     this._parentsOfRelevantNames.push({
                         node: callNode.func.value,
                         effect: config.instanceEffect
