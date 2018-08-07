@@ -98,7 +98,7 @@ export class MarkerManager implements IGatherObserver {
         // When a cell is executed, search for definitions and output.
         if (eventType == GatherModelEvent.CELL_EXECUTED) {
             let cell = eventData as ICell;
-            this.clearDefinitionsForCell(cell);
+            this.clearSelectablesForCell(cell);
             let editor = this._cellEditorResolver.resolve(cell);
             if (editor) {
                 this.findDefs(editor, cell);
@@ -110,7 +110,7 @@ export class MarkerManager implements IGatherObserver {
         // When a cell is deleted or edited, delete all of its def markers.
         if (eventType == GatherModelEvent.CELL_DELETED || eventType == GatherModelEvent.CELL_EDITED) {
             let cell = eventData as ICell;
-            this.clearDefinitionsForCell(cell);
+            this.clearSelectablesForCell(cell);
         }
 
         // When definitions are found, highlight them.
@@ -186,8 +186,9 @@ export class MarkerManager implements IGatherObserver {
     /**
      * Clear all def markers that belong to this editor.
      */
-    clearDefinitionsForCell(cell: ICell) {
+    clearSelectablesForCell(cell: ICell) {
         this._model.removeEditorDefsForCell(cell.id);
+        this._model.deselectOutputsForCell(cell.id);
     }
 
     /**

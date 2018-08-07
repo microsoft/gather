@@ -291,6 +291,19 @@ export class GatherModel {
     /**
      * Deselect all outputs.
      */
+    deselectOutputsForCell(cellId: string) {
+        for (let i = this._selectedOutputs.length - 1; i >= 0; i--) {
+            let output = this._selectedOutputs[i];
+            if (output.cell.id == cellId) {
+                this._selectedOutputs.splice(i, 1);
+                this.notifyObservers(GatherModelEvent.OUTPUT_DESELECTED, output);
+            }
+        }
+    }
+
+    /**
+     * Deselect all outputs.
+     */
     deselectAllOutputs() {
         for (let i = this._selectedOutputs.length - 1; i >= 0; i--) {
             let output = this._selectedOutputs.splice(i, 1)[0];
