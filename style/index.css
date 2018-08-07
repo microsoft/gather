@@ -11,6 +11,20 @@
    padding-right: 4px;
  }
 
+.jp-Toolbar-gatherbutton.jp-Toolbar-gatherbutton-inactive {
+  opacity: .8;
+}
+
+.jp-Toolbar-gatherbutton.jp-Toolbar-button-glow {
+   background-color: var(--brand-color5);
+   border-color: var(--brand-color1);
+   box-shadow: 0 0 3px var(--brand-color2);
+ }
+
+.jp-Toolbar-gatherbutton.jp-Toolbar-button-glow:hover {
+  box-shadow: 0 0 10px var(--brand-color0);
+}
+
  .jp-Toolbar-gathertoclipboardbutton.jp-Toolbar-button-glow,
  .jp-Toolbar-gathertonotebookbutton.jp-Toolbar-button-glow, 
  .jp-Toolbar-gatherhistorybutton.jp-Toolbar-button-glow {

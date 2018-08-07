@@ -88,6 +88,7 @@ export class MergeButton implements Button {
 abstract class GatherButton implements Button, IGatherObserver {
 
     readonly BASE_CLASS_NAME = "jp-Toolbar-gatherbutton";
+    readonly DISABLED_CLASS_NAME = "jp-Toolbar-gatherbutton-inactive";
     abstract readonly CLASS_NAME: string;
     abstract readonly label?: string;
     abstract readonly actionName: string;
@@ -106,10 +107,25 @@ abstract class GatherButton implements Button, IGatherObserver {
      * Jupyter notebook initializes toolbars.
      */
     set node(node: Widget) {
-        if (this._node != node) {
-            this._node = node;
-            this._node.addClass(this.BASE_CLASS_NAME);
-            this._node.addClass(this.CLASS_NAME);
+        if (this._widget != node) {
+            this._widget = node;
+            this._widget.addClass(this.BASE_CLASS_NAME);
+            this._widget.addClass(this.CLASS_NAME);
+            this._updateDisabled();
+        }
+    }
+
+    protected _updateDisabled() {
+        if (this._gatherModel.selectedSlices.length > 0) {
+            if (this._widget) {
+                this._widget.removeClass(this.DISABLED_CLASS_NAME);
+                this._widget.addClass(HIGHLIGHTED_BUTTON_CLASS);
+            }
+        } else {
+            if (this._widget) {
+                this._widget.addClass(this.DISABLED_CLASS_NAME);
+                this._widget.removeClass(HIGHLIGHTED_BUTTON_CLASS);
+            }
         }
     }
 
@@ -118,20 +134,12 @@ abstract class GatherButton implements Button, IGatherObserver {
      */
     onModelChange(event: GatherModelEvent, eventData: GatherEventData, model: GatherModel) {
         if (event == GatherModelEvent.SLICE_SELECTED || event == GatherModelEvent.SLICE_DESELECTED) {
-            if (model.selectedSlices.length > 0) {
-                if (this._node) {
-                    this._node.addClass(HIGHLIGHTED_BUTTON_CLASS);
-                }
-            } else {
-                if (this._node) {
-                    this._node.removeClass(HIGHLIGHTED_BUTTON_CLASS);
-                }
-            }
+            this._updateDisabled();
         }
     }
     
     protected _gatherModel: GatherModel;
-    protected _node: Widget;
+    protected _widget: Widget;
 }
 
 /**
@@ -219,6 +227,20 @@ export class GatherHistoryButton extends GatherButton {
         help_index: 'gather-history',
         handler: () => { this.onClick() }
     }
+    
+    protected _updateDisabled() {
+        if (this._gatherModel.selectedSlices.length == 1) {
+            if (this._widget) {
+                this._widget.addClass(HIGHLIGHTED_BUTTON_CLASS);
+                this._widget.removeClass(this.DISABLED_CLASS_NAME);
+            }
+        } else {
+            if (this._widget) {
+                this._widget.removeClass(HIGHLIGHTED_BUTTON_CLASS);
+                this._widget.addClass(this.DISABLED_CLASS_NAME);
+            }
+        }
+    }
 
     /**
      * Handle click action.
@@ -235,23 +257,6 @@ export class GatherHistoryButton extends GatherButton {
         } else if (this._gatherModel.selectedSlices.length > 1) {
             log("Button: Clicked gather to history with too many selections");
             window.alert("To gather history, you can only select one variable or result.");
-        }
-    }
-
-    /**
-     * Listen for changes on the gather model.
-     */
-    onModelChange(event: GatherModelEvent, eventData: GatherEventData, model: GatherModel) {
-        if (event == GatherModelEvent.SLICE_SELECTED || event == GatherModelEvent.SLICE_DESELECTED) {
-            if (model.selectedSlices.length == 1) {
-                if (this._node) {
-                    this._node.addClass(HIGHLIGHTED_BUTTON_CLASS);
-                }
-            } else {
-                if (this._node) {
-                    this._node.removeClass(HIGHLIGHTED_BUTTON_CLASS);
-                }
-            }
         }
     }
 }
