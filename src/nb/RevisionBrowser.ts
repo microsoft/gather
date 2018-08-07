@@ -102,8 +102,10 @@ export class RevisionBrowser extends Widget implements IGatherObserver {
             selectedOutputs: model.selectedOutputs
         });
         if (slices && cellId) {
+            // Only show output if the selection was output.
+            let includeOutput = model.selectedOutputs.length >= 1;
             let historyModel = buildHistoryModel<OutputArea>(
-                model, cellId, slices);
+                model, cellId, slices, includeOutput);
             // This currently uses code borrowed from Jupyter Lab (for rendering MIME and creating
             // the default editor factory). Not ideal. Fix up soon.
             let historyViewer = new HistoryViewer<OutputArea>({

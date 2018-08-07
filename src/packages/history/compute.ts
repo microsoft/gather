@@ -14,7 +14,8 @@ import { GatherModel } from '../gather';
 export function buildHistoryModel<TOutputModel>(
     gatherModel: GatherModel,
     selectedCellId: string,
-    executionVersions: SlicedExecution[]
+    executionVersions: SlicedExecution[],
+    includeOutput?: boolean
 ): HistoryModel<TOutputModel> {
 
     // All cells in past revisions will be compared to those in the current revision. For the most
@@ -56,16 +57,18 @@ export function buildHistoryModel<TOutputModel>(
         })
 
         let output: TOutputModel = null;
-        let selectedCell: ICell = null;
-        executionVersion.cellSlices.map(cs => cs.cell).forEach(function (cellModel) {
-            if (cellModel.id == selectedCellId) {
-                selectedCell = cellModel;
-            }
-        });
-        if (selectedCell && instanceOfIOutputterCell(selectedCell)) {
-            let selectedOutputterCell = selectedCell as IOutputterCell<TOutputModel>;
-            if (selectedCell.output) {
-                output = selectedOutputterCell.output;
+        if (includeOutput) {
+            let selectedCell: ICell = null;
+            executionVersion.cellSlices.map(cs => cs.cell).forEach(function (cellModel) {
+                if (cellModel.id == selectedCellId) {
+                    selectedCell = cellModel;
+                }
+            });
+            if (selectedCell && instanceOfIOutputterCell(selectedCell)) {
+                let selectedOutputterCell = selectedCell as IOutputterCell<TOutputModel>;
+                if (selectedCell.output) {
+                    output = selectedOutputterCell.output;
+                }
             }
         }
 
