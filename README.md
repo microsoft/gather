@@ -49,28 +49,18 @@ Sometimes you might reload the page and see that the buttons on the page are mis
 
 But I don't know if either of these *really* fixed the issue. They're worth trying if the gathering UI disappears.
 
-### Backend (logging) extension (optional)
-
 Then run `jupyter notebook` and the extension will be running.
+
+### Backend (logging) extension (optional)
 
 If you want to add logging to the project, look in the `src/nb/python` directory. This Python plugin needs to be installed to receive logging requests and save them to file (`~/.jupyter/events.txt`). To register this Python extension in Jupyter notebook or lab, see this guide: https://jupyter-notebook.readthedocs.io/en/latest/extending/handlers.html. As of the time of this writing, installation involves:
 
-Install dependencies for the plugin:
-
 ```bash
-pip install portalocker
-```
-
-Build the project:
-```bash
+pip install portalocker  # dependency for this package
 cd src/nb/python
-python setup.py install
+python setup.py install  # build this package
+jupyter serverextension enable --py gather_logger  # enable the package
 ```
 
-Then enable the extension by going to the `python` directory for the notebook extension, and running:
-
-```bash
-jupyter serverextension enable --py gather_logger
-```
-
-We aren't yet bundling this extension, nor do we have a good way to develop the plugin in development mode yet. To do either of these two things, we might follow the instructions here: https://jupyter-notebook.readthedocs.io/en/latest/extending/bundler_extensions.html.
+We aren't yet including the frontend extension in the server extension, nor do we have a good way to develop the plugin in development mode yet. To do either of these two things, follow the instructions here:
+https://jupyter-notebook.readthedocs.io/en/latest/examples/Notebook/Distributing%20Jupyter%20Extensions%20as%20Python%20Packages.html .
