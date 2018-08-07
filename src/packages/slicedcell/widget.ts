@@ -3,6 +3,8 @@ import { Widget } from '@phosphor/widgets';
 import { ISlicedCellModel } from './model';
 import CodeMirror = require('codemirror');
 
+import 'codemirror/addon/scroll/simplescrollbars';
+import 'codemirror/addon/scroll/simplescrollbars.css';
 
 /**
  * The class name added to sliced cell widgets.
@@ -28,6 +30,11 @@ const SLICED_CELL_EDITOR_CLASS = 'jp-SlicedCell-editor';
  * The class name added to editor text from before version of text.
  */
 const DIFFED_CELL_BEFORE_TEXT_CLASS = 'jp-DiffedCell-editor-beforetext';
+
+/**
+ * The class name added to the background for the after version of text.
+ */
+const DIFFED_CELL_BEFORE_BACKGROUND_CLASS = 'jp-DiffedCell-editor-beforebackground';
 
 /**
  * The class name added to editor text from after version of text.
@@ -89,9 +96,8 @@ export class SlicedCell extends Widget {
             value: this.model.sourceCode,
             mode: "python",
             readOnly: "nocursor",  // don't allow interaction with cell's contents
-            scrollbarStyle: "null"  // don't show scrollbars
+            scrollbarStyle: "simple"  // show simple (thin) scrollbar
         });
-        codeMirror.on("mousedown", (_: CodeMirror.Editor, event: MouseEvent) => { return true; });
         let codeMirrorWidget = new Widget({ node: codeMirror.getWrapperElement() });
         this._editor = codeMirror;
         this._codeMirrorWidget = codeMirrorWidget;
@@ -169,11 +175,13 @@ export class DiffedSlicedCell extends SlicedCell {
         // Mark up differences
         for (let beforeLine of this.model.diff.beforeLines) {
             this._editor.addLineClass(beforeLine - 1, "background",
+                DIFFED_CELL_BEFORE_BACKGROUND_CLASS);
+            this._editor.addLineClass(beforeLine - 1, "wrap",
                 DIFFED_CELL_BEFORE_TEXT_CLASS);
         }
         for (let afterLine of this.model.diff.afterLines) {
             this._editor.addLineClass(afterLine - 1, "background",
-                DIFFED_CELL_AFTER_TEXT_CLASS);
+                DIFFED_CELL_AFTER_TEXT_CLASS)
         }
         for (let loc of this.model.diff.changeLocations) {
             codeMirrorDoc.markText(
