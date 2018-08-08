@@ -11,6 +11,11 @@ import { log } from '../../utils/log';
 const REVISION_CLASS = 'jp-Revision';
 
 /**
+ * The class name for the fauz notebook in the revision widget.
+ */
+const REVISION_NOTEBOOK_CLASS = 'jp-Revision-notebook';
+
+/**
  * The class name added to headers for revision widgets.
  */
 const REVISION_HEADER_CLASS = 'jp-Revision-header';
@@ -60,6 +65,11 @@ export class Revision<TOutputModel> extends Widget {
 
         let layout = (this.layout = new PanelLayout());
         
+        let notebookWidget = new Widget({ node: document.createElement("div") });
+        notebookWidget.addClass(REVISION_NOTEBOOK_CLASS);
+        let nbLayout = (notebookWidget.layout = new PanelLayout());
+        layout.addWidget(notebookWidget);
+
         // Add header
         let header: HTMLElement = document.createElement("h1");
         let headerText: string;
@@ -95,7 +105,7 @@ export class Revision<TOutputModel> extends Widget {
         header.textContent = headerText;
         let headerWidget: Widget = new Widget({ node: header });
         headerWidget.addClass(REVISION_HEADER_CLASS);
-        layout.addWidget(headerWidget);
+        nbLayout.addWidget(headerWidget);
 
         // Add buttons for gathering
         let buttons = new Widget({ node: document.createElement("div") });
@@ -144,13 +154,13 @@ export class Revision<TOutputModel> extends Widget {
         };
         (buttons.layout as PanelLayout).addWidget(copyButton);
 
-        layout.addWidget(buttons);
+        nbLayout.addWidget(buttons);
 
         // Add the revision's code
         let cellsWidget = new Widget({ node: document.createElement("div") });
         cellsWidget.addClass(REVISION_CELLS_CLASS);
         let cellsLayout = (cellsWidget.layout = new PanelLayout());
-        layout.addWidget(cellsWidget);
+        nbLayout.addWidget(cellsWidget);
 
         cellsLayout.addWidget(new CodeVersion({
             model: model.source,

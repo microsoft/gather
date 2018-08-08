@@ -396,6 +396,21 @@ describe('getDefs', () => {
                 expect(defs).to.include("var");
             });
 
+            it('only recognizing instance names in the config', () => {
+                let defs = getDefNamesFromStatement(
+                    "unmodified.method()",
+                    new SlicerConfig([
+                        new FunctionConfig({
+                            pattern: {
+                                functionName: "method",
+                                instanceNames: ["modified"]
+                            },
+                            instanceEffect: ReferenceType.UPDATE
+                        })
+                    ]));
+                expect(defs).to.deep.equal([]);
+            });
+
         });
         
         describe('ignoring by default', () => {
