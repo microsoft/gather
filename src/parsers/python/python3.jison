@@ -37,8 +37,11 @@ operators               ">>="|"<<="|"**="|"//="|"->"|"+="|"-="|"*="|"/="|"%="|
                         "&="|"|="|"^="|"**"|"//"|"<<"|">>"|"<="|">="|"=="|"!="|
                         "("|")"|"["|"]"|"{"|"}"|","|":"|"."|";"|"@"|"="|"+"|"-"|
                         "*"|"/"|"%"|"&"|"|"|"^"|"~"|"<"|">"|"""|"#"|"\"
+ellipsis                "..."
 
 // strings
+stringliteral           ([rR]|[uU]|[fF]|[fF][rR]|[rR][fF])?({longstring}|{shortstring})
+
 longstring              {longstring_double}|{longstring_single}
 longstring_double       '"""'{longstringitem}*?'"""'
 longstring_single       "'''"{longstringitem}*?"'''"
@@ -52,11 +55,14 @@ shortstringitem_double  {shortstringchar_double}|{escapeseq}
 shortstringitem_single  {shortstringchar_single}|{escapeseq}
 shortstringchar_single  [^\\\n\']
 shortstringchar_double  [^\\\n\"]
-escapeseq               \\.
+escapeseq               \\.|\\\n
+
+bytesliteral            {bytesprefix}({longstring}|{shortstring})
+bytesprefix             [bB]|[bB][rR]|[rR][bB]
 
 // numbers
-integer                 ({decinteger})|({hexinteger})|({octinteger})
-decinteger              (([1-9]{digit}*)|"0")
+integer                 {hexinteger}|{octinteger}|{decinteger}
+decinteger              (([1-9]{digit}*)|"0"+)
 hexinteger              "0"[x|X]{hexdigit}+
 octinteger              "0"[o|O]{octdigit}+
 bininteger              "0"[b|B]{bindigit}+
@@ -131,10 +137,11 @@ exponent                [e|E][\+|\-]?({digit})+
                         %}
 
 <INLINE>\#[^\n]*        /* skip comments */
-<INLINE>[\ \t\f]*\\\n   /* skip line continuations */
+<INLINE>\\\n[\ \t\f]*   /* skip line continuations */
 <INLINE>[\ \t\f]+       /* skip whitespace, separate tokens */
 /* floatnumber rules should go before operators. Otherwise .\d+ will never be read as a floating
  * point number, the '.' will only be used for property accesses. */
+<INLINE>{ellipsis}      return 'ELLIPSIS'
 <INLINE>{floatnumber}   return 'NUMBER'
 <INLINE>{bininteger}    %{  
                             var i = yytext.substr(2); // binary val
@@ -150,16 +157,28 @@ exponent                [e|E][\+|\-]?({digit})+
                             }
                             return yytext 
                         %}
-<INLINE>{longstring}    %{
+<INLINE>{stringliteral} %{
                             // escape string and convert to double quotes
                             // http://stackoverflow.com/questions/770523/escaping-strings-in-javascript
-                            var str = yytext.substr(3, yytext.length-6)
-                                .replace( /[\\"']/g, '\\$&' )
-                                .replace(/\u0000/g, '\\0');
-                            yytext = '"' + str + '"'
+                            if (yytext.endsWith("'''") || yytext.endsWith('"""')) {
+                                var str = yytext.substr(3, yytext.length-6)
+                                    .replace( /[\\"']/g, '\\$&' )
+                                    .replace(/\u0000/g, '\\0');
+                                yytext = '"' + str + '"'
+                            }
                             return 'STRING'
                         %}
-<INLINE>{shortstring}   %{ return 'STRING' %}
+<INLINE>{bytesliteral} %{
+                            // escape string and convert to double quotes
+                            // http://stackoverflow.com/questions/770523/escaping-strings-in-javascript
+                            if (yytext.endsWith("'''") || yytext.endsWith('"""')) {
+                                var str = yytext.substr(3, yytext.length-6)
+                                    .replace( /[\\"']/g, '\\$&' )
+                                    .replace(/\u0000/g, '\\0');
+                                yytext = '"' + str + '"'
+                            }
+                            return 'BYTES'
+                        %}
 <INLINE>{identifier}    %{
                             return ( keywords.indexOf( yytext ) == -1 )
                                 ? 'NAME'
@@ -235,43 +254,28 @@ parameters
         { $$ = $2 }
     ;
 
-// typedargslist: (tfpdef ['=' test] (',' tfpdef ['=' test])* [','
-//  ['*' [tfpdef] (',' tfpdef ['=' test])* [',' '**' tfpdef] | '**' tfpdef]]
+// typedargslist: (tfpdef ['=' test] 
+//    (',' tfpdef ['=' test])* 
+//    [','  ['*' [tfpdef] (',' tfpdef ['=' test])* [',' '**' tfpdef] | '**' tfpdef]]
 //   |  '*' [tfpdef] (',' tfpdef ['=' test])* [',' '**' tfpdef] | '**' tfpdef)
-// todo: *args and **kargs aren't currently implemented
 typedargslist
+    : typedarglist_part
+        { $$ = [ $1 ] }
+    | typedarglist_part ',' typedargslist
+        { $$ = [ $1 ].concat($3) }
+    ;
+
+typedarglist_part
     : tfpdef
         { $$ = [ $1 ] }
-    | tfpdef ',' typedargslist_tail
-        { $$ = [ $1 ].concat( $3 ) }
-    | tfpdef typedargslist0
-        { $$ = [ $1 ].concat( $2 ) }
     | tfpdef '=' test
         { $1.default = $3; $$ = [ $1 ] }
-    | tfpdef '=' test typedargslist0
-        { $1.default = $3; $$ = [ $1 ].concat( $4 ) }
-    ;
-
-typedargslist_tail
-    : '*' tfpdef
-        { $2.args = true; $$ = [ $2 ] }
-    | '*' tfpdef typedargslist0
-        { $2.args = true; $$ = [ $2 ].concat( $3 ) }
-    //| '**' tfpdef // todo: implement
-    //    { $2.kargs = true; $$ = [ $2 ] }
-    //| '*' tfpdef ',' '**' tfpdef
-    //| '*' tfpdef typedargslist0 ',' '**' tfpdef
-    ;
-
-typedargslist0
-    : ',' tfpdef
-        { $$ = [ $2 ] }
-    | ',' tfpdef typedargslist0
-        { $$ = [ $2 ].concat( $3 ) }
-    | ',' tfpdef '=' test
-        { $2.default = $4; $$ = [ $2 ] }
-    | ',' tfpdef '=' test typedargslist0
-        { $2.default = $4; $$ = [ $2 ].concat( $5 ) }
+    | '*' 
+        { $$ = 'var' }
+    | '*' tfpdef
+        { $1.varargs = true; $$ = [ $2 ] }
+    | '**' tfpdef
+        { $1.rest = true; $$ = [ $2 ] }
     ;
 
 // tfpdef: NAME [':' test]
@@ -415,7 +419,7 @@ augassign
 
 // del_stmt: 'del' exprlist
 del_stmt
-    : 'del' NAME
+    : 'del' exprlist
         { $$ = {type:'del', name: $1, location: @$} }
     ;
 
@@ -490,8 +494,8 @@ import_from0
     : '.'
     | '.' import_from0
         { $$ = $1 + $2 }
-    | '...'
-    | '...' import_from0
+    | ELLIPSIS
+    | ELLIPSIS import_from0
         { $$ = $1 + $2 }
     ;
 
@@ -993,15 +997,30 @@ atom
         { $$ = { type: 'name', id: $1, location: @$ } }
     | NUMBER
         { $$ = { type: 'literal', value: $1 * 1, location: @$ } } // convert to number
-    | STRING
+    | string
         { $$ = { type: 'literal', value: $1, location: @$ } }
-    | '...'
+    | bytes
+        { $$ = { type: 'literal', value: $1, location: @$ } }
+    | ELLIPSIS
+        { $$ = { type: 'literal', value: { type: 'ellipsis' }, location: @$ } }
     | 'None'
         { $$ = { type: 'literal', value: 'None', location: @$ } }
     | 'True'
         { $$ = { type: 'literal', value: 'True', location: @$} }
     | 'False'
         { $$ = { type: 'literal', value: 'False', location: @$} }
+    ;
+
+string
+    : STRING
+    | STRING string
+        { $$ = $1 + $2 }
+    ;
+
+bytes
+    : BYTES
+    | BYTES bytes
+        { $$ = $1 + $2 }
     ;
 
 colon: ':' { $$ = { location: @$ } } ;
@@ -1233,6 +1252,10 @@ argument
         { $$ = { type: 'arg', actual: $1, loop: $2 } }
     | test '=' test
         { $$ = { type: 'arg', keyword: $1, actual: $3 } }
+    | '**' test
+        { $$ = { type: 'arg', keyword: true, actual: $2 } }
+    | '*' test
+        { $$ = { type: 'arg', unpack: true, actual: $2 } }
     ;
 
 // comp_iter: comp_for | comp_if
