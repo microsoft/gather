@@ -37,6 +37,7 @@ operators               ">>="|"<<="|"**="|"//="|"->"|"+="|"-="|"*="|"/="|"%="|
                         "&="|"|="|"^="|"**"|"//"|"<<"|">>"|"<="|">="|"=="|"!="|
                         "("|")"|"["|"]"|"{"|"}"|","|":"|"."|";"|"@"|"="|"+"|"-"|
                         "*"|"/"|"%"|"&"|"|"|"^"|"~"|"<"|">"|"""|"#"|"\"
+ellipsis                "..."
 
 // strings
 stringliteral           ([rR]|[uU]|[fF]|[fF][rR]|[rR][fF])?({longstring}|{shortstring})
@@ -54,11 +55,14 @@ shortstringitem_double  {shortstringchar_double}|{escapeseq}
 shortstringitem_single  {shortstringchar_single}|{escapeseq}
 shortstringchar_single  [^\\\n\']
 shortstringchar_double  [^\\\n\"]
-escapeseq               \\.
+escapeseq               \\.|\\\n
+
+bytesliteral            {bytesprefix}({longstring}|{shortstring})
+bytesprefix             [bB]|[bB][rR]|[rR][bB]
 
 // numbers
-integer                 ({decinteger})|({hexinteger})|({octinteger})
-decinteger              (([1-9]{digit}*)|"0")
+integer                 {hexinteger}|{octinteger}|{decinteger}
+decinteger              (([1-9]{digit}*)|"0"+)
 hexinteger              "0"[x|X]{hexdigit}+
 octinteger              "0"[o|O]{octdigit}+
 bininteger              "0"[b|B]{bindigit}+
@@ -137,6 +141,7 @@ exponent                [e|E][\+|\-]?({digit})+
 <INLINE>[\ \t\f]+       /* skip whitespace, separate tokens */
 /* floatnumber rules should go before operators. Otherwise .\d+ will never be read as a floating
  * point number, the '.' will only be used for property accesses. */
+<INLINE>{ellipsis}      return 'ELLIPSIS'
 <INLINE>{floatnumber}   return 'NUMBER'
 <INLINE>{bininteger}    %{  
                             var i = yytext.substr(2); // binary val
@@ -162,6 +167,17 @@ exponent                [e|E][\+|\-]?({digit})+
                                 yytext = '"' + str + '"'
                             }
                             return 'STRING'
+                        %}
+<INLINE>{bytesliteral} %{
+                            // escape string and convert to double quotes
+                            // http://stackoverflow.com/questions/770523/escaping-strings-in-javascript
+                            if (yytext.endsWith("'''") || yytext.endsWith('"""')) {
+                                var str = yytext.substr(3, yytext.length-6)
+                                    .replace( /[\\"']/g, '\\$&' )
+                                    .replace(/\u0000/g, '\\0');
+                                yytext = '"' + str + '"'
+                            }
+                            return 'BYTES'
                         %}
 <INLINE>{identifier}    %{
                             return ( keywords.indexOf( yytext ) == -1 )
@@ -403,7 +419,7 @@ augassign
 
 // del_stmt: 'del' exprlist
 del_stmt
-    : 'del' NAME
+    : 'del' exprlist
         { $$ = {type:'del', name: $1, location: @$} }
     ;
 
@@ -478,8 +494,8 @@ import_from0
     : '.'
     | '.' import_from0
         { $$ = $1 + $2 }
-    | '...'
-    | '...' import_from0
+    | ELLIPSIS
+    | ELLIPSIS import_from0
         { $$ = $1 + $2 }
     ;
 
@@ -983,7 +999,10 @@ atom
         { $$ = { type: 'literal', value: $1 * 1, location: @$ } } // convert to number
     | string
         { $$ = { type: 'literal', value: $1, location: @$ } }
-    | '...'
+    | bytes
+        { $$ = { type: 'literal', value: $1, location: @$ } }
+    | ELLIPSIS
+        { $$ = { type: 'literal', value: { type: 'ellipsis' }, location: @$ } }
     | 'None'
         { $$ = { type: 'literal', value: 'None', location: @$ } }
     | 'True'
@@ -995,6 +1014,12 @@ atom
 string
     : STRING
     | STRING string
+        { $$ = $1 + $2 }
+    ;
+
+bytes
+    : BYTES
+    | BYTES bytes
         { $$ = $1 + $2 }
     ;
 
