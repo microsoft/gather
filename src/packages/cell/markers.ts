@@ -87,6 +87,7 @@ export class MarkerManager implements IGatherObserver {
     private _defLineHandles: DefLineHandle[] = [];
     private _outputMarkers: OutputMarker[] = [];
     private _dependencyLineMarkers: DependencyLineMarker[] = [];
+    private _slicerConfig: SlicerConfig = new SlicerConfig();
 
     /**
      * Click-handler---pass on click event to markers.
@@ -242,7 +243,7 @@ export class MarkerManager implements IGatherObserver {
 
         // Add marker for all of the definitions in the code.
         statements.forEach((statement: ISyntaxNode) => {
-            getDefs(statement, { moduleNames: new StringSet() }, new SlicerConfig())
+            getDefs(statement, { moduleNames: new StringSet() }, this._slicerConfig)
             .items.filter((d) => [SymbolType.VARIABLE, SymbolType.MUTATION].indexOf(d.type) != -1)
             .forEach((def) => {
                 this._model.addEditorDef({ def: def, editor: editor, cell: cell });

@@ -72,6 +72,8 @@ interface SymbolTable {
     moduleNames: StringSet;
 }
 
+const DEFAULT_SLICER_CONFIG = new SlicerConfig();
+
 /**
  * Tree walk listener for collecting manual def annotations.
  */
@@ -251,7 +253,7 @@ export function getDefs(
     let defs = new RefSet();
     if (!statement) return defs;
 
-    slicerConfig = slicerConfig || new SlicerConfig();
+    slicerConfig = slicerConfig || DEFAULT_SLICER_CONFIG;
 
     // ️⚠️ The following is heuristic and unsound, but works for many scripts:
     // Unless noted in the `slicerConfig`, assume that no instances or arguments are changed

@@ -5,7 +5,6 @@ import { ReferenceType } from "./DataflowAnalysis";
  * Includes defaults of methods that will probably modify their variables.
  */
 export class SlicerConfig {
-
     /**
      * Construct a slicer configuration.
      */
