@@ -275,28 +275,36 @@ export class MarkerManager implements IGatherObserver {
      * Highlight dependencies in a cell at a set of locations. 
      */
     highlightDependencies(slice: SlicedExecution) {
+        let defLines: number[] = [];
         slice.cellSlices.forEach((cellSlice) => {
             let cell = cellSlice.cell;
             let sliceLocations = cellSlice.slice;
             let editor = this._cellEditorResolver.resolve(cell);
+
             if (editor) {
                 let numLines = 0;
-                sliceLocations.items.forEach((loc) => {
-                    for (let lineNumber = loc.first_line - 1; lineNumber <= loc.last_line -1; lineNumber++) {
-                        numLines += 1;
-                        let lineHandle = editor.addLineClass(lineNumber, "background", DEPENDENCY_CLASS);
-                        this._dependencyLineMarkers.push({ editor: editor, lineHandle: lineHandle });
-                    }
+                // Batch the highlight operations for each cell to spend less time updating cell height.
+                editor.operation(() => {
+                    sliceLocations.items.forEach((loc) => {
+                        for (let lineNumber = loc.first_line - 1; lineNumber <= loc.last_line -1; lineNumber++) {
+                            numLines += 1;
+                            // Add this as "text", NOT "background", to avoid performance bottlenecks from adding
+                            // CodeMirror trying to update the height of all the editors.
+                            let lineHandle = editor.addLineClass(lineNumber, "text", DEPENDENCY_CLASS);
+                            this._dependencyLineMarkers.push({ editor: editor, lineHandle: lineHandle });
+                        }
+                    });
+                    defLines.push(numLines);
                 });
-                log("Added lines for def (may be overlapping)", { numLines });
             }
         });
+        log("Added lines for defs (may be overlapping)", { defLines });
     }
 
     private _clearDependencyLineMarkers() {
         log("Cleared all dependency line markers");
         this._dependencyLineMarkers.forEach((marker) => {
-            marker.editor.removeLineClass(marker.lineHandle, "background", DEPENDENCY_CLASS);
+            marker.editor.removeLineClass(marker.lineHandle, "text", DEPENDENCY_CLASS);
         })
         this._dependencyLineMarkers = [];
     }

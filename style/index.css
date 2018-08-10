@@ -65,7 +65,7 @@
   font-weight: bold;
 }
 
-.jp-InputArea-editor-dependencyline {
+.CodeMirror pre.jp-InputArea-editor-dependencyline {
   background-color: var(--brand-color4);
 }
 

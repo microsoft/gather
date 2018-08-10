@@ -37,9 +37,13 @@ var executionHistory: ExecutionHistory;
 class NbStatePoller implements log.IStatePoller {
     /**
      * Construct a new poller for notebook state.
+     * Pass in `logCells` as false if you don't want to log information about the cells and their
+     * contents (number, order, total length of text). Collecting the number of cells slows down
+     * execution like crazy because of its internal implementation.
      */
-    constructor(notebook: Notebook) {
+    constructor(notebook: Notebook, logCells?: boolean) {
         this._notebook = notebook;
+        this._logCells = logCells;
         // If this notebook doesn't have a UUID, assign one. We'll want to use this to
         // disambiguate between the notebooks developers are using gathering in.
         if (!this._notebook.metadata) {
@@ -56,22 +60,25 @@ class NbStatePoller implements log.IStatePoller {
      * Collect state information about the notebook.
      */
     poll(): any {
-        return {
-            notebook: {
-                gathered: this._notebook.metadata && this._notebook.metadata.gathered,
-                uuid: (this._notebook.metadata ? this._notebook.metadata.gatheringId : undefined),
-                numCells: this._notebook.get_cells().length,
-                codeCellIds: this._notebook.get_cells()
-                    .filter((c) => c.cell_type == "code")
-                    .map((c) => [c.cell_id, (c as CodeCell).input_prompt_number]),
-                numLines: this._notebook.get_cells()
-                    .filter((c) => c.cell_type == "code")
-                    .reduce((lineCount, c) => { return lineCount + c.code_mirror.getValue().split("\n").length }, 0)
-            }
+        let data: any = {
+            gathered: this._notebook.metadata && this._notebook.metadata.gathered,
+            uuid: (this._notebook.metadata ? this._notebook.metadata.gatheringId : undefined),
+        };
+        if (this._logCells) {
+            let cells = this._notebook.get_cells();
+            data.numCells = cells.length;
+            data.codeCellIds = cells
+                .filter((c) => c.cell_type == "code")
+                .map((c) => [c.cell_id, (c as CodeCell).input_prompt_number]);
+            data.numLines = cells
+                .filter((c) => c.cell_type == "code")
+                .reduce((lineCount, c) => { return lineCount + c.code_mirror.getValue().split("\n").length }, 0)
         }
+        return data;
     }
 
     private _notebook: Notebook;
+    private _logCells: boolean = false;
 }
 
 /**
@@ -193,22 +200,46 @@ class NotebookEventLogger {
 }
 
 /**
- * Get a cell from the notebook with the specified properties.
+ * Gets cell from a notebook. We use this instead of directly accessing cells on the notebook as
+ * this can speed up cell accesses for costly cell queries.
  */
-function getCellWidget(notebook: Notebook, cellId: string, executionCount?: number): Cell {
-    let matchingCells = notebook.get_cells()
-    .filter((c) => {
-        if (c.cell_id != cellId) return false;
-        if (executionCount != undefined) {
-            if (!(c instanceof CodeCell)) return false;
-            if ((c as CodeCell).input_prompt_number != executionCount) return false;
-        }
-        return true;
-    });
-    if (matchingCells.length > 0) {
-        return matchingCells.pop();
+class CellFetcher {
+    /**
+     * Construct a new cell fetcher.
+     */
+    constructor(notebook: Notebook) {
+        this._notebook = notebook;
+        // Invalidate the list of cached cells every time the notebook changes.
+        this._notebook.events.on("set_dirty.Notebook", () => {
+            this._cachedCells = null;
+        });
     }
-    return null;
+
+    /**
+     * Get a cell from the notebook with the specified properties.
+     */
+    getCellWidget(cellId: string, executionCount?: number): Cell {
+        // If the cells haven't been cached, cache 'em here.
+        if (this._cachedCells == null) {
+            this._cachedCells = this._notebook.get_cells();
+        }
+        let matchingCells = this._cachedCells
+        .filter((c) => {
+            if (c.cell_id != cellId) return false;
+            if (executionCount != undefined) {
+                if (!(c instanceof CodeCell)) return false;
+                if ((c as CodeCell).input_prompt_number != executionCount) return false;
+            }
+            return true;
+        });
+        if (matchingCells.length > 0) {
+            return matchingCells.pop();
+        }
+        return null;
+    }
+
+    private _notebook: Notebook;
+    private _cachedCells: Cell[] = null;
 }
 
 /**
@@ -219,19 +250,19 @@ class NotebookCellEditorResolver implements CellEditorResolver {
     /**
      * Construct a new cell editor resolver.
      */
-    constructor(notebook: Notebook) {
-        this._notebook = notebook;
+    constructor(cellFetcher: CellFetcher) {
+        this._cellFetcher = cellFetcher;
     }
 
     resolve(cell: ICell): CodeMirror.Editor {
-        let cellWidget = getCellWidget(this._notebook, cell.id, cell.executionCount);
+        let cellWidget = this._cellFetcher.getCellWidget(cell.id, cell.executionCount);
         if (cellWidget) {
             return cellWidget.code_mirror;
         }
         return null;
     }
 
-    private _notebook: Notebook;
+    private _cellFetcher: CellFetcher;
 }
 
 /**
@@ -241,12 +272,12 @@ class NotebookCellOutputResolver implements CellOutputResolver {
     /**
      * Construct a new cell editor resolver.
      */
-    constructor(notebook: Notebook) {
-        this._notebook = notebook;
+    constructor(cellFetcher: CellFetcher) {
+        this._cellFetcher = cellFetcher;
     }
 
     resolve(cell: ICell): HTMLElement[] {
-        let cellWidget = getCellWidget(this._notebook, cell.id, cell.executionCount);
+        let cellWidget = this._cellFetcher.getCellWidget(cell.id, cell.executionCount);
         let outputElements = [];
         if (cellWidget) {
             let cellElement = cellWidget.element[0];
@@ -260,7 +291,7 @@ class NotebookCellOutputResolver implements CellOutputResolver {
         return outputElements;
     }
 
-    private _notebook: Notebook;
+    private _cellFetcher: CellFetcher;
 }
 
 /**
@@ -422,8 +453,9 @@ export function load_ipython_extension() {
     /**
      * Initialize logging.
      */
+    const LOG_NB_CELLS = false;
     log.initLogger({ ajax: utils.ajax });
-    log.registerPollers(new NbStatePoller(Jupyter.notebook));
+    log.registerPollers(new NbStatePoller(Jupyter.notebook, LOG_NB_CELLS));
     new NotebookEventLogger(Jupyter.notebook);
 
     // Object containing global UI state.
@@ -431,9 +463,10 @@ export function load_ipython_extension() {
 
     // Plugin initializations.
     executionHistory = new ExecutionHistory(Jupyter.notebook, gatherModel);
+    let cellFetcher = new CellFetcher(Jupyter.notebook);
     let markerManager = new MarkerManager(gatherModel,
-        new NotebookCellEditorResolver(Jupyter.notebook),
-        new NotebookCellOutputResolver(Jupyter.notebook));
+        new NotebookCellEditorResolver(cellFetcher),
+        new NotebookCellOutputResolver(cellFetcher));
     new ResultsHighlighter(Jupyter.notebook, gatherModel, markerManager);
 
     // Initialize clipboard for copying cells.

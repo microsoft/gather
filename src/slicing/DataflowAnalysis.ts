@@ -477,6 +477,7 @@ export type DataflowAnalysisResult = {
 export function dataflowAnalysis(cfg: ControlFlowGraph,
         slicerConfig?: SlicerConfig, namesDefined?: StringSet): DataflowAnalysisResult {
     
+    slicerConfig = slicerConfig || DEFAULT_SLICER_CONFIG;
     let symbolTable: SymbolTable = { moduleNames: new StringSet() };
     const workQueue: Block[] = cfg.blocks.reverse();
     let undefinedRefs = new RefSet();
@@ -500,7 +501,8 @@ export function dataflowAnalysis(cfg: ControlFlowGraph,
             oldDefsForLevel[level] = defsForLevelByBlock[level][block.id];
             // incoming definitions are come from predecessor blocks
             defsForLevel[level] = oldDefsForLevel[level].union(...cfg.getPredecessors(block)
-                .map(block => defsForLevelByBlock[level][block.id]));
+                .map(block => defsForLevelByBlock[level][block.id])
+                .filter((s) => s != undefined));
         }
 
         // TODO: fix up dataflow computation within this block: check for definitions in

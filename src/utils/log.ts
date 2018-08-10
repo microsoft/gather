@@ -47,6 +47,7 @@ export function registerPollers(...pollers: IStatePoller[]) {
 /**
  * Log pretty much any data. Fail silently if the request can't be completed (i.e. if the plugin
  * for logging is down). Must initialize logger with `initLogger` before calling this method.
+ * Call this after a batch of operations instead of each item, as calls can take a while.
  */
 export function log(eventName: string, data?: any) {
     
