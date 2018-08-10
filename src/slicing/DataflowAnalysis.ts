@@ -365,7 +365,11 @@ export function getUses(statement: ast.ISyntaxNode, _: SymbolTable, slicerConfig
         }
         case ast.DEF:
             let defCfg = new ControlFlowGraph(statement);
-            let argNames = new StringSet(...statement.params.map((p) => p.name));
+            let argNames = new StringSet(...statement.params.map((p) => {
+                if(p && p instanceof Array && p.length > 0 && p[0].name) {
+                    return p[0].name;
+                }
+            }).filter(n => n != undefined));
             let undefinedRefs = dataflowAnalysis(defCfg, slicerConfig, argNames).undefinedRefs;
             uses = undefinedRefs.filter((r) => r.level == ReferenceType.USE);
             break;

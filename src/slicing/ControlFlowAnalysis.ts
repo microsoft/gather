@@ -7,7 +7,7 @@ export class Block {
 
     constructor(
         public id: number,
-        private hint: string,
+        readonly hint: string,
         public statements: ast.ISyntaxNode[],
         public loopVariables: ast.ISyntaxNode[] = []) {
     }
@@ -191,8 +191,9 @@ export class ControlFlowGraph {
         const afterTry = this.makeBlock('try join');
         let exnContext = context;
         let handlerExits: Block[] = [];
+        let handlerHead: Block = undefined;
         if (statement.excepts) {
-            const handlerHead = this.makeBlock('handlers');
+            handlerHead = this.makeBlock('handlers');
             const handlerCfgs = statement.excepts.map(
                 handler => this.makeCFG('handler body', handler.code, context));
             handlerCfgs.forEach(([exceptEntry, _]) => this.link(handlerHead, exceptEntry));
@@ -202,6 +203,9 @@ export class ControlFlowGraph {
         const [bodyEntry, bodyExit] = this.makeCFG('try body', statement.code, exnContext);
         this.link(last, bodyEntry);
         let normalExit = bodyExit;
+        if (handlerHead) {
+            this.link(bodyExit, handlerHead);
+        }
         if (statement.else) {
             const [elseEntry, elseExit] = this.makeCFG('try else body', statement.else, context);
             this.link(normalExit, elseEntry);
