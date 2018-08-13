@@ -8,11 +8,11 @@ import * as path from 'path';
  * If the `parse` method gets an error, all later calls will throw an error.
  * This method resets the state of the `parse` method so that doesn't happen.
  */
-export function parse(program: string): any {
+export function parse(program: string): IModule {
     // We avoid using require since loading/unloading the module causes a memory leak.
     const fname = path.join(path.dirname(__filename), 'python3.js');
     const contents = fs.readFileSync(fname).toString();
-    let exports = { parse: (s: string): ISyntaxNode => null };
+    let exports = { parse: (s: string): IModule => null };
     eval(contents); // overwrites parse function
     return exports.parse(program);
 }

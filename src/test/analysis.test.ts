@@ -264,8 +264,9 @@ describe('getDefs', () => {
 
     function getDefsFromStatement(code: string, slicerConfig?: SlicerConfig): Ref[] {
         code = code + "\n";  // programs need to end with newline
-        let module = parse(code);
-        return getDefs(module.code, { moduleNames: new StringSet() }, slicerConfig).items;
+        let mod = parse(code);
+        console.assert(mod && mod.code && mod.code.length);
+        return getDefs(mod.code[0], { moduleNames: new StringSet() }, slicerConfig).items;
     }
 
     function getDefNamesFromStatement(code: string, slicerConfig?: SlicerConfig) {
@@ -441,8 +442,9 @@ describe('getUses', () => {
 
     function getUseNames(...codeLines: string[]) {
         let code = codeLines.concat("").join("\n");
-        let module = parse(code);
-        return getUses(module.code, { moduleNames: new StringSet() }).items
+        let mod = parse(code);
+        console.assert(mod && mod.code && mod.code.length);
+        return getUses(mod.code[0], { moduleNames: new StringSet() }).items
             .map(use => use.name);
     }
 

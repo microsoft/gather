@@ -208,6 +208,7 @@ file_input
 file_input0
     : NEWLINE
     | stmt
+        { $$ = [$1] }
     | NEWLINE file_input0
         { $$ = $2 }
     | stmt file_input0

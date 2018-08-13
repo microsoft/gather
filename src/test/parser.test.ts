@@ -1,5 +1,5 @@
 // import * as python3 from '../parsers/python/python3';
-import { parse, walk } from '../parsers/python/python_parser';
+import { parse, walk, IDict } from '../parsers/python/python_parser';
 import { expect } from 'chai';
 
 describe('python parser', () => {
@@ -19,7 +19,10 @@ describe('python parser', () => {
     });
 
     it('parses a dictionary with a `comp_for`', () => {
-        let node = parse('{k: v for (k, v) in d.items()}\n').code;
+        let mod = parse('{k: v for (k, v) in d.items()}\n');
+        expect(mod).to.exist;
+        expect(mod.code).to.have.length;
+        let node = mod.code[0] as IDict;
         expect(node.entries.length).to.equal(1);
         expect(node.comp_for).not.to.be.undefined;
     });
@@ -37,7 +40,7 @@ describe('python parser', () => {
         let node = parse([
             'obj.func()',
             ''
-        ].join('\n')).code;
+        ].join('\n')).code[0];
         expect(node.location).to.deep.equal({
             first_line: 1,
             first_column: 0,
