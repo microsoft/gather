@@ -7,7 +7,7 @@ export class Block {
 
     constructor(
         public id: number,
-        readonly hint: string,
+        public readonly hint: string,
         public statements: ast.ISyntaxNode[],
         public loopVariables: ast.ISyntaxNode[] = []) {
     }
@@ -299,12 +299,12 @@ export class ControlFlowGraph {
 
     private postdominatorExists(block: Block, postdominator: Block) {
         return this.postdominators.filter(
-            (p) => (p.block == block && p.postdominator == postdominator)
+            p => (p.block == block && p.postdominator == postdominator)
         ).size > 0;
     }
 
     private getImmediatePostdominator(block: Block): Postdominator {
-        let immediatePostdominators = this.immediatePostdominators.items.filter((p) => p.block == block);
+        let immediatePostdominators = this.immediatePostdominators.items.filter(p => p.block == block);
         return immediatePostdominators[0]
     }
 
@@ -319,7 +319,7 @@ export class ControlFlowGraph {
                 postdominators[block.id].add(new Postdominator(distance, block, otherBlock));
             }
         }
-        let lastBlock = blocks.filter((b) => this.getSuccessors(b).length == 0)[0];
+        let lastBlock = blocks.filter(b => this.getSuccessors(b).length == 0)[0];
         postdominators[lastBlock.id] = new PostdominatorSet(
             new Postdominator(0, lastBlock, lastBlock),
         );
@@ -333,7 +333,7 @@ export class ControlFlowGraph {
                 let successors = this.getSuccessors(block);
                 // Merge postdominators that appear in all of a block's successors.
                 let newPostdominators = new PostdominatorSet(...[].concat(
-                    ...successors.map((s) => postdominators[s.id].items))
+                    ...successors.map(s => postdominators[s.id].items))
                     .reduce((pCounts: { p: Postdominator, count: number }[], p) => {
                         let countIndex = pCounts.findIndex(record => {
                             return record.p.postdominator == p.postdominator;
@@ -379,7 +379,7 @@ export class ControlFlowGraph {
 
     private getImmediatePostdominators(postdominators: Postdominator[]) {
         let postdominatorsByBlock: { [id: number ] : Postdominator[] } = postdominators
-            .filter((p) => p.block != p.postdominator)
+            .filter(p => p.block != p.postdominator)
             .reduce((dict: { [id: number]: Postdominator[] }, postdominator) => {
                 if (!dict.hasOwnProperty(postdominator.block.id)) {
                     dict[postdominator.block.id] = [];
@@ -417,7 +417,7 @@ export class ControlFlowGraph {
                     frontier.add(block);
                     let immediatePostdominator = this.getImmediatePostdominator(item);
                     if (immediatePostdominator.postdominator != blockImmediatePostdominator.postdominator) {
-                        this.getSuccessors(item).forEach((b) => { 
+                        this.getSuccessors(item).forEach(b => { 
                             if (scheduled.indexOf(b) == -1) {
                                 scheduled.push(b);
                                 workQueue.push(b);
@@ -451,6 +451,6 @@ class Postdominator {
  */
 class PostdominatorSet extends Set<Postdominator> {
     constructor(...items: Postdominator[]) {
-        super((p) => p.block.id + ',' + p.postdominator.id, ...items);
+        super(p => p.block.id + ',' + p.postdominator.id, ...items);
     }
 }

@@ -6,7 +6,9 @@
 %{ 
     var indents = [0], 
         indent = 0, 
-        dedents = 0
+        dedents = 0,
+        loc = undefined,
+        partial = undefined,
 
         // we don't need to implement a full stack here to ensure symmetry
         // because it's ensured by the grammar
@@ -273,9 +275,9 @@ typedarglist_part
     | '*' 
         { $$ = 'var' }
     | '*' tfpdef
-        { $1.varargs = true; $$ = [ $2 ] }
+        { $2.varargs = true; $$ = [ $2 ] }
     | '**' tfpdef
-        { $1.rest = true; $$ = [ $2 ] }
+        { $2.rest = true; $$ = [ $2 ] }
     ;
 
 // tfpdef: NAME [':' test]

@@ -23,7 +23,7 @@ export function buildHistoryModel<TOutputModel>(
     // make comparisons between versions of cells.
     let lastestVersion = executionVersions[executionVersions.length - 1];
     let latestCellVersions: { [cellId: string]: CellSlice } = {};
-    lastestVersion.cellSlices.forEach((cellSlice) => {
+    lastestVersion.cellSlices.forEach(cellSlice => {
         latestCellVersions[cellSlice.cell.id] = cellSlice;
     });
 

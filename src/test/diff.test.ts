@@ -62,7 +62,7 @@ describe('textdiff', () => {
         const after = "line A\nline B";
         let diff = textdiff(before, after);
         expect(diff.text).to.equal("line a\nline b\nline A\nline B");
-        let changeLocationLines = diff.changeLocations.map((l) => l.first_line);
+        let changeLocationLines = diff.changeLocations.map(l => l.first_line);
         expect(changeLocationLines).to.include(1);
         expect(changeLocationLines).to.include(2);
         expect(changeLocationLines).to.include(3);

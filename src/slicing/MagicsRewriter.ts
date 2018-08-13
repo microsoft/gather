@@ -71,7 +71,7 @@ export class MagicsRewriter {
     rewriteCellMagic(text: string): string {
         if (text.match(/\s*%%/)) {
             return text.split("\n")
-            .map((l) => "#" + l)
+            .map(l => "#" + l)
             .join("\n");
         }
         return text;
@@ -144,7 +144,7 @@ export class MagicsRewriter {
             // Default rewrite: comment out all lines.
             if (!rewriteText) {
                 rewriteText = match.split("\n")
-                .map((s) => "#" + s)
+                .map(s => "#" + s)
                 .join("\n");
             }
 
@@ -173,7 +173,7 @@ export class TimeLineMagicRewriter implements LineMagicRewriter {
     commandName: string = "time";
     rewrite(matchedText: string, magicStmt: string, position: MatchPosition): Rewrite {
         return {
-            text: matchedText.replace(/^\s*%time/, (match) => {
+            text: matchedText.replace(/^\s*%time/, match => {
                 return '"' + (' '.repeat( match.length - 2)) + '"';
             })
         };
@@ -189,7 +189,7 @@ export class PylabLineMagicRewriter implements LineMagicRewriter {
         let defData = 
             ["numpy", "matplotlib", "pylab", "mlab", "pyplot", "np", "plt", "display",
             "figsize", "getfigs"]
-            .map((symbolName) => {
+            .map(symbolName => {
                 return {
                     name: symbolName,
                     pos: [[position[0].line, position[0].col], [position[1].line, position[1].col]]

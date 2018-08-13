@@ -17,7 +17,7 @@
     "prepack": "npm run clean && npm run build_parser && npm run build",
     "clean": "rimraf lib",
     "watch": "tsc -w",
-    "test": "mocha -r ts-node/register  src/**/*.test.ts"
+    "test": "mocha -r ts-node/register src/test/*.test.ts"
   },
   "files": [
     "lib/**/*.{d.ts,eot,gif,html,jpg,js,js.map,json,png,svg,woff2,ttf}",

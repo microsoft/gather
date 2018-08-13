@@ -93,7 +93,7 @@ export class MarkerManager implements IGatherObserver {
      * Click-handler---pass on click event to markers.
      */
     handleClick(event: MouseEvent) {
-        this._defMarkers.forEach((marker) => {
+        this._defMarkers.forEach(marker => {
             marker.handleClick(event);
         });
     }
@@ -133,7 +133,7 @@ export class MarkerManager implements IGatherObserver {
             for (let i = this._defMarkers.length - 1; i >= 0; i--) {
                 let defMarker = this._defMarkers[i];
                 if (defMarker.def == editorDef.def) {
-                    let defsToDeselect = this._model.selectedDefs.filter((d) => d.editorDef == editorDef);
+                    let defsToDeselect = this._model.selectedDefs.filter(d => d.editorDef == editorDef);
                     for (let defToDeselect of defsToDeselect) {
                         this._model.deselectDef(defToDeselect);
                     }
@@ -157,10 +157,10 @@ export class MarkerManager implements IGatherObserver {
         // Whenever a definition is deselected from outside, unhighlight it.
         if (eventType == GatherModelEvent.DEF_DESELECTED) {
             let defSelection = eventData as DefSelection;
-            this._defMarkers.filter((marker) => {
+            this._defMarkers.filter(marker => {
                 return defSelection.editorDef.def.location == marker.location &&
                     defSelection.cell.id == marker.cell.id;
-            }).forEach((marker) => marker.deselect());
+            }).forEach(marker => marker.deselect());
 
             let editorDef = defSelection.editorDef;
             for (let i = this._defLineHandles.length - 1; i >= 0; i--) {
@@ -175,16 +175,16 @@ export class MarkerManager implements IGatherObserver {
         // Whenever an output is deselected from outside, unhighlight it.
         if (eventType == GatherModelEvent.OUTPUT_DESELECTED) {
             let outputSelection = eventData as OutputSelection;
-            this._outputMarkers.filter((marker) => {
+            this._outputMarkers.filter(marker => {
                 return marker.outputIndex == outputSelection.outputIndex &&
                     marker.cell.id == outputSelection.cell.id;
-            }).forEach((marker) => marker.deselect());
+            }).forEach(marker => marker.deselect());
         }
 
         // When the chosen slices change, update which lines are highlighted in the document.
         if (eventType == GatherModelEvent.SLICE_SELECTED || eventType == GatherModelEvent.SLICE_DESELECTED) {
             this._clearDependencyLineMarkers();
-            model.selectedSlices.forEach((sliceSelection) => {
+            model.selectedSlices.forEach(sliceSelection => {
                 this.highlightDependencies(sliceSelection.slice);
             });
         }
@@ -244,8 +244,8 @@ export class MarkerManager implements IGatherObserver {
         // Add marker for all of the definitions in the code.
         statements.forEach((statement: ISyntaxNode) => {
             getDefs(statement, { moduleNames: new StringSet() }, this._slicerConfig)
-            .items.filter((d) => [SymbolType.VARIABLE, SymbolType.MUTATION].indexOf(d.type) != -1)
-            .forEach((def) => {
+            .items.filter(d => [SymbolType.VARIABLE, SymbolType.MUTATION].indexOf(d.type) != -1)
+            .forEach(def => {
                 this._model.addEditorDef({ def: def, editor: editor, cell: cell });
             });
         });
@@ -259,7 +259,7 @@ export class MarkerManager implements IGatherObserver {
         for (let i = 0; i < outputElements.length; i++) {
             let outputElement = outputElements[i];
             let outputSelection = { outputIndex: i, cell };
-            let outputMarker = new OutputMarker(outputElement, i, cell, (selected) => {
+            let outputMarker = new OutputMarker(outputElement, i, cell, selected => {
                 if (selected) {
                     this._model.selectOutput(outputSelection);
                 } else {
@@ -276,7 +276,7 @@ export class MarkerManager implements IGatherObserver {
      */
     highlightDependencies(slice: SlicedExecution) {
         let defLines: number[] = [];
-        slice.cellSlices.forEach((cellSlice) => {
+        slice.cellSlices.forEach(cellSlice => {
             let cell = cellSlice.cell;
             let sliceLocations = cellSlice.slice;
             let editor = this._cellEditorResolver.resolve(cell);
@@ -285,7 +285,7 @@ export class MarkerManager implements IGatherObserver {
                 let numLines = 0;
                 // Batch the highlight operations for each cell to spend less time updating cell height.
                 editor.operation(() => {
-                    sliceLocations.items.forEach((loc) => {
+                    sliceLocations.items.forEach(loc => {
                         for (let lineNumber = loc.first_line - 1; lineNumber <= loc.last_line -1; lineNumber++) {
                             numLines += 1;
                             // Add this as "text", NOT "background", to avoid performance bottlenecks from adding
@@ -303,7 +303,7 @@ export class MarkerManager implements IGatherObserver {
 
     private _clearDependencyLineMarkers() {
         log("Cleared all dependency line markers");
-        this._dependencyLineMarkers.forEach((marker) => {
+        this._dependencyLineMarkers.forEach(marker => {
             marker.editor.removeLineClass(marker.lineHandle, "text", DEPENDENCY_CLASS);
         })
         this._dependencyLineMarkers = [];

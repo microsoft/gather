@@ -93,9 +93,9 @@ export class ExecutionLogSlicer {
         }
 
         return this.executionLog
-            .filter((execution) => execution.cellId == cell.id)
-            .filter((execution) => execution.executionCount != undefined)
-            .map((execution) => {
+            .filter(execution => execution.cellId == cell.id)
+            .filter(execution => execution.executionCount != undefined)
+            .map(execution => {
 
                 // Build the program up to that cell.
                 let program = this.programBuilder.buildTo(execution.cellId, execution.executionCount);
@@ -114,7 +114,7 @@ export class ExecutionLogSlicer {
                 let lastCellLines = program.cellToLineMap[execution.cellId][execution.executionCount];
                 let lastCellStart = Math.min(...lastCellLines.items);
                 seedLocations = new LocationSet(
-                    ...seedLocations.items.map((loc) => {
+                    ...seedLocations.items.map(loc => {
                         return {
                             first_line: lastCellStart + loc.first_line - 1,
                             first_column: loc.first_column,
@@ -130,7 +130,7 @@ export class ExecutionLogSlicer {
                 // Get the relative offsets of slice lines in each cell.
                 let cellSliceLocations: { [cellId: string]: { [executionCount: number]: LocationSet } } = {};
                 let cellOrder = new Array<ICell>();
-                sliceLocations.forEach((location) => {
+                sliceLocations.forEach(location => {
                     let sliceCell = program.lineToCellMap[location.first_line];
                     let sliceCellLines = program.cellToLineMap[sliceCell.id][sliceCell.executionCount];
                     let sliceCellStart = Math.min(...sliceCellLines.items);

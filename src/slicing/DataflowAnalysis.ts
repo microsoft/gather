@@ -142,8 +142,8 @@ class CallNamesListener implements ast.IWalkListener {
                 name = (callNode.func as ast.IName).id;
             }
             this._slicerConfig.functionConfigs
-            .filter((config) => config.pattern.functionName == name)
-            .filter((config) => {
+            .filter(config => config.pattern.functionName == name)
+            .filter(config => {
                 if (!config.pattern.instanceNames) return true;
                 if (callNode.func.type == ast.DOT &&
                     callNode.func.value.type == ast.NAME) {
@@ -152,7 +152,7 @@ class CallNamesListener implements ast.IWalkListener {
                 }
                 return false;
             })
-            .forEach((config) => {
+            .forEach(config => {
                 if (config.instanceEffect && callNode.func.type == ast.DOT) {
                     if (config.pattern.instanceNames) {
 
@@ -228,9 +228,9 @@ class TargetsDefListener implements ast.IWalkListener {
     onEnterNode(node: ast.ISyntaxNode, type: string, ancestors: ast.ISyntaxNode[]) {
         if (type == ast.NAME) {
             let level = ReferenceType.DEFINITION;
-            if (ancestors.some((a) => a.type == ast.DOT)) {
+            if (ancestors.some(a => a.type == ast.DOT)) {
                 level = ReferenceType.UPDATE;
-            } else if (ancestors.some((a) => a.type ==  ast.INDEX)) {
+            } else if (ancestors.some(a => a.type ==  ast.INDEX)) {
                 level = ReferenceType.UPDATE;
             }
             this.defs.add({
@@ -270,7 +270,7 @@ export function getDefs(
         case ast.IMPORT: {
             const modnames = statement.names.map(i => i.name || i.path);
             symbolTable.moduleNames.add(...modnames);
-            defs.add(...statement.names.map((nameNode) => {
+            defs.add(...statement.names.map(nameNode => {
                     return {
                         type: SymbolType.IMPORT,
                         level: ReferenceType.DEFINITION,
@@ -287,7 +287,7 @@ export function getDefs(
             if (statement.imports.constructor === Array) {
                 modnames = statement.imports.map(i => i.name || i.path);
                 symbolTable.moduleNames.add(...modnames);
-                defs.add(...statement.imports.map((i) => {
+                defs.add(...statement.imports.map(i => {
                     return {
                         type: SymbolType.IMPORT,
                         level: ReferenceType.DEFINITION,
@@ -365,13 +365,13 @@ export function getUses(statement: ast.ISyntaxNode, _: SymbolTable, slicerConfig
         }
         case ast.DEF:
             let defCfg = new ControlFlowGraph(statement);
-            let argNames = new StringSet(...statement.params.map((p) => {
+            let argNames = new StringSet(...statement.params.map(p => {
                 if(p && p instanceof Array && p.length > 0 && p[0].name) {
                     return p[0].name;
                 }
             }).filter(n => n != undefined));
             let undefinedRefs = dataflowAnalysis(defCfg, slicerConfig, argNames).undefinedRefs;
-            uses = undefinedRefs.filter((r) => r.level == ReferenceType.USE);
+            uses = undefinedRefs.filter(r => r.level == ReferenceType.USE);
             break;
         case ast.CLASS:
             break;
@@ -432,7 +432,7 @@ let DEPENDENCY_RULES = [
     { from: ReferenceType.GLOBAL_CONFIG, to: [ ReferenceType.DEFINITION, ReferenceType.GLOBAL_CONFIG ] }
 ];
 
-let TYPES_WITH_DEPENDENCIES = DEPENDENCY_RULES.map((r) => r.from);
+let TYPES_WITH_DEPENDENCIES = DEPENDENCY_RULES.map(r => r.from);
 
 let KILL_RULES = [
     // Which types of references "kill" which other types of references?
@@ -450,19 +450,19 @@ let KILL_RULES = [
 function updateDefsForLevel(defsForLevel: RefSet, level: string, newRefs: { [level: string]: RefSet },
         dependencyRules: { from: ReferenceType, to: ReferenceType[] }[]) {
     let genSet = new RefSet();
-    let levelDependencies = dependencyRules.filter((r) => r.from == level).pop();
+    let levelDependencies = dependencyRules.filter(r => r.from == level).pop();
     for (let level of Object.keys(ReferenceType)) {
-        newRefs[level].items.forEach((ref) => {
+        newRefs[level].items.forEach(ref => {
             if (levelDependencies && levelDependencies.to.indexOf(ref.level) != -1) {
                 genSet.add(ref);
             }
         });
     }
-    const killSet = defsForLevel.filter((def) => {
+    const killSet = defsForLevel.filter(def => {
         let found = false;
-        genSet.items.forEach((gen) => {
+        genSet.items.forEach(gen => {
             if (gen.name == def.name) {
-                let killRules = KILL_RULES.filter((r) => r.level == gen.level).pop();
+                let killRules = KILL_RULES.filter(r => r.level == gen.level).pop();
                 if (killRules && killRules.kills.indexOf(def.level) != -1) {
                     found = true;
                 }
@@ -506,7 +506,7 @@ export function dataflowAnalysis(cfg: ControlFlowGraph,
             // incoming definitions are come from predecessor blocks
             defsForLevel[level] = oldDefsForLevel[level].union(...cfg.getPredecessors(block)
                 .map(block => defsForLevelByBlock[level][block.id])
-                .filter((s) => s != undefined));
+                .filter(s => s != undefined));
         }
 
         // TODO: fix up dataflow computation within this block: check for definitions in
@@ -527,7 +527,7 @@ export function dataflowAnalysis(cfg: ControlFlowGraph,
             }
             // Only add uses that aren't actually defs.
             for (let use of usedHere.items) {
-                if (!definedHere.items.some((d) => {
+                if (!definedHere.items.some(d => {
                     return d.name == use.name &&
                         d.location.first_line == use.location.first_line &&
                         d.location.first_column == use.location.first_column &&
@@ -576,7 +576,7 @@ export function dataflowAnalysis(cfg: ControlFlowGraph,
     // don't report them as being undefined.
     if (namesDefined) {
         for (let ref of undefinedRefs.items) {
-            if (namesDefined.items.some((n) => n == ref.name)) {
+            if (namesDefined.items.some(n => n == ref.name)) {
                 undefinedRefs.remove(ref);
             }
         }

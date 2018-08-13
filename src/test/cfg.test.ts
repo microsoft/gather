@@ -16,7 +16,7 @@ describe('ControlFlowGraph', () => {
             "except:",
             "    return 1"
         )
-        let handlerHead = cfg.blocks.filter((b) => b.hint == "handlers").pop();
+        let handlerHead = cfg.blocks.filter(b => b.hint == "handlers").pop();
         expect(cfg.getPredecessors(handlerHead).pop().hint).to.equal("try body");
     });
 });

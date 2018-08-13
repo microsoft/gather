@@ -16,7 +16,7 @@ describe('detects dataflow dependencies', () => {
     }
 
     function analyzeLineDeps(...codeLines: string[]): [number, number][] {
-        return analyze(...codeLines).items.map(function(dep): [number, number] { 
+        return analyze(...codeLines).items.map(function (dep): [number, number] {
             return [dep.toNode.location.first_line, dep.fromNode.location.first_line]
         });
     }
@@ -116,7 +116,7 @@ describe('detects dataflow dependencies', () => {
     function analyzeComplexDeps(...codeLines: string[]) {
         let code = codeLines.concat("").join("\n");  // add newlines to end of every line.
         return dataflowAnalysis(new ControlFlowGraph(parse(code)), complexDepsSliceConfig)
-            .flows.items.map(function(dep): [number, number] { 
+            .flows.items.map(function (dep): [number, number] {
                 return [dep.toNode.location.first_line, dep.fromNode.location.first_line]
             });
     }
@@ -181,7 +181,7 @@ describe('detects control dependencies', () => {
     function analyze(...codeLines: string[]): [number, number][] {
         let code = codeLines.concat("").join("\n");  // add newlines to end of every line.
         let deps = (new ControlFlowGraph(parse(code))).getControlDependencies();
-        return deps.map(function(dep): [number, number] { 
+        return deps.map(function (dep): [number, number] {
             return [dep.toNode.location.first_line, dep.fromNode.location.first_line]
         });
     }
@@ -270,11 +270,11 @@ describe('getDefs', () => {
 
     function getDefNamesFromStatement(code: string, slicerConfig?: SlicerConfig) {
         return getDefsFromStatement(code, slicerConfig)
-        .map((def) => def.name);
+            .map(def => def.name);
     }
 
     describe('detects definitions', () => {
-        
+
         it('for assignments', () => {
             let defs = getDefsFromStatement("a = 1");
             expect(defs[0]).to.include({ type: SymbolType.VARIABLE, name: "a" });
@@ -287,7 +287,7 @@ describe('getDefs', () => {
 
         it('for from-imports', () => {
             let defs = getDefsFromStatement("from mod import func");
-            expect(defs[0]).to.include({ type: SymbolType.IMPORT, name: "func" });    
+            expect(defs[0]).to.include({ type: SymbolType.IMPORT, name: "func" });
         });
 
         it('for function declarations', () => {
@@ -298,7 +298,7 @@ describe('getDefs', () => {
             expect(defs[0]).to.deep.include({
                 type: SymbolType.FUNCTION,
                 name: "func",
-                location: { first_line: 1, first_column: 0, last_line: 3, last_column: -1}
+                location: { first_line: 1, first_column: 0, last_line: 3, last_column: -1 }
             });
         });
 
@@ -323,7 +323,7 @@ describe('getDefs', () => {
                 ].join("\n"));
                 expect(defs.length).to.equal(1);
                 expect(defs[0].level).to.equal(ReferenceType.UPDATE);
-                expect(defs[0].name).to.equal("d"); 
+                expect(defs[0].name).to.equal("d");
             });
 
             it('for property assignments', () => {
@@ -412,14 +412,14 @@ describe('getDefs', () => {
             });
 
         });
-        
+
         describe('ignoring by default', () => {
 
             it('function arguments', () => {
                 let defs = getDefNamesFromStatement("func(a)");
                 expect(defs).to.deep.equal([]);
             });
-    
+
             it('the object a function is called on', () => {
                 let defs = getDefNamesFromStatement("obj.func()");
                 expect(defs).to.deep.equal([]);
@@ -443,11 +443,11 @@ describe('getUses', () => {
         let code = codeLines.concat("").join("\n");
         let module = parse(code);
         return getUses(module.code, { moduleNames: new StringSet() }).items
-        .map((use) => use.name);
+            .map(use => use.name);
     }
 
     describe('detects uses', () => {
-        
+
         it('of functions', () => {
             let uses = getUseNames("func()");
             expect(uses).to.include("func");

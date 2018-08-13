@@ -111,7 +111,7 @@ class ExecutionLoggerExtension implements DocumentRegistry.IWidgetExtension<Note
                     // Get the editor instance for the cell.
                     // Legacy code, needs to be updated to new GatherModel
                     /*
-                    let cell = notebook.widgets.filter((c) => c.model.id == cellModel.id).pop();
+                    let cell = notebook.widgets.filter(c => c.model.id == cellModel.id).pop();
                     let editor = (cell.editor as CodeMirrorEditor).editor;
                     this._markerManager.highlightDefs(editor, cell.model.id, 
                         (cellId: string, location: ILocation) => {
@@ -203,7 +203,7 @@ function activateExtension(app: JupyterLab, palette: ICommandPalette, notebooks:
         // Choose cell from options or the active cell.
         let chosenCell;
         if (options.cellId) {
-            let cells = notebooks.currentWidget.notebook.widgets.filter((cell) => cell.model.id == options.cellId);
+            let cells = notebooks.currentWidget.notebook.widgets.filter(cell => cell.model.id == options.cellId);
             if (cells.length > 0) {
                 chosenCell = cells.pop();
             }
@@ -233,7 +233,7 @@ function activateExtension(app: JupyterLab, palette: ICommandPalette, notebooks:
         let slicedExecutions = slicer.sliceAllExecutions(new LabCell(cellModel), seedLocations);
         let latestSlicedExecution = slicedExecutions.pop();
         let cells = latestSlicedExecution.cellSlices
-            .map((cellSlice) => {
+            .map(cellSlice => {
                 let slicedCell = cellSlice.cell;
                 if (SHOULD_SLICE_CELLS) {
                     slicedCell = slicedCell.copy();
@@ -256,14 +256,14 @@ function activateExtension(app: JupyterLab, palette: ICommandPalette, notebooks:
             let slicer = executionLogger.executionSlicer;
             let cellModel = activeCell.model as ICodeCellModel;
             let slice = slicer.sliceLatestExecution(new LabCell(cellModel));
-            let cells = slice.cellSlices.map((cellSlice) => cellSlice.cell);
+            let cells = slice.cellSlices.map(cellSlice => cellSlice.cell);
 
             docManager.newUntitled({ ext: 'ipynb' }).then(model => {
                 const widget = docManager.open(model.path, undefined, panel.session.kernel.model) as NotebookPanel;
                 const newModel = widget.notebook.model;
                 setTimeout(() => {
                     newModel.cells.remove(0); // remove the default blank cell                        
-                    newModel.cells.pushAll(cells.map((c) => {
+                    newModel.cells.pushAll(cells.map(c => {
                         if (c instanceof LabCell) return c.model;
                     }));
                 }, 100);
@@ -278,9 +278,9 @@ function activateExtension(app: JupyterLab, palette: ICommandPalette, notebooks:
             let slicer = executionLogger.executionSlicer;
             let cellModel = activeCell.model as ICodeCellModel;
             let slice = slicer.sliceLatestExecution(new LabCell(cellModel));
-            let cells = slice.cellSlices.map((cellSlice) => cellSlice.cell);
+            let cells = slice.cellSlices.map(cellSlice => cellSlice.cell);
             let scriptText = cells
-                .map((cell) => cell.text)
+                .map(cell => cell.text)
                 .reduce((buffer, cellText) => { return buffer + cellText + "\n" }, "");
 
             // TODO: Add back in slice based on fine-grained selection within the cell:
@@ -398,8 +398,8 @@ class CellLiveness {
 
                         if (changedCell.type == "code") {
                             let changedLabCell = new LabCell(changedCell as ICodeCellModel);
-                            let allLabCells = toArray(allCells).filter((c) => c.type == "code")
-                                .map((c) => new LabCell(c as ICodeCellModel));
+                            let allLabCells = toArray(allCells).filter(c => c.type == "code")
+                                .map(c => new LabCell(c as ICodeCellModel));
                             const tasks = this.findStaleCells(changedLabCell, allLabCells)
                                 .filter(cell => cell.id !== changedCell.id)
                                 .map(cell => <CodeCell>notebook.widgets.find(c => c.model.id == cell.id))

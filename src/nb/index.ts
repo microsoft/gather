@@ -68,10 +68,10 @@ class NbStatePoller implements log.IStatePoller {
             let cells = this._notebook.get_cells();
             data.numCells = cells.length;
             data.codeCellIds = cells
-                .filter((c) => c.cell_type == "code")
-                .map((c) => [c.cell_id, (c as CodeCell).input_prompt_number]);
+                .filter(c => c.cell_type == "code")
+                .map(c => [c.cell_id, (c as CodeCell).input_prompt_number]);
             data.numLines = cells
-                .filter((c) => c.cell_type == "code")
+                .filter(c => c.cell_type == "code")
                 .reduce((lineCount, c) => { return lineCount + c.code_mirror.getValue().split("\n").length }, 0)
         }
         return data;
@@ -224,7 +224,7 @@ class CellFetcher {
             this._cachedCells = this._notebook.get_cells();
         }
         let matchingCells = this._cachedCells
-        .filter((c) => {
+        .filter(c => {
             if (c.cell_id != cellId) return false;
             if (executionCount != undefined) {
                 if (!(c instanceof CodeCell)) return false;
@@ -358,7 +358,7 @@ function sliceToCellJson(slice: SlicedExecution, annotatePaste?: boolean): CellJ
             }
             return cellJson;
         }
-    }).filter((c) => c != undefined);
+    }).filter(c => c != undefined);
 }
 
 /**
@@ -374,11 +374,11 @@ class Clipboard implements ICellClipboard {
         if (slice) {
             Jupyter.notebook.clipboard = [];
             let cellsJson = sliceToCellJson(slice, true);
-            cellsJson.forEach((c) => {
+            cellsJson.forEach(c => {
                 Jupyter.notebook.clipboard.push(c);
             });
             Jupyter.notebook.enable_paste();
-            this._listeners.forEach((listener) => listener.onCopy(slice, this));
+            this._listeners.forEach(listener => listener.onCopy(slice, this));
         }
     }
 
@@ -550,7 +550,7 @@ export function load_ipython_extension() {
 
             // We won't use the `gathered` flag on these cells anymore, so remove them from the cells.
             cell.notebook.get_cells()
-            .forEach((c) => {
+            .forEach(c => {
                 if (c.metadata.justPasted) {
                     delete c.metadata.justPasted;
                 }

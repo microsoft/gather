@@ -1,18 +1,22 @@
+import * as fs from 'fs';
+import * as path from 'path';
+
+
 /**
  * This is the main interface for parsing code.
  * Call this instead of the `parse` method in python3.js.
  * If the `parse` method gets an error, all later calls will throw an error.
  * This method resets the state of the `parse` method so that doesn't happen.
  */
-export function parse(program: string) {
-    // Unload parser if it was already loaded before.
-    let parseModulePath = require.resolve("./python3");
-    if (require.cache[parseModulePath]) {
-        delete require.cache[parseModulePath];
-    }
-    let jisonParse = require("./python3").parse;
-    return jisonParse(program);
+export function parse(program: string): any {
+    // We avoid using require since loading/unloading the module causes a memory leak.
+    const fname = path.join(path.dirname(__filename), 'python3.js');
+    const contents = fs.readFileSync(fname).toString();
+    let exports = { parse: (s: string): ISyntaxNode => null };
+    eval(contents); // overwrites parse function
+    return exports.parse(program);
 }
+
 
 export type ISyntaxNode =
     | IModule
@@ -433,7 +437,7 @@ function walkRecursive(node: ISyntaxNode, ancestors?: ISyntaxNode[], walkListene
         case IF:
             children = [node.cond].concat(node.code)
                 .concat(node.elif ? flatten(node.elif.map(e => [e.cond].concat(e.code))) : [])
-                .concat(node.else ? [ node.else ] : []);
+                .concat(node.else ? [node.else] : []);
             break;
         case ELSE:
             children = node.code;
@@ -466,13 +470,13 @@ function walkRecursive(node: ISyntaxNode, ancestors?: ISyntaxNode[], walkListene
         case BINOP: children = [node.left, node.right]; break;
         case STARRED: children = [node.value]; break;
         case SET:
-            children = node.entries.concat(node.comp_for ? node.comp_for: []);
+            children = node.entries.concat(node.comp_for ? node.comp_for : []);
             break;
         case LIST: children = node.items; break;
         case TUPLE: children = node.items; break;
         case DICT:
             children = flatten(node.entries.map(p => [p.k, p.v]))
-                .concat(node.comp_for ? node.comp_for: []);
+                .concat(node.comp_for ? node.comp_for : []);
             break;
         case ASSIGN: children = node.sources.concat(node.targets); break;
         case ASSERT: children = [node.cond].concat(node.err ? [node.err] : []); break;

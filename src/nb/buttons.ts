@@ -36,7 +36,7 @@ export class MergeButton implements Button {
         handler: () => {
             let selectedCells = this._notebook.get_selected_cells();
             log("Button: Merging cells", {
-                selectedCells: selectedCells.map((c) => nbCellToJson(c))
+                selectedCells: selectedCells.map(c => nbCellToJson(c))
             });
             this._actions.call("jupyter-notebook:merge-cells");
         }
@@ -168,7 +168,7 @@ export class GatherToClipboardButton extends GatherButton {
             log("Button: Clicked gather to clipboard with selections", {
                 selectedDefs: this._gatherModel.selectedDefs,
                 selectedOutputs: this._gatherModel.selectedOutputs });
-            this._gatherModel.addChosenSlices(...this._gatherModel.selectedSlices.map((sel) => sel.slice));
+            this._gatherModel.addChosenSlices(...this._gatherModel.selectedSlices.map(sel => sel.slice));
             this._gatherModel.requestStateChange(GatherState.GATHER_TO_CLIPBOARD);
         } else {
             log("Button: Clicked gather to clipboard without selections");
@@ -202,7 +202,7 @@ export class GatherToNotebookButton extends GatherButton {
             log("Button: Clicked gather to notebook with selections", {
                 selectedDefs: this._gatherModel.selectedDefs,
                 selectedOutputs: this._gatherModel.selectedOutputs });
-            this._gatherModel.addChosenSlices(...this._gatherModel.selectedSlices.map((sel) => sel.slice));
+            this._gatherModel.addChosenSlices(...this._gatherModel.selectedSlices.map(sel => sel.slice));
             this._gatherModel.requestStateChange(GatherState.GATHER_TO_NOTEBOOK);
         } else {
             log("Button: Clicked gather to clipboard without selections");

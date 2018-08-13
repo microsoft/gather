@@ -73,10 +73,10 @@ export class ProgramBuilder {
      */
     buildTo(cellId: string, executionCount?: number): Program {
 
-        let cellVersions = this._cells.filter((cell) => cell.id == cellId);
+        let cellVersions = this._cells.filter(cell => cell.id == cellId);
         let lastCell: ICell;
         if (executionCount) {
-            lastCell = cellVersions.filter((cell) => cell.executionCount == executionCount)[0];
+            lastCell = cellVersions.filter(cell => cell.executionCount == executionCount)[0];
         } else {
             lastCell = cellVersions.sort(
                 (cell1, cell2) => cell1.executionCount - cell2.executionCount
@@ -93,7 +93,7 @@ export class ProgramBuilder {
         let lineToCellMap: LineToCellMap = {};
         let cellToLineMap: CellToLineMap = {};
 
-        sortedCells.forEach((cell) => {
+        sortedCells.forEach(cell => {
 
             let cellCode = cell.text;
 
@@ -101,7 +101,7 @@ export class ProgramBuilder {
             let cellLength = cellCode.split("\n").length;
             let cellLines = [];
             for (let l = 0; l < cellLength; l++) { cellLines.push(currentLine + l); }
-            cellLines.forEach((l) => {
+            cellLines.forEach(l => {
                 lineToCellMap[l] = cell;
                 if (!cellToLineMap[cell.id]) cellToLineMap[cell.id] = {};
                 if (!cellToLineMap[cell.id][cell.executionCount]) {
@@ -121,7 +121,7 @@ export class ProgramBuilder {
 
     build(): Program {
         let lastCell = this._cells
-            .filter((cell) => cell.executionCount != null)
+            .filter(cell => cell.executionCount != null)
             .sort((cell1, cell2) => cell1.executionCount - cell2.executionCount).pop();
         return this.buildTo(lastCell.id);
     }

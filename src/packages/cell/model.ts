@@ -104,7 +104,7 @@ export class CellSlice {
         let sliceLocations = this.slice.items;
         let textLines = this.cell.text.split("\n");
         return sliceLocations.sort((l1, l2) => l1.first_line - l2.first_line)
-        .map((loc) => {
+        .map(loc => {
             return textLines.map((line, index0) => {
                 let index = index0 + 1;
                 let left, right;
@@ -128,8 +128,8 @@ export class CellSlice {
                     }
                 }
                 return "";
-            }).filter((text) => text != "").join("\n");
-        }).filter((text) => text != "").join("\n");
+            }).filter(text => text != "").join("\n");
+        }).filter(text => text != "").join("\n");
     }
 
     /**

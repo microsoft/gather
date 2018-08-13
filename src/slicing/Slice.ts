@@ -62,7 +62,7 @@ export function slice(code: string, seedLocations: LocationSet): LocationSet {
 
     // Include at least the full statements for each seed.
     let seedStatementLocations = new LocationSet();
-    seedLocations.items.forEach((seedLoc) => {
+    seedLocations.items.forEach(seedLoc => {
         for (let block of cfg.blocks) {
             for (let statement of block.statements) {
                 if (intersect(seedLoc, statement.location)) {
@@ -79,11 +79,11 @@ export function slice(code: string, seedLocations: LocationSet): LocationSet {
         for (let flow of dfa.items) {
             const from = flow.fromNode.location;
             const to = flow.toNode.location;
-            if (seedStatementLocations.items.some((seedStmtLoc) =>
+            if (seedStatementLocations.items.some(seedStmtLoc =>
                 { return intersect(seedStmtLoc, to); })) {
                 sliceLocations.add(to);
             }
-            if (sliceLocations.items.some((loc) => { return within(to, loc); })) {
+            if (sliceLocations.items.some(loc => { return within(to, loc); })) {
                 sliceLocations.add(from);
             }
         }
