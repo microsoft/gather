@@ -46,6 +46,7 @@ export type ISyntaxNode =
     | IDot
     | IIfExpr
     | ICompFor
+    | ICompIf
     | ILambda
     | IUnaryOperator
     | IBinaryOperator
@@ -119,6 +120,9 @@ export interface IDef extends ILocatable {
 export interface IParam {
     name: string;
     anno: ISyntaxNode;
+    default_value: ISyntaxNode;
+    star: boolean;
+    starstar: boolean;
 }
 
 export const ASSIGN = 'assign';
@@ -227,6 +231,13 @@ export interface ICompFor extends ILocatable {
     type: typeof COMPFOR;
     for: ISyntaxNode[];
     in: ISyntaxNode;
+}
+
+export const COMPIF = 'comp_if';
+
+export interface ICompIf extends ILocatable {
+    type: typeof COMPIF;
+    test: ISyntaxNode;
 }
 
 export const TRY = 'try';
@@ -416,7 +427,7 @@ export function walk(node: ISyntaxNode, walkListener?: IWalkListener): ISyntaxNo
  */
 function walkRecursive(node: ISyntaxNode, ancestors?: ISyntaxNode[], walkListener?: IWalkListener): ISyntaxNode[] {
 
-    if (node == undefined || node == null) {
+    if (!node) {
         console.error("Node undefined. Ancestors:", ancestors);
         return [];
     }
@@ -453,9 +464,7 @@ function walkRecursive(node: ISyntaxNode, ancestors?: ISyntaxNode[], walkListene
             break;
         case TRY:
             children = node.code
-                .concat(flatten(node.excepts.map(e => {
-                    return (e.cond ? [e.cond] : []).concat(e.code);
-                })))
+                .concat(flatten((node.excepts || []).map(e => (e.cond ? [e.cond] : []).concat(e.code))))
                 .concat(node.else || [])
                 .concat(node.finally || [])
             break;
@@ -478,7 +487,7 @@ function walkRecursive(node: ISyntaxNode, ancestors?: ISyntaxNode[], walkListene
             children = flatten(node.entries.map(p => [p.k, p.v]))
                 .concat(node.comp_for ? node.comp_for : []);
             break;
-        case ASSIGN: children = node.sources.concat(node.targets); break;
+        case ASSIGN: if (!node.sources) console.log(node); children = node.sources.concat(node.targets); break;
         case ASSERT: children = [node.cond].concat(node.err ? [node.err] : []); break;
         case DOT: children = [node.value, node.name]; break;
         case INDEX: children = [node.value].concat(node.args); break;
@@ -487,10 +496,15 @@ function walkRecursive(node: ISyntaxNode, ancestors?: ISyntaxNode[], walkListene
                 .concat(node.stop ? [node.stop] : [])
                 .concat(node.step ? [node.step] : []);
             break;
+        case COMPFOR: children = node.for.concat([node.in]); break;
+        case COMPIF: children = [node.test]; break;
+        case YIELD: children = node.value ? [node.value] : []; break;
     }
 
     let nodes = [node];
-    let subtreeNodes = flatten(children.map(node => walkRecursive(node, ancestors, walkListener)));
+    if (children.some(c => !c)) { console.log("BAD CHILDREN", node); }
+    let subtreeNodes = flatten(children.map(node =>
+        walkRecursive(node, ancestors, walkListener)));
     nodes = nodes.concat(subtreeNodes);
 
     if (walkListener && walkListener.onExitNode) {

@@ -18,6 +18,14 @@ describe('python parser', () => {
         parse('1e5\n');
     });
 
+    it('can parse imaginary numbers', () => {
+        parse('x = 12j\n');
+    });
+
+    it('can parse lambdas with keyword', () => {
+        parse("f = (lambda document, **variety: document)\n");
+    });
+
     it('parses a dictionary with a `comp_for`', () => {
         let mod = parse('{k: v for (k, v) in d.items()}\n');
         expect(mod).to.exist;

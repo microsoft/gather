@@ -73,10 +73,12 @@ octdigit                [0-7]
 bindigit                [0|1]
 
 floatnumber             {exponentfloat}|{pointfloat}
+pointfloat              {fraction}|{intpart}{fraction}|{intpart}"."
 exponentfloat           ({digit}+|{pointfloat}){exponent}
-pointfloat              ({digit}*{fraction})|({digit}+".")
+intpart                 {digit}+
 fraction                "."{digit}+
 exponent                [e|E][\+|\-]?({digit})+
+imagnumber              ({floatnumber}|{intpart})[jJ]
 
 %s INITIAL DEDENTS INLINE
 
@@ -144,8 +146,9 @@ exponent                [e|E][\+|\-]?({digit})+
 /* floatnumber rules should go before operators. Otherwise .\d+ will never be read as a floating
  * point number, the '.' will only be used for property accesses. */
 <INLINE>{ellipsis}      return 'ELLIPSIS'
+<INLINE>{imagnumber}    return 'NUMBER'
 <INLINE>{floatnumber}   return 'NUMBER'
-<INLINE>{bininteger}    %{  
+<INLINE>{bininteger}    %{
                             var i = yytext.substr(2); // binary val
                             yytext = 'parseInt("'+i+'",2)'
                             return 'NUMBER'
@@ -208,11 +211,11 @@ file_input
 file_input0
     : NEWLINE
     | stmt
-        { $$ = [$1] }
+        { $$ = $1 }
     | NEWLINE file_input0
         { $$ = $2 }
     | stmt file_input0
-        { $$ = [ $1 ].concat( $2 ) }
+        { $$ = $1.concat( $2 ) }
     ;
 
 // decorator: '@' dotted_name [ '(' [arglist] ')' ] NEWLINE
@@ -264,6 +267,8 @@ parameters
 typedargslist
     : typedarglist_part
         { $$ = [ $1 ] }
+    | typedarglist_part ','
+        { $$ = [ $1 ] }
     | typedarglist_part ',' typedargslist
         { $$ = [ $1 ].concat($3) }
     ;
@@ -274,11 +279,11 @@ typedarglist_part
     | tfpdef '=' test
         { $1.default = $3; $$ = [ $1 ] }
     | '*' 
-        { $$ = 'var' }
+        { $$ = { name: '', star: true } }
     | '*' tfpdef
-        { $2.varargs = true; $$ = [ $2 ] }
+        { $$ = [ { name: $2, star: true } ] }
     | '**' tfpdef
-        { $2.rest = true; $$ = [ $2 ] }
+        {  $$ = [ {name: $2, starstar: true} ] }
     ;
 
 // tfpdef: NAME [':' test]
@@ -289,49 +294,46 @@ tfpdef
         { $$ = { name: $1, anno: $3 } }
     ;
 
-// varargslist: (vfpdef ['=' test] (',' vfpdef ['=' test])* [','
-//   ['*' [vfpdef] (',' vfpdef ['=' test])* [',' '**' vfpdef] | '**' vfpdef]]
-//   |  '*' [vfpdef] (',' vfpdef ['=' test])* [',' '**' vfpdef] | '**' vfpdef)
+// varargslist: NOTE to keep the grammar LALR, we approximate
 varargslist
-    : vfpdef
-        { $$ = [ $1 ] }
-    | vfpdef ','
-        { $$ = [ $1 ] }
-    | vfpdef varargslist0
-        { $$ = [ $1 ].concat( $2 ) }
-    | vfpdef '=' test
-        { $$ = [ $1 ] }
-    | vfpdef '=' test ','
-        { $$ = [ $1 ] }
-    | vfpdef '=' test varargslist0
-        { $$ = [ $1 ].concat( $4 ) }
+    : varargspart
+        { $$ = [$1] }
+    | varargspart ','
+        { $$ = [$1] }
+    | varargspart ',' varargslist
+        { $$ = [$1].concat($3) }
     ;
 
-varargslist0
-    : ',' vfpdef
-        { $$ = [ $2 ] }
-    | ',' vfpdef ','
-        { $$ = [ $2 ] }
-    | ',' vfpdef varargslist0
-        { $$ = [ $2 ].concat( $3 ) }
-    | ',' vfpdef '=' test
-        { $$ = [ $2 ] }
-    | ',' vfpdef '=' test ','
-        { $$ = [ $2 ] }
-    | ',' vfpdef '=' test varargslist0
-        { $$ = [ $2 ].concat( $5 ) }
+varargspart
+    : vfpdef
+        { $$ = [{ name: $1}] }
+    | vfpdef '='test
+        { $$ = [{ name: $1, default_value: $3}] }
+    | '*'
+        { $$ = [{ name: '', star: true}] }
+    | '*' vfpdef
+        { $$ = [{ name: $2, star: true}] }
+    | '**' vfpdef
+        { $$ = [{ name: $2, starstar: true}] }
     ;
 
 // vfpdef: NAME
 vfpdef: NAME;
 
 // stmt: simple_stmt | compound_stmt
-stmt: simple_stmt | compound_stmt;
+stmt
+    : simple_stmt 
+        { $$ = $1 }
+    | compound_stmt
+        { $$ = [$1] }
+    ;
 
 // simple_stmt: small_stmt (';' small_stmt)* [';'] NEWLINE
 simple_stmt
     : small_stmt NEWLINE
+        { $$ = [$1] }
     | small_stmt ';' NEWLINE
+        { $$ = [$1] }
     | small_stmt simple_stmt0 NEWLINE
         { $$ = [ $1 ].concat( $2 ) }
     ;
@@ -355,20 +357,22 @@ small_stmt: expr_stmt | del_stmt | pass_stmt | flow_stmt | import_stmt |
 expr_stmt
     : testlist_star_expr
         { $$ = $1.length == 1 ? $1[0] : { type: 'tuple', items: $1, location: @$ } }
-    | testlist_star_expr assign
-        { $$ = { type: 'assign', targets: $1.concat($2.targets), sources: $2.sources, location: @$ } }
     | testlist_star_expr augassign yield_expr
         { $$ = { type: 'assign', op: $2, targets: $1, sources: $3, location: @$ } }
     | testlist_star_expr augassign testlist
         { $$ = { type: 'assign', op: $2, targets: $1, sources: $3, location: @$ } }
+    | testlist_star_expr assignlist
+        { $$ = { type: 'assign', targets: $1.concat($2.targets), sources: $2.sources, location: @$ } }
     ;
 
-assign
+assignlist
     : '=' yield_expr
-    | '=' yield_expr assign
+        { $$ = { targets: [], sources: [$2] } }
+    | '=' yield_expr assignlist
+        { $$ = { targets: $3, sources: [$2] } }
     | '=' testlist_star_expr
-        { $$ = { targets: [], sources: $2 } }
-    | '=' testlist_star_expr assign
+        { $$ = { targets: [], sources: [$2] } }
+    | '=' testlist_star_expr assignlist
         { $$ = { targets: $2.concat($3.targets), sources: $3.sources } }
     ;
 
@@ -741,15 +745,16 @@ with_item
 // suite: simple_stmt | NEWLINE INDENT stmt+ DEDENT
 suite
     : simple_stmt
+        { $$ = $1 }
     | NEWLINE INDENT suite0 DEDENT
         { $$ = $3 }
     ;
 
 suite0
     : stmt
-        { $$ = [ $1 ] }
+        { $$ = $1 }
     | stmt suite0
-        { $$ = [ $1 ].concat( $2 ) }
+        { $$ = $1.concat( $2 ) }
     ;
 
 // test: or_test ['if' or_test 'else' test] | lambdef
@@ -821,9 +826,9 @@ comparison
 
 comparison0
     : comp_op expr
-        { loc=@$; $$ = function (left) { return { type: 'binop', op: $1, left: left, right: $2, location: loc, foo:'hi' }; } }
+        { loc=@$; $$ = function (left) { return { type: 'binop', op: $1, left: left, right: $2, location: loc }; } }
     | comp_op expr comparison0
-        { loc=@$; $$ = function (left) { return $3({ type: 'binop', op: $1, left: left, right: $2, location: loc, bar:'hi' }); } }
+        { loc=@$; $$ = function (left) { return $3({ type: 'binop', op: $1, left: left, right: $2, location: loc }); } }
     ;
 
 // comp_op: '<'|'>'|'=='|'>='|'<='|'<>'|'!='|'in'|'not' 'in'|'is'|'is' 'not'
@@ -1275,9 +1280,9 @@ comp_for
 // comp_if: 'if' test_nocond [comp_iter]
 comp_if
     : 'if' test_nocond
-        { $$ = [{ type: 'if', test: $2, location: @$ }] }
+        { $$ = [{ type: 'comp_if', test: $2, location: @$ }] }
     | 'if' test_nocond comp_iter
-        { $$ = [{ type: 'if', test: $2, location: @$ }].concat( $3 )}
+        { $$ = [{ type: 'comp_if', test: $2, location: @$ }].concat( $3 )}
     ;
 
 // yield_expr: 'yield' [yield_arg]

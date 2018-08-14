@@ -45,7 +45,7 @@ function locString(loc: ast.ILocation): string {
 }
 
 function getNameSetId([name, node]: [string, ast.ISyntaxNode]) {
-    if (!node.location) console.error('***', node);
+    if (!node.location) console.log('***', node);
     return name + '@' + locString(node.location);
 }
 
@@ -404,8 +404,8 @@ export function getDefsUses(
 }
 
 function getDataflowId(df: IDataflow) {
-    if (!df.fromNode.location) console.error('*** FROM', df.fromNode, df.fromNode.location);
-    if (!df.toNode.location) console.error('*** TO', df.toNode, df.toNode.location);
+    if (!df.fromNode.location) console.log('*** FROM', df.fromNode, df.fromNode.location);
+    if (!df.toNode.location) console.log('*** TO', df.toNode, df.toNode.location);
     return locString(df.fromNode.location) + '->' + locString(df.toNode.location);
 }
 

@@ -29,6 +29,17 @@ describe('detects dataflow dependencies', () => {
         expect(deps).to.deep.include([2, 1]);
     });
 
+    it('handle multiple statements per line', () => {
+        let deps = analyzeLineDeps(
+            "a = 1",
+            "b = a; c = b",
+            "d = c"
+        );
+        expect(deps).to.deep.include([2, 1]);
+        expect(deps).to.deep.include([3, 2]);
+    });
+
+
     it('only links from a use to its most recent def', () => {
         let deps = analyzeLineDeps(
             "a = 2",

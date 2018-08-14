@@ -50,11 +50,12 @@ export class ControlFlowGraph {
     private loopVariables: ast.ISyntaxNode[][] = [];
 
     constructor(node: ast.ISyntaxNode) {
+        if (!node) { throw 'argument undefined'; }
         let statements: ast.ISyntaxNode[] = [];
         if (node.type == ast.MODULE) {
-            statements = Array.isArray(node.code) ? node.code : [ node.code ];
+            statements = Array.isArray(node.code) ? node.code : [node.code];
         } else if (node.type == ast.DEF) {
-            statements = Array.isArray(node.code) ? node.code : [ node.code ];
+            statements = Array.isArray(node.code) ? node.code : [node.code];
         }
         [this.entry, this.exit] = this.makeCFG(
             'entry', statements, new Context(null, null, this.makeBlock('exceptional exit')));
@@ -116,6 +117,7 @@ export class ControlFlowGraph {
 
     private handleIf(statement: ast.IIf, last: Block, context: Context): Block {
         const ifCondBlock = this.makeBlock('if cond', [statement.cond]);
+        if (!statement.code) console.log(statement);
         const [bodyEntry, bodyExit] = this.makeCFG('if body', statement.code, context);
         this.link(last, ifCondBlock);
         this.link(ifCondBlock, bodyEntry);
@@ -144,7 +146,7 @@ export class ControlFlowGraph {
                 this.link(elseExit, joinBlock);
                 lastCondBlock = elseCondBlock;
             }
-        } 
+        }
         this.link(lastCondBlock, joinBlock);
         return joinBlock;
     }
@@ -224,6 +226,10 @@ export class ControlFlowGraph {
     }
 
     private makeCFG(hint: string, statements: ast.ISyntaxNode[], context: Context): [Block, Block] {
+        if (!hint) { throw 'hint undefined'; }
+        if (!statements) { throw 'statements undefined'; }
+        if (!context) { throw 'context undefined'; }
+
         const entry = this.makeBlock(hint);
         let last = entry;
         statements.forEach(statement => {
@@ -269,10 +275,10 @@ export class ControlFlowGraph {
      * - p544: postdominance and reverse dominance frontier
      */
     public getControlDependencies(): IDataflow[] {
-        
+
         let dependencies = [];
         let blocks = this.blocks;
-        
+
         this.postdominators = this.findPostdominators(blocks);
         this.immediatePostdominators = this.getImmediatePostdominators(this.postdominators.items);
         this.reverseDominanceFrontiers = this.buildReverseDominanceFrontiers(blocks);
@@ -311,7 +317,7 @@ export class ControlFlowGraph {
     private findPostdominators(blocks: Block[]) {
 
         // Initially, every block has every other block as a postdominator, except for the last block.
-        let postdominators: { [ blockId: number ]: PostdominatorSet } = {};
+        let postdominators: { [blockId: number]: PostdominatorSet } = {};
         for (let block of blocks) {
             postdominators[block.id] = new PostdominatorSet();
             for (let otherBlock of blocks) {
@@ -378,7 +384,7 @@ export class ControlFlowGraph {
     }
 
     private getImmediatePostdominators(postdominators: Postdominator[]) {
-        let postdominatorsByBlock: { [id: number ] : Postdominator[] } = postdominators
+        let postdominatorsByBlock: { [id: number]: Postdominator[] } = postdominators
             .filter(p => p.block != p.postdominator)
             .reduce((dict: { [id: number]: Postdominator[] }, postdominator) => {
                 if (!dict.hasOwnProperty(postdominator.block.id)) {
@@ -417,7 +423,7 @@ export class ControlFlowGraph {
                     frontier.add(block);
                     let immediatePostdominator = this.getImmediatePostdominator(item);
                     if (immediatePostdominator.postdominator != blockImmediatePostdominator.postdominator) {
-                        this.getSuccessors(item).forEach(b => { 
+                        this.getSuccessors(item).forEach(b => {
                             if (scheduled.indexOf(b) == -1) {
                                 scheduled.push(b);
                                 workQueue.push(b);

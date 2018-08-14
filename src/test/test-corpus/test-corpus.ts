@@ -1,5 +1,6 @@
 import { parse } from '../../parsers/python/python_parser';
 import { ControlFlowGraph } from '../../slicing/ControlFlowAnalysis';
+import { dataflowAnalysis } from '../../slicing/DataflowAnalysis';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -13,7 +14,7 @@ let failCount = 0;
 function testInDir(rootDir: string) {
     function isPyFile(filename: string) { return /.py$/.test(filename); }
     const items = fs.readdirSync(rootDir);
-    for (let item of items.slice(0, 10)) {
+    for (let item of items.slice(0, 500)) {
         const itemPath = path.join(rootDir, item);
         const stats = fs.statSync(itemPath);
         if (stats.isFile() && isPyFile(item)) {
@@ -22,17 +23,32 @@ function testInDir(rootDir: string) {
             console.log(itemPath);
             try {
                 const ast = parse(text);
+                if (!ast) {
+                    // empty file
+                    continue;
+                }
                 const cfg = new ControlFlowGraph(ast);
-                console.log(cfg.blocks.length, 'blocks');
+                if (!cfg || !cfg.blocks) {
+                    console.log('CFG FAIL');
+                    continue;
+                }
+                const dfa = dataflowAnalysis(cfg);
+                if (!dfa) {
+                    console.log('DFA FAIL');
+                    continue;
+                }
             } catch (e) {
                 const py2ErrorPatterns = [
                     /except .*,.*:/,
                     /print /,
+                    /exec /,
                     /[0-9]+L/,
+                    /Expecting 'NAME', got 'False'/,
+                    /Expecting ':', 'as', got ','/,
+                    /[r.]aise [^,]+,/,
+                    / 0[0-9]+/,
                 ];
-                if (py2ErrorPatterns.some(pat => pat.test(e.message))) {
-                    console.log('PYTHON 2: skipping');
-                } else {
+                if (!py2ErrorPatterns.some(pat => pat.test(e.message))) {
                     console.log('FAIL', e);
                     failCount++;
                 }
