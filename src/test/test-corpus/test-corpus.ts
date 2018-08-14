@@ -46,7 +46,10 @@ function testInDir(rootDir: string) {
                     /Expecting 'NAME', got 'False'/,
                     /Expecting ':', 'as', got ','/,
                     /[r.]aise [^,]+,/,
-                    / 0[0-9]+/,
+                    /[^0-9A-Za-z_]0[0-9]+/,
+                    /ur["']/,
+                    /0x[0-9A-Fa-f]L/,
+                    /<>/,
                 ];
                 if (!py2ErrorPatterns.some(pat => pat.test(e.message))) {
                     console.log('FAIL', e);
