@@ -95,7 +95,7 @@ class ExecutionHistory {
         // We don't know the order that we will receive events for the kernel finishing execution and
         // a cell finishing execution, so this helps us pair execution count to an executed cell.
         notebook.events.on('shell_reply.Kernel', (
-                _: Jupyter.Event, data: { reply: { content: Jupyter.ShellReplyContent }}) => {
+            _: Jupyter.Event, data: { reply: { content: Jupyter.ShellReplyContent } }) => {
             if (this._cellWithUndefinedCount) {
                 console.log("Defining cell execution count after the fact...");
                 this._cellWithUndefinedCount.executionCount = data.reply.content.execution_count;
@@ -224,14 +224,14 @@ class CellFetcher {
             this._cachedCells = this._notebook.get_cells();
         }
         let matchingCells = this._cachedCells
-        .filter(c => {
-            if (c.cell_id != cellId) return false;
-            if (executionCount != undefined) {
-                if (!(c instanceof CodeCell)) return false;
-                if ((c as CodeCell).input_prompt_number != executionCount) return false;
-            }
-            return true;
-        });
+            .filter(c => {
+                if (c.cell_id != cellId) return false;
+                if (executionCount != undefined) {
+                    if (!(c instanceof CodeCell)) return false;
+                    if ((c as CodeCell).input_prompt_number != executionCount) return false;
+                }
+                return true;
+            });
         if (matchingCells.length > 0) {
             return matchingCells.pop();
         }
@@ -336,29 +336,29 @@ function sliceToCellJson(slice: SlicedExecution, annotatePaste?: boolean): CellJ
     const SHOULD_OMIT_NONTERMINAL_OUTPUT = true;
     annotatePaste = annotatePaste || false;
     return slice.cellSlices
-    .map((cellSlice, i) => {
-        let slicedCell = cellSlice.cell;
-        if (SHOULD_SLICE_CELLS) {
-            slicedCell = slicedCell.copy();
-            slicedCell.text = cellSlice.textSliceLines;
-        }
-        if (slicedCell instanceof NotebookCell) {
-            let cellJson = slicedCell.model.toJSON();
-            // This new cell hasn't been executed yet. So don't mark it as having been executed.
-            cellJson.execution_count = null;
-            // Add a flag to distinguish gathered cells from other cells.
-            cellJson.metadata.gathered = true;
-            // Add a flag so we can tell if this cell was just pasted, so we can merge it.
-            if (annotatePaste) {
-                cellJson.metadata.justPasted = true;
+        .map((cellSlice, i) => {
+            let slicedCell = cellSlice.cell;
+            if (SHOULD_SLICE_CELLS) {
+                slicedCell = slicedCell.copy();
+                slicedCell.text = cellSlice.textSliceLines;
             }
-            // If this isn't the last cell, don't include its output.
-            if (SHOULD_OMIT_NONTERMINAL_OUTPUT && i != slice.cellSlices.length - 1) {
-                cellJson.outputs = [];
+            if (slicedCell instanceof NotebookCell) {
+                let cellJson = slicedCell.model.toJSON();
+                // This new cell hasn't been executed yet. So don't mark it as having been executed.
+                cellJson.execution_count = null;
+                // Add a flag to distinguish gathered cells from other cells.
+                cellJson.metadata.gathered = true;
+                // Add a flag so we can tell if this cell was just pasted, so we can merge it.
+                if (annotatePaste) {
+                    cellJson.metadata.justPasted = true;
+                }
+                // If this isn't the last cell, don't include its output.
+                if (SHOULD_OMIT_NONTERMINAL_OUTPUT && i != slice.cellSlices.length - 1) {
+                    cellJson.outputs = [];
+                }
+                return cellJson;
             }
-            return cellJson;
-        }
-    }).filter(c => c != undefined);
+        }).filter(c => c);
 }
 
 /**
@@ -396,7 +396,7 @@ class NotebookOpener implements INotebookOpener {
     }
 
     private _openSlice(notebookJson: NotebookJson, gatherIndex: number) {
-        
+
         // Get the directory of the current notebook.
         let currentDir = document.body.attributes
             .getNamedItem('data-notebook-path').value.split('/').slice(0, -1).join("/");
@@ -472,7 +472,7 @@ export function load_ipython_extension() {
     // Initialize clipboard for copying cells.
     let clipboard = new Clipboard();
     clipboard.addListener({
-        onCopy: () => {    
+        onCopy: () => {
             if (notificationWidget) {
                 notificationWidget.set_message("Copied cells. To paste, type 'v' or right-click.", 5000);
             }
@@ -492,21 +492,16 @@ export function load_ipython_extension() {
     let clearButton = new ClearButton(gatherModel);
 
     // Create buttons for gathering.
-    let gatherToClipboardFullActionName = Jupyter.actions.register(
-        gatherToClipboardButton.action, gatherToClipboardButton.actionName, GATHER_PREFIX);
-    let gatherToNotebookFullActionName = Jupyter.actions.register(
-        gatherToNotebookButton.action, gatherToNotebookButton.actionName, GATHER_PREFIX);
-    let gatherHistoryFullActionName = Jupyter.actions.register(
-        gatherHistoryButton.action, gatherHistoryButton.actionName, GATHER_PREFIX);
-    let clearFullActionName = Jupyter.actions.register(
-        clearButton.action, clearButton.actionName, GATHER_PREFIX);
-    let buttonsGroup = Jupyter.toolbar.add_buttons_group([
-        { label: gatherToClipboardButton.label, action: gatherToClipboardFullActionName },
-        { label: gatherToNotebookButton.label, action: gatherToNotebookFullActionName },
-        { label: gatherHistoryButton.label, action: gatherHistoryFullActionName },
-        { label: clearButton.label, action: clearFullActionName }
-    ]);
-    
+    let buttonsGroup = Jupyter.toolbar.add_buttons_group(
+        [gatherToClipboardButton, gatherToNotebookButton, gatherHistoryButton, clearButton]
+            .map(b => ({
+                label: b.label,
+                icon: b.action.icon,
+                callback: b.action.handler,
+                action: Jupyter.actions.register(b.action, b.actionName, GATHER_PREFIX)
+            }))
+    );
+
     // Add a label to the gathering part of the toolbar.
     let gatherLabel = document.createElement("div");
     gatherLabel.textContent = "Gather to:";
@@ -518,12 +513,16 @@ export function load_ipython_extension() {
     gatherToNotebookButton.node = new Widget({ node: buttonsGroup.children()[2] });
     gatherHistoryButton.node = new Widget({ node: buttonsGroup.children()[3] });
     clearButton.node = new Widget({ node: buttonsGroup.children()[4] });
-    
+
     let mergeButton = new MergeButton(Jupyter.actions, Jupyter.notebook);
-    let mergeFullActionName = Jupyter.actions.register(
-        mergeButton.action, mergeButton.actionName, GATHER_PREFIX);
     let mergeButtonGroup = Jupyter.toolbar.add_buttons_group(
-        [{ label: mergeButton.label, action: mergeFullActionName }]);
+        [{
+            label: mergeButton.label,
+            icon: mergeButton.action.icon,
+            callback: mergeButton.action.handler,
+            action: Jupyter.actions.register(mergeButton.action, mergeButton.actionName, GATHER_PREFIX)
+        }]
+    );
     mergeButton.node = new Widget({ node: mergeButtonGroup.children()[0] });
 
     // Add widget for viewing history
@@ -534,15 +533,15 @@ export function load_ipython_extension() {
     // gathered cells (justPasted) so we can find them right after the paste, as there is no
     // listener for pasting gathered cells in the notebook API.
     Jupyter.notebook.events.on('select.Cell', (_: Jupyter.Event, data: { cell: Cell }) => {
-        
+
         let cell = data.cell;
         if (cell.metadata.justPasted) {
 
             // Select all of the gathered cells.
             let gatheredCellIndexes = cell.notebook.get_cells()
-            .map((c, i): [Cell, number] => [c, i])
-            .filter(([c, i]) => c.metadata.justPasted)
-            .map(([c, i]) => i);
+                .map((c, i): [Cell, number] => [c, i])
+                .filter(([c, i]) => c.metadata.justPasted)
+                .map(([c, i]) => i);
             let firstGatheredIndex = Math.min(...gatheredCellIndexes);
             let lastGatheredIndex = Math.max(...gatheredCellIndexes);
             Jupyter.notebook.select(firstGatheredIndex, true);
@@ -550,13 +549,13 @@ export function load_ipython_extension() {
 
             // We won't use the `gathered` flag on these cells anymore, so remove them from the cells.
             cell.notebook.get_cells()
-            .forEach(c => {
-                if (c.metadata.justPasted) {
-                    delete c.metadata.justPasted;
-                }
-            });
+                .forEach(c => {
+                    if (c.metadata.justPasted) {
+                        delete c.metadata.justPasted;
+                    }
+                });
         }
-    });    
-    
+    });
+
     notificationWidget = notification_area.new_notification_widget("gather");
 }
