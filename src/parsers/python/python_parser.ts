@@ -9,6 +9,10 @@ import * as path from 'path';
  * This method resets the state of the `parse` method so that doesn't happen.
  */
 export function parse(program: string): IModule {
+    if (program.charCodeAt(0) === 65279) {
+        // eliminate byte order mark
+        program = program.slice(1);
+    }
     // We avoid using require since loading/unloading the module causes a memory leak.
     const fname = path.join(path.dirname(__filename), 'python3.js');
     const contents = fs.readFileSync(fname).toString();
