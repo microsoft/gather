@@ -82,11 +82,11 @@ declare namespace Jupyter {
     }
     var CodeCell: CodeCellConstructor;
 
-    interface Kernel {}
+    interface Kernel { }
 
-    interface Tooltip {}
+    interface Tooltip { }
 
-    interface Config {}
+    interface Config { }
 
     interface CodeCellOptions {
         events: Events,
@@ -109,7 +109,7 @@ declare namespace Jupyter {
 
     interface SaveModel {
         type: string;
-        content: NotebookJson; 
+        content: NotebookJson;
     }
 
     interface ShellReplyContent {
@@ -139,6 +139,8 @@ declare namespace Jupyter {
 
     interface ActionSpec {
         label: string;
+        icon: string;
+        callback: () => void
         action: string;  // action name
     }
 
@@ -196,7 +198,7 @@ declare module "base/js/namespace" {
 }
 
 declare namespace Utils {
-    function ajax(url: string|any, settings: any): XMLHttpRequest;
+    function ajax(url: string | any, settings: any): XMLHttpRequest;
     function uuid(): string;
 }
 

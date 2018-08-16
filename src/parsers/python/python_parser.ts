@@ -1,5 +1,4 @@
-import * as fs from 'fs';
-import * as path from 'path';
+import * as python3txt from './python3.js.txt';
 
 
 /**
@@ -14,10 +13,8 @@ export function parse(program: string): IModule {
         program = program.slice(1);
     }
     // We avoid using require since loading/unloading the module causes a memory leak.
-    const fname = path.join(path.dirname(__filename), 'python3.js');
-    const contents = fs.readFileSync(fname).toString();
     let exports = { parse: (s: string): IModule => null };
-    eval(contents); // overwrites parse function
+    eval(python3txt); // overwrites parse function
     return exports.parse(program);
 }
 

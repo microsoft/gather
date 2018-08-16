@@ -7,6 +7,7 @@ module.exports = {
         filename: 'gather.js',
         libraryTarget: 'amd'
     },
+    mode: 'none',
     devtool: "inline-source-map",
     externals: {
         "base/js/namespace": "base/js/namespace",
@@ -17,11 +18,14 @@ module.exports = {
     },
     module: {
         rules: [{
+            test: /\.txt/,
+            use: ['raw-loader']
+        }, {
             test: /\.css$/,
-            use: [ 'style-loader', 'css-loader' ]
+            use: ['style-loader', 'css-loader']
         }, {
             test: /\.png$/,
-            use: [ 'file-loader' ]
+            use: ['file-loader']
         }]
     },
     optimization: {

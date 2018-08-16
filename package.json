@@ -9,7 +9,7 @@
     "jupyterlab"
   ],
   "scripts": {
-    "build_parser": "node ./node_modules/jison/lib/cli.js --outfile src/parsers/python/python3.js src/parsers/python/python3.jison",
+    "build_parser": "node ./node_modules/jison/lib/cli.js --outfile lib/parsers/python/python3.js.txt src/parsers/python/python3.jison",
     "build": "tsc",
     "build_nb_extension": "npm run build && npx webpack",
     "watch_nb_extension": "npx webpack -w",
@@ -47,6 +47,7 @@
     "file-loader": "^1.1.11",
     "jison": "^0.4.18",
     "mocha": "^5.2.0",
+    "raw-loader": "^0.5.1",
     "rimraf": "^2.6.1",
     "style-loader": "^0.21.0",
     "ts-node": "^7.0.0",

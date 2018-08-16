@@ -7,3 +7,5 @@ node_modules/
 .vs/
 package-lock.json
 dist/
+python3.js.txt
+*.log

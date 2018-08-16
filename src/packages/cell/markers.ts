@@ -2,7 +2,7 @@
  * Helpers for marking up CodeMirror editors.
  */
 import { ISyntaxNode, ILocation } from "../../parsers/python/python_parser";
-import { parse } from '../../parsers/python/python3';
+import { parse } from '../../parsers/python/python_parser';
 import { getDefs, SymbolType, Ref } from "../../slicing/DataflowAnalysis";
 import { StringSet } from "../../slicing/Set";
 import { SlicerConfig } from "../../slicing/SlicerConfig";
@@ -234,12 +234,7 @@ export class MarkerManager implements IGatherObserver {
 
         // Parse the code, get the statements.
         const ast = parse(cleanedCode + "\n");
-        let statements = [];
-        if (ast && ast.code && ast.code.length) {
-            statements = ast.code;
-        } else {
-            statements = [ast.code];
-        }
+        let statements = ast.code;
 
         // Add marker for all of the definitions in the code.
         statements.forEach((statement: ISyntaxNode) => {
