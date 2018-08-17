@@ -414,7 +414,10 @@ class NotebookOpener implements INotebookOpener {
             let model = { type: "notebook", content: notebookJson };
             this._notebook.contents.save(notebookPath, model).then(() => {
                 // XXX: This seems to open up a file in different places on different machines???
-                window.open(fileName + "?kernel_name=python3", '_blank');
+                let nbWindow = window.open(fileName + "?kernel_name=python3", '_blank');
+                if (nbWindow == null) {
+                    window.alert("Please allow popups for Jupyter notebook.");
+                }
             });
         });
     }
