@@ -26,7 +26,7 @@ export enum SymbolType {
     MAGIC
 };
 
-export type Ref = {
+export interface Ref {
     type: SymbolType;
     level: ReferenceType;
     name: string;
@@ -43,6 +43,14 @@ export class RefSet extends Set<Ref> {
 function locString(loc: ast.ILocation): string {
     return loc.first_line + ':' + loc.first_column + '-' + loc.last_line + ':' + loc.last_column;
 }
+
+export function sameLocation(loc1: ast.ILocation, loc2: ast.ILocation): boolean {
+    return loc1.first_column === loc2.first_column &&
+        loc1.first_line === loc2.first_line &&
+        loc1.last_column === loc2.last_column &&
+        loc1.last_line === loc2.last_line;
+}
+
 
 function getNameSetId([name, node]: [string, ast.ISyntaxNode]) {
     if (!node.location) console.log('***', node);
@@ -61,7 +69,7 @@ function gatherNames(node: ast.ISyntaxNode | ast.ISyntaxNode[]): NameSet {
     } else {
         return new NameSet(...ast.walk(node)
             .filter(e => e.type == ast.NAME)
-            .map((e: ast.IName): [ string, ast.ISyntaxNode ] => [ e.id, e ]));
+            .map((e: ast.IName): [string, ast.ISyntaxNode] => [e.id, e]));
     }
 }
 
@@ -74,6 +82,7 @@ interface SymbolTable {
 
 const DEFAULT_SLICER_CONFIG = new SlicerConfig();
 
+
 /**
  * Tree walk listener for collecting manual def annotations.
  */
@@ -84,12 +93,12 @@ class DefAnnotationListener implements ast.IWalkListener {
     }
 
     onEnterNode(node: ast.ISyntaxNode, type: string) {
-        
+
         if (type == ast.LITERAL) {
             let literal = node as ast.ILiteral;
 
             // If this is a string, try to parse a def annotation from it
-            if (typeof(literal.value) == 'string' || literal.value instanceof String) {
+            if (typeof (literal.value) == 'string' || literal.value instanceof String) {
                 let string = literal.value;
                 let jsonMatch = string.match(/"defs: (.*)"/);
                 if (jsonMatch && jsonMatch.length >= 2) {
@@ -111,7 +120,7 @@ class DefAnnotationListener implements ast.IWalkListener {
                                 statement: this._statement
                             });
                         }
-                    } catch(e) {}
+                    } catch (e) { }
                 }
             }
         }
@@ -120,6 +129,7 @@ class DefAnnotationListener implements ast.IWalkListener {
     private _statement: ast.ISyntaxNode;
     readonly defs: RefSet = new RefSet();
 }
+
 
 /**
  * Tree walk listener for collecting names used in function call.
@@ -142,51 +152,51 @@ class CallNamesListener implements ast.IWalkListener {
                 name = (callNode.func as ast.IName).id;
             }
             this._slicerConfig.functionConfigs
-            .filter(config => config.pattern.functionName == name)
-            .filter(config => {
-                if (!config.pattern.instanceNames) return true;
-                if (callNode.func.type == ast.DOT &&
-                    callNode.func.value.type == ast.NAME) {
-                    let instanceName = (callNode.func.value as ast.IName).id
-                    return config.pattern.instanceNames.indexOf(instanceName) != -1;
-                }
-                return false;
-            })
-            .forEach(config => {
-                if (config.instanceEffect && callNode.func.type == ast.DOT) {
-                    if (config.pattern.instanceNames) {
-
+                .filter(config => config.pattern.functionName == name)
+                .filter(config => {
+                    if (!config.pattern.instanceNames) return true;
+                    if (callNode.func.type == ast.DOT &&
+                        callNode.func.value.type == ast.NAME) {
+                        let instanceName = (callNode.func.value as ast.IName).id
+                        return config.pattern.instanceNames.indexOf(instanceName) != -1;
                     }
-                    this._parentsOfRelevantNames.push({
-                        node: callNode.func.value,
-                        effect: config.instanceEffect
-                    });
-                }
-                if (config.positionalArgumentEffects) {
-                    for (let posArg in config.positionalArgumentEffects) {
-                        if (config.positionalArgumentEffects.hasOwnProperty(posArg)) {
-                            this._parentsOfRelevantNames.push({
-                                node: callNode.args[posArg].actual,
-                                effect: config.positionalArgumentEffects[posArg]
-                            });
+                    return false;
+                })
+                .forEach(config => {
+                    if (config.instanceEffect && callNode.func.type == ast.DOT) {
+                        if (config.pattern.instanceNames) {
+
+                        }
+                        this._parentsOfRelevantNames.push({
+                            node: callNode.func.value,
+                            effect: config.instanceEffect
+                        });
+                    }
+                    if (config.positionalArgumentEffects) {
+                        for (let posArg in config.positionalArgumentEffects) {
+                            if (config.positionalArgumentEffects.hasOwnProperty(posArg)) {
+                                this._parentsOfRelevantNames.push({
+                                    node: callNode.args[posArg].actual,
+                                    effect: config.positionalArgumentEffects[posArg]
+                                });
+                            }
                         }
                     }
-                }
-                if (config.keywordArgumentEffects) {
-                    for (let kwArg in config.keywordArgumentEffects) {
-                        if (config.keywordArgumentEffects.hasOwnProperty(kwArg)) {
-                            for (let arg of callNode.args) {
-                                if (arg.keyword && (arg.keyword as ast.IName).id == kwArg) {
-                                    this._parentsOfRelevantNames.push({
-                                        node: arg.actual,
-                                        effect: config.keywordArgumentEffects[kwArg]
-                                    });       
+                    if (config.keywordArgumentEffects) {
+                        for (let kwArg in config.keywordArgumentEffects) {
+                            if (config.keywordArgumentEffects.hasOwnProperty(kwArg)) {
+                                for (let arg of callNode.args) {
+                                    if (arg.keyword && (arg.keyword as ast.IName).id == kwArg) {
+                                        this._parentsOfRelevantNames.push({
+                                            node: arg.actual,
+                                            effect: config.keywordArgumentEffects[kwArg]
+                                        });
+                                    }
                                 }
                             }
                         }
                     }
-                }
-            });
+                });
         }
         if (type == ast.NAME) {
             let foundName = false;
@@ -215,6 +225,7 @@ class CallNamesListener implements ast.IWalkListener {
     readonly defs: RefSet = new RefSet();
 }
 
+
 /**
  * Tree walk listener for collecting definitions in the target of an assignment.
  */
@@ -230,7 +241,7 @@ class TargetsDefListener implements ast.IWalkListener {
             let level = ReferenceType.DEFINITION;
             if (ancestors.some(a => a.type == ast.DOT)) {
                 level = ReferenceType.UPDATE;
-            } else if (ancestors.some(a => a.type ==  ast.INDEX)) {
+            } else if (ancestors.some(a => a.type == ast.INDEX)) {
                 level = ReferenceType.UPDATE;
             }
             this.defs.add({
@@ -246,6 +257,7 @@ class TargetsDefListener implements ast.IWalkListener {
     private _statement: ast.ISyntaxNode;
     readonly defs: RefSet = new RefSet();
 }
+
 
 export function getDefs(
     statement: ast.ISyntaxNode, symbolTable: SymbolTable, slicerConfig?: SlicerConfig): RefSet {
@@ -271,14 +283,14 @@ export function getDefs(
             const modnames = statement.names.map(i => i.name || i.path);
             symbolTable.moduleNames.add(...modnames);
             defs.add(...statement.names.map(nameNode => {
-                    return {
-                        type: SymbolType.IMPORT,
-                        level: ReferenceType.DEFINITION,
-                        name: nameNode.name || nameNode.path,
-                        location: nameNode.location,
-                        statement: statement
-                    };
-                }));
+                return {
+                    type: SymbolType.IMPORT,
+                    level: ReferenceType.DEFINITION,
+                    name: nameNode.name || nameNode.path,
+                    location: nameNode.location,
+                    statement: statement
+                };
+            }));
             break;
         }
         case ast.FROM: {
@@ -366,7 +378,7 @@ export function getUses(statement: ast.ISyntaxNode, _: SymbolTable, slicerConfig
         case ast.DEF:
             let defCfg = new ControlFlowGraph(statement);
             let argNames = new StringSet(...statement.params.map(p => {
-                if(p && p instanceof Array && p.length > 0 && p[0].name) {
+                if (p && p instanceof Array && p.length > 0 && p[0].name) {
                     return p[0].name;
                 }
             }).filter(n => n != undefined));
@@ -410,7 +422,7 @@ function getDataflowId(df: IDataflow) {
 }
 
 function createFlowsFrom(fromSet: RefSet, toSet: RefSet, fromStatement: ast.ISyntaxNode):
-        [Set<IDataflow>, Set<Ref>] {
+    [Set<IDataflow>, Set<Ref>] {
     let refsDefined = new RefSet();
     let newFlows = new Set<IDataflow>(getDataflowId);
     for (let from of fromSet.items) {
@@ -421,16 +433,30 @@ function createFlowsFrom(fromSet: RefSet, toSet: RefSet, fromStatement: ast.ISyn
             }
         }
     }
-    return [ newFlows, refsDefined ];
+    return [newFlows, refsDefined];
 }
+
 
 let DEPENDENCY_RULES = [
     // "from" depends on all reference types in "to"
-    { from: ReferenceType.USE, to: [ ReferenceType.DEFINITION, ReferenceType.GLOBAL_CONFIG, ReferenceType.INITIALIZATION, ReferenceType.UPDATE ] },
-    { from: ReferenceType.UPDATE, to: [ ReferenceType.DEFINITION, ReferenceType.GLOBAL_CONFIG, ReferenceType.INITIALIZATION, ReferenceType.UPDATE ] },
-    { from: ReferenceType.INITIALIZATION, to: [ ReferenceType.DEFINITION, ReferenceType.GLOBAL_CONFIG ] },
-    { from: ReferenceType.GLOBAL_CONFIG, to: [ ReferenceType.DEFINITION, ReferenceType.GLOBAL_CONFIG ] }
+    {
+        from: ReferenceType.USE,
+        to: [ReferenceType.DEFINITION, ReferenceType.GLOBAL_CONFIG, ReferenceType.INITIALIZATION, ReferenceType.UPDATE]
+    },
+    {
+        from: ReferenceType.UPDATE,
+        to: [ReferenceType.DEFINITION, ReferenceType.GLOBAL_CONFIG, ReferenceType.INITIALIZATION, ReferenceType.UPDATE]
+    },
+    {
+        from: ReferenceType.INITIALIZATION,
+        to: [ReferenceType.DEFINITION, ReferenceType.GLOBAL_CONFIG]
+    },
+    {
+        from: ReferenceType.GLOBAL_CONFIG,
+        to: [ReferenceType.DEFINITION, ReferenceType.GLOBAL_CONFIG]
+    }
 ];
+
 
 let TYPES_WITH_DEPENDENCIES = DEPENDENCY_RULES.map(r => r.from);
 
@@ -441,14 +467,27 @@ let KILL_RULES = [
     // If x overwrites y, x also kills y.
     // The one case where a variable doesn't kill a previous variable is the global configuration, because
     // it neither depends on initializations or updates, nor clobbers them.
-    { level: ReferenceType.UPDATE, kills: [ ReferenceType.UPDATE, ReferenceType.INITIALIZATION, ReferenceType.GLOBAL_CONFIG, ReferenceType.DEFINITION ]},
-    { level: ReferenceType.INITIALIZATION, kills: [ ReferenceType.UPDATE, ReferenceType.INITIALIZATION, ReferenceType.GLOBAL_CONFIG, ReferenceType.DEFINITION ] },
-    { level: ReferenceType.GLOBAL_CONFIG, kills: [ ReferenceType.GLOBAL_CONFIG, ReferenceType.DEFINITION ]},
-    { level: ReferenceType.DEFINITION, kills: [ ReferenceType.UPDATE, ReferenceType.INITIALIZATION, ReferenceType.GLOBAL_CONFIG, ReferenceType.DEFINITION ]}
+    {
+        level: ReferenceType.UPDATE,
+        kills: [ReferenceType.UPDATE, ReferenceType.INITIALIZATION, ReferenceType.GLOBAL_CONFIG, ReferenceType.DEFINITION]
+    },
+    {
+        level: ReferenceType.INITIALIZATION,
+        kills: [ReferenceType.UPDATE, ReferenceType.INITIALIZATION, ReferenceType.GLOBAL_CONFIG, ReferenceType.DEFINITION]
+    },
+    {
+        level: ReferenceType.GLOBAL_CONFIG,
+        kills: [ReferenceType.GLOBAL_CONFIG, ReferenceType.DEFINITION]
+    },
+    {
+        level: ReferenceType.DEFINITION,
+        kills: [ReferenceType.UPDATE, ReferenceType.INITIALIZATION, ReferenceType.GLOBAL_CONFIG, ReferenceType.DEFINITION]
+    }
 ];
 
+
 function updateDefsForLevel(defsForLevel: RefSet, level: string, newRefs: { [level: string]: RefSet },
-        dependencyRules: { from: ReferenceType, to: ReferenceType[] }[]) {
+    dependencyRules: { from: ReferenceType, to: ReferenceType[] }[]) {
     let genSet = new RefSet();
     let levelDependencies = dependencyRules.filter(r => r.from == level).pop();
     for (let level of Object.keys(ReferenceType)) {
@@ -473,14 +512,16 @@ function updateDefsForLevel(defsForLevel: RefSet, level: string, newRefs: { [lev
     return defsForLevel.minus(killSet).union(genSet);
 }
 
+
 export type DataflowAnalysisResult = {
     flows: Set<IDataflow>,
     undefinedRefs: RefSet
 };
 
+
 export function dataflowAnalysis(cfg: ControlFlowGraph,
-        slicerConfig?: SlicerConfig, namesDefined?: StringSet): DataflowAnalysisResult {
-    
+    slicerConfig?: SlicerConfig, namesDefined?: StringSet): DataflowAnalysisResult {
+
     slicerConfig = slicerConfig || DEFAULT_SLICER_CONFIG;
     let symbolTable: SymbolTable = { moduleNames: new StringSet() };
     const workQueue: Block[] = cfg.blocks.reverse();
@@ -518,7 +559,9 @@ export function dataflowAnalysis(cfg: ControlFlowGraph,
 
             // Sort definitions and uses into references.
             let statementRefs: { [level: string]: RefSet } = {};
-            for (let level of Object.keys(ReferenceType)) { statementRefs[level] = new RefSet(); }
+            for (let level of Object.keys(ReferenceType)) {
+                statementRefs[level] = new RefSet();
+            }
             for (let def of definedHere.items) {
                 statementRefs[def.level].add(def);
                 if (TYPES_WITH_DEPENDENCIES.indexOf(def.level) != -1) {
@@ -527,13 +570,7 @@ export function dataflowAnalysis(cfg: ControlFlowGraph,
             }
             // Only add uses that aren't actually defs.
             for (let use of usedHere.items) {
-                if (!definedHere.items.some(d => {
-                    return d.name == use.name &&
-                        d.location.first_line == use.location.first_line &&
-                        d.location.first_column == use.location.first_column &&
-                        d.location.last_line == use.location.last_line &&
-                        d.location.last_column == use.location.last_column;
-                        })) {
+                if (!definedHere.items.some(def => def.name == use.name && sameLocation(def.location, use.location))) {
                     statementRefs[ReferenceType.USE].add(use);
                     undefinedRefs.add(use);
                 }
@@ -558,7 +595,7 @@ export function dataflowAnalysis(cfg: ControlFlowGraph,
                 defsForLevel[level] = updateDefsForLevel(defsForLevel[level], level, statementRefs, DEPENDENCY_RULES);
             }
         }
-        
+
         // Check to see if definitions have changed. If so, redo the successor blocks.
         for (let level of Object.keys(ReferenceType)) {
             if (!oldDefsForLevel[level].equals(defsForLevel[level])) {

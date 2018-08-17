@@ -444,7 +444,7 @@ function walkRecursive(node: ISyntaxNode, ancestors?: ISyntaxNode[], walkListene
         case MODULE:
         case DEF:
         case CLASS:
-            children = flatten([node.code]);
+            children = node.code;
             break;
         case IF:
             children = [node.cond].concat(node.code)
@@ -500,6 +500,9 @@ function walkRecursive(node: ISyntaxNode, ancestors?: ISyntaxNode[], walkListene
         case COMPFOR: children = node.for.concat([node.in]); break;
         case COMPIF: children = [node.test]; break;
         case YIELD: children = node.value ? [node.value] : []; break;
+        case RETURN: children = node.value ? [node.value] : []; break;
+        case RAISE: children = node.err ? [node.err] : []; break;
+        case IFEXPR: children = [node.test, node.then, node.else]; break;
     }
 
     let nodes = [node];
