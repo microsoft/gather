@@ -117,7 +117,7 @@ describe('program builder', () => {
         expect(tree.code.length).to.equal(2);
     });
 
-    it.only('adjusts the node locations', () => {
+    it('adjusts the node locations', () => {
         programBuilder.add(
             createCell("id1", 2, "print(1)"),
             createCell("id2", 1, "print(2)")

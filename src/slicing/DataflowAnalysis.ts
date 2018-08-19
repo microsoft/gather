@@ -31,11 +31,11 @@ export class DataflowAnalyzer {
         let cacheKey = this._statementLocationKey(statement);
         if (cacheKey != null) {
             if (this._defUsesCache.hasOwnProperty(cacheKey)) {
-                console.log("Cache hit!");
+                // console.log("Cache hit!");
                 return this._defUsesCache[cacheKey];
             }
         }
-        console.log("Cache miss");
+        // console.log("Cache miss");
         let defSet = this.getDefs(statement, symbolTable);
         let useSet = this.getUses(statement, symbolTable);
         let result = { defs: defSet, uses: useSet };
