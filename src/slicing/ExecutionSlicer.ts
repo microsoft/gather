@@ -124,7 +124,8 @@ export class ExecutionLogSlicer {
                     })
                 );
 
-                let sliceLocations = slice(program.code, seedLocations).items
+                // Slice the program
+                let sliceLocations = slice(program.tree, seedLocations).items
                 .sort((loc1, loc2) => loc1.first_line - loc2.first_line);
 
                 // Get the relative offsets of slice lines in each cell.

@@ -1,5 +1,6 @@
 import * as python3txt from './python3.js.txt';
-
+import * as fs from 'fs';
+import * as path from 'path';
 
 /**
  * This is the main interface for parsing code.
@@ -14,7 +15,15 @@ export function parse(program: string): IModule {
     }
     // We avoid using require since loading/unloading the module causes a memory leak.
     let exports = { parse: (s: string): IModule => null };
-    eval(python3txt); // overwrites parse function
+    if (typeof(python3txt) == "string") {
+        eval(python3txt); // overwrites parse function
+    // During unit tests, python3txt will be an object, not a string, causing unexpected
+    // behavior. If python3txt isn't a string, read it using `fs`.
+    } else {
+        const fname = path.join(path.dirname(__filename), 'python3.js.txt');
+        const python3txtString = fs.readFileSync(fname).toString();
+        eval(python3txtString); // overwrites parse function
+    }
     return exports.parse(program);
 }
 
@@ -70,6 +79,8 @@ export interface ILocation {
 
 export interface ILocatable {
     location: ILocation;
+    cellId?: string;
+    executionCount?: number;
 }
 
 export const MODULE = 'module';

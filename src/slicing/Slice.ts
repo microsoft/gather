@@ -1,7 +1,7 @@
 import { NumberSet, range } from "./Set";
 import { ControlFlowGraph } from "./ControlFlowAnalysis";
 import { dataflowAnalysis } from "./DataflowAnalysis";
-import { ILocation, parse } from "../parsers/python/python_parser";
+import { ILocation, parse, IModule } from "../parsers/python/python_parser";
 import { ICell } from "../packages/cell";
 import { Set } from "./Set";
 
@@ -53,9 +53,8 @@ function intersect(l1: ILocation, l2: ILocation): boolean {
  * definitions. Locations can be mapped to lines later.
  * seedLocations are symbol locations.
  */
-export function slice(code: string, seedLocations: LocationSet): LocationSet {
+export function slice(ast: IModule, seedLocations: LocationSet): LocationSet {
 
-    const ast = parse(code);
     const cfg = new ControlFlowGraph(ast);
     const dfa = dataflowAnalysis(cfg).flows;
     dfa.add(...cfg.getControlDependencies());
