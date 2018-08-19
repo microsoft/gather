@@ -1,9 +1,9 @@
 import { NumberSet, range } from "./Set";
 import { ControlFlowGraph } from "./ControlFlowAnalysis";
-import { dataflowAnalysis } from "./DataflowAnalysis";
 import { ILocation, parse, IModule } from "../parsers/python/python_parser";
 import { ICell } from "../packages/cell";
 import { Set } from "./Set";
+import { DataflowAnalyzer } from "./DataflowAnalysis";
 
 export enum DataflowDirection { Forward, Backward };
 
@@ -53,10 +53,12 @@ function intersect(l1: ILocation, l2: ILocation): boolean {
  * definitions. Locations can be mapped to lines later.
  * seedLocations are symbol locations.
  */
-export function slice(ast: IModule, seedLocations: LocationSet): LocationSet {
+export function slice(ast: IModule, seedLocations: LocationSet,
+        dataflowAnalyzer?: DataflowAnalyzer): LocationSet {
 
+    dataflowAnalyzer = dataflowAnalyzer || new DataflowAnalyzer();
     const cfg = new ControlFlowGraph(ast);
-    const dfa = dataflowAnalysis(cfg).flows;
+    const dfa = dataflowAnalyzer.analyze(cfg).flows;
     dfa.add(...cfg.getControlDependencies());
 
     // Include at least the full statements for each seed.
@@ -96,9 +98,11 @@ export function slice(ast: IModule, seedLocations: LocationSet): LocationSet {
  * OUT OF DATE: use slice() instead of sliceLines().
  */
 export function sliceLines(code: string, relevantLineNumbers: NumberSet) {
+
     const ast = parse(code);
     const cfg = new ControlFlowGraph(ast);
-    const dfa = dataflowAnalysis(cfg).flows;
+    let dataflowAnalyzer = new DataflowAnalyzer();
+    const dfa = dataflowAnalyzer.analyze(cfg).flows;
     dfa.add(...cfg.getControlDependencies());
 
     let lastSize: number;
@@ -118,7 +122,7 @@ export function sliceLines(code: string, relevantLineNumbers: NumberSet) {
     return relevantLineNumbers;
 }
 
-export class CellProgram<CellType extends ICell> {
+export class OldCellProgram<CellType extends ICell> {
     private code: string;
     private changedCellLineNumbers: [number, number];
     private cellByLine: CellType[] = [];
@@ -149,7 +153,8 @@ export class CellProgram<CellType extends ICell> {
     private followDataflow(direction: DataflowDirection): NumberSet {
         const ast = parse(this.code);
         const cfg = new ControlFlowGraph(ast);
-        const dfa = dataflowAnalysis(cfg).flows;
+        let dataflowAnalyzer = new DataflowAnalyzer();
+        const dfa = dataflowAnalyzer.analyze(cfg).flows;
         dfa.add(...cfg.getControlDependencies());
 
         const forwardDirection = direction === DataflowDirection.Forward;

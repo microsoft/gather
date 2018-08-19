@@ -2,6 +2,7 @@ import { NumberSet } from "./Set";
 import * as ast from "../parsers/python/python_parser";
 import { MagicsRewriter } from "./MagicsRewriter";
 import { ICell } from "../packages/cell/model";
+import { Ref, DataflowAnalyzer } from "./DataflowAnalysis";
 
 /**
  * Maps to find out what line numbers over a program correspond to what cells.
@@ -32,17 +33,21 @@ export class Program {
 /**
  * Program fragment for a cell. Used to cache parsing results.
  */
-class CellProgram {
+export class CellProgram {
     /**
      * Construct a cell program
      */
-    constructor(cell: ICell, statements: ast.ISyntaxNode[]) {
+    constructor(cell: ICell, statements: ast.ISyntaxNode[], defs: Ref[], uses: Ref[]) {
         this.cell = cell;
         this.statements = statements;
+        this.defs = defs;
+        this.uses = uses;
     }
 
     readonly cell: ICell;
     readonly statements: ast.ISyntaxNode[];
+    readonly defs: Ref[];
+    readonly uses: Ref[];
 }
 
 /**
@@ -53,7 +58,8 @@ export class ProgramBuilder {
     /**
      * Construct a program builder.
      */
-    constructor() {
+    constructor(dataflowAnalyzer?: DataflowAnalyzer) {
+        this._dataflowAnalyzer = dataflowAnalyzer
         this._cellPrograms = [];
     }
 
@@ -62,16 +68,44 @@ export class ProgramBuilder {
      */
     add(...cells: ICell[]) {
         for (let cell of cells) {
-            // Proactively try to parse each block with our parser. If it can't parse,
-            // then discard it:
-            let tree: ast.IModule = undefined;;
+            // Proactively try to parse and find defs and uses in each block.
+            // If there is a failure, discard that cell.
+            let tree: ast.IModule = undefined;
+            let defs: Ref[] = undefined;
+            let uses: Ref[] = undefined;
+            let analysisFinished = false;
             try {
+                // Parse the cell's code.
                 tree = ast.parse(this._magicsRewriter.rewrite(cell.text) + "\n");
+                // Annotate each node with cell ID info, for dataflow caching.
+                for (let node of ast.walk(tree)) {
+                    // Sanity check that this is actually a node.
+                    if (node.hasOwnProperty("type")) {
+                        node.executionCount = cell.executionCount;
+                        node.cellId = cell.id;
+                    }
+                }
+                // By querying for defs and uses right when a cell is added to the log, we
+                // can cache these results, making dataflow analysis faster.
+                if (this._dataflowAnalyzer) {
+                    defs = [];
+                    uses = [];
+                    for (let stmt of tree.code) {
+                        let defsUses = this._dataflowAnalyzer.getDefsUses(stmt);
+                        defs.push(...defsUses.defs.items);
+                        uses.push(...defsUses.uses.items);
+                    }
+                } else {
+                    defs = [];
+                    uses = [];
+                }
+                analysisFinished = true;
             } catch(e) {
-                console.log("Couldn't parse block", cell.text, ", not adding to programs.");
+                console.log("Couldn't analyze block", cell.text, 
+                    ", error encountered, ", e, ", not adding to programs.");
             }
-            if (tree) {
-                this._cellPrograms.push(new CellProgram(cell, tree.code));
+            if (analysisFinished) {
+                this._cellPrograms.push(new CellProgram(cell, tree.code, defs, uses));
             }
         }
     }
@@ -122,6 +156,7 @@ export class ProgramBuilder {
 
             let cell = cp.cell;
             let cellCode = cell.text;
+            let statements = [];
 
             // Build a mapping from the cells to their lines.
             let cellLength = cellCode.split("\n").length;
@@ -136,11 +171,27 @@ export class ProgramBuilder {
                 cellToLineMap[cell.id][cell.executionCount].add(l);
             });
 
-            // Accumulate the code.
+            // Accumulate the code text.
             let cellText = this._magicsRewriter.rewrite(cell.text);
             code += (cellText + "\n");
             currentLine += cellLength;
-            tree.code.push(...cp.statements);
+
+            // Accumulate the code statements.
+            // This includes resetting the locations of all of the nodes in the tree,
+            // relative to the cells that come before this one.
+            // This can be sped up by saving this computation.
+            let cellStart = Math.min(...cellLines);
+            for (let statement of cp.statements) {
+                let statementCopy = JSON.parse(JSON.stringify(statement));
+                for (let node of ast.walk(statementCopy)) {
+                    if (node.location) {
+                        node.location.first_line += cellStart - 1;
+                        node.location.last_line += cellStart - 1;
+                    }
+                }
+                statements.push(statementCopy);
+            }
+            tree.code.push(...statements);
         });
 
         return new Program(code, tree, cellToLineMap, lineToCellMap);
@@ -153,6 +204,14 @@ export class ProgramBuilder {
         return this.buildTo(lastCell.cell.id);
     }
 
+    getCellProgram(cell: ICell): CellProgram {
+        let matchingPrograms = this._cellPrograms.filter(
+            (cp) => cp.cell.id == cell.id && cp.cell.executionCount == cell.executionCount);
+        if (matchingPrograms.length >= 1) return matchingPrograms.pop();
+        return null;
+    }
+
     private _cellPrograms: CellProgram[];
+    private _dataflowAnalyzer: DataflowAnalyzer;
     private _magicsRewriter: MagicsRewriter = new MagicsRewriter();
 }

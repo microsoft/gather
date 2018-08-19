@@ -1,4 +1,4 @@
-import { dataflowAnalysis, getDefs, Ref, SymbolType, RefSet, getUses, IDataflow, ReferenceType } from "../slicing/DataflowAnalysis";
+import { DataflowAnalyzer, Ref, SymbolType, RefSet, IDataflow, ReferenceType } from "../slicing/DataflowAnalysis";
 import { parse } from '../parsers/python/python_parser';
 import { ControlFlowGraph } from '../slicing/ControlFlowAnalysis';
 import { expect } from "chai";
@@ -12,7 +12,8 @@ describe('detects dataflow dependencies', () => {
 
     function analyze(...codeLines: string[]): Set<IDataflow> {
         let code = codeLines.concat("").join("\n");  // add newlines to end of every line.
-        return dataflowAnalysis(new ControlFlowGraph(parse(code))).flows;
+        let analyzer = new DataflowAnalyzer();
+        return analyzer.analyze(new ControlFlowGraph(parse(code))).flows;
     }
 
     function analyzeLineDeps(...codeLines: string[]): [number, number][] {
@@ -126,7 +127,8 @@ describe('detects dataflow dependencies', () => {
 
     function analyzeComplexDeps(...codeLines: string[]) {
         let code = codeLines.concat("").join("\n");  // add newlines to end of every line.
-        return dataflowAnalysis(new ControlFlowGraph(parse(code)), complexDepsSliceConfig)
+        let analyzer = new DataflowAnalyzer(complexDepsSliceConfig);
+        return analyzer.analyze(new ControlFlowGraph(parse(code)))
             .flows.items.map(function (dep): [number, number] {
                 return [dep.toNode.location.first_line, dep.fromNode.location.first_line]
             });
@@ -268,16 +270,17 @@ describe('getDefs', () => {
     function getDefsFromStatements(...codeLines: string[]): Ref[] {
         let code = codeLines.concat("").join("\n");
         let module = parse(code);
+        let analyzer = new DataflowAnalyzer();
         return new RefSet().union(...module.code.map((stmt: ISyntaxNode) => {
-            return getDefs(stmt, { moduleNames: new StringSet() });
+            return analyzer.getDefs(stmt, { moduleNames: new StringSet() });
         })).items;
     }
 
     function getDefsFromStatement(code: string, slicerConfig?: SlicerConfig): Ref[] {
         code = code + "\n";  // programs need to end with newline
         let mod = parse(code);
-        console.assert(mod && mod.code && mod.code.length);
-        return getDefs(mod.code[0], { moduleNames: new StringSet() }, slicerConfig).items;
+        let analyzer = new DataflowAnalyzer(slicerConfig);
+        return analyzer.getDefs(mod.code[0], { moduleNames: new StringSet() }).items;
     }
 
     function getDefNamesFromStatement(code: string, slicerConfig?: SlicerConfig) {
@@ -454,8 +457,8 @@ describe('getUses', () => {
     function getUseNames(...codeLines: string[]) {
         let code = codeLines.concat("").join("\n");
         let mod = parse(code);
-        console.assert(mod && mod.code && mod.code.length);
-        return getUses(mod.code[0], { moduleNames: new StringSet() }).items
+        let analyzer = new DataflowAnalyzer();
+        return analyzer.getUses(mod.code[0], { moduleNames: new StringSet() }).items
             .map(use => use.name);
     }
 

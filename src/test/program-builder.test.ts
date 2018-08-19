@@ -90,11 +90,20 @@ describe('program builder', () => {
      * crash the entire program---just skip it if it can't parse. */
     it('skips cells that fail to parse', () => {
         let badCell = createCell("idE", 2, "causes_syntax_error(");
+
+        // Hide console output from parse errors.
+        let oldConsoleLog = console.log;
+        console.log = () => {};
+
         programBuilder.add(
             createCell("id1", 1, "print(1)"),
             badCell,
             createCell("id3", 3, "print(3)")
         );
+
+        // Restore console output.
+        console.log = oldConsoleLog;
+
         let code = programBuilder.buildTo("id3").text;
         expect(code).to.equal(["print(1)", "print(3)", ""].join("\n"));
     });
@@ -106,5 +115,24 @@ describe('program builder', () => {
         )
         let tree = programBuilder.build().tree;
         expect(tree.code.length).to.equal(2);
+    });
+
+    it.only('adjusts the node locations', () => {
+        programBuilder.add(
+            createCell("id1", 2, "print(1)"),
+            createCell("id2", 1, "print(2)")
+        )
+        let tree = programBuilder.build().tree;
+        expect(tree.code[0].location.first_line).to.equal(1);
+        expect(tree.code[1].location.first_line).to.equal(2);
+    });
+
+    it('annotates tree nodes with cell ID info', () => {
+        programBuilder.add(
+            createCell("id1", 2, "print(1)")
+        );
+        let tree = programBuilder.build().tree;
+        expect(tree.code[0].cellId).to.equal("id1");
+        expect(tree.code[0].executionCount).to.equal(2);
     });
 });

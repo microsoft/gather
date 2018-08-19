@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import * as ast from '../python_parser';
 import { ControlFlowGraph } from '../../../slicing/ControlFlowAnalysis';
-import { dataflowAnalysis } from '../../../slicing/DataflowAnalysis';
+import { DataflowAnalyzer } from '../../../slicing/DataflowAnalysis';
 
 let printCfg = false;
 let printAst = false;
@@ -31,7 +31,8 @@ for (let i = 2; i < process.argv.length; i++) {
         cfg.print();
     }
 
-    const dfa = dataflowAnalysis(cfg);
+    const analyzer = new DataflowAnalyzer();
+    const dfa = analyzer.analyze(cfg);
     if (printDf) {
         dfa.flows.items.forEach(({ fromNode, toNode }) => {
             console.log(fromNode.location.first_line, '->', toNode.location.first_line);

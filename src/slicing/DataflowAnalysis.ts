@@ -3,6 +3,301 @@ import { Block, ControlFlowGraph } from './ControlFlowAnalysis';
 import { Set, StringSet } from './Set';
 import { SlicerConfig } from './SlicerConfig';
 
+/**
+ * Use a shared dataflow analyzer object for all dataflow analysis / querying for defs and uses.
+ * It caches defs and uses for each statement, which can save time.
+ * For caching to work, statements must be annotated with a cell's ID and execution count.
+ */
+export class DataflowAnalyzer {
+
+    constructor(slicerConfig?: SlicerConfig) {
+        this._slicerConfig = slicerConfig || DEFAULT_SLICER_CONFIG;
+    }
+
+    private _statementLocationKey(statement: ast.ISyntaxNode) {
+        if (statement.cellId != undefined && statement.executionCount != undefined) {
+            return statement.location.first_line + "," +
+                    statement.location.first_column + "," + 
+                    statement.location.last_line + "," + 
+                    statement.location.last_column + "," +
+                    statement.cellId + "," +
+                    statement.executionCount;
+        }
+        return null;
+    }
+
+    getDefsUses(statement: ast.ISyntaxNode, symbolTable?: SymbolTable): IDefUseInfo {
+        symbolTable = symbolTable || { moduleNames: new StringSet() };
+        let cacheKey = this._statementLocationKey(statement);
+        if (cacheKey != null) {
+            if (this._defUsesCache.hasOwnProperty(cacheKey)) {
+                console.log("Cache hit!");
+                return this._defUsesCache[cacheKey];
+            }
+        }
+        console.log("Cache miss");
+        let defSet = this.getDefs(statement, symbolTable);
+        let useSet = this.getUses(statement, symbolTable);
+        let result = { defs: defSet, uses: useSet };
+        if (cacheKey != null) {
+            this._defUsesCache[cacheKey] = result;
+        }
+        return result;
+    }
+
+    analyze(cfg: ControlFlowGraph,
+        slicerConfig?: SlicerConfig, namesDefined?: StringSet): DataflowAnalysisResult {
+
+        slicerConfig = slicerConfig || DEFAULT_SLICER_CONFIG;
+        let symbolTable: SymbolTable = { moduleNames: new StringSet() };
+        const workQueue: Block[] = cfg.blocks.reverse();
+        let undefinedRefs = new RefSet();
+
+        let defsForLevelByBlock: { [level: string]: { [blockId: number]: RefSet } } = {}
+        for (let level of Object.keys(ReferenceType)) {
+            defsForLevelByBlock[level] = {};
+            for (let block of workQueue) {
+                defsForLevelByBlock[level][block.id] = new RefSet();
+            }
+        }
+
+        let dataflows = new Set<IDataflow>(getDataflowId);
+
+        while (workQueue.length) {
+            const block = workQueue.pop();
+
+            let oldDefsForLevel: { [level: string]: RefSet } = {};
+            let defsForLevel: { [level: string]: RefSet } = {};
+            for (let level of Object.keys(ReferenceType)) {
+                oldDefsForLevel[level] = defsForLevelByBlock[level][block.id];
+                // incoming definitions are come from predecessor blocks
+                defsForLevel[level] = oldDefsForLevel[level].union(...cfg.getPredecessors(block)
+                    .map(block => defsForLevelByBlock[level][block.id])
+                    .filter(s => s != undefined));
+            }
+
+            // TODO: fix up dataflow computation within this block: check for definitions in
+            // defsWithinBlock first; if found, don't look to defs that come from the predecessor.
+            for (let statement of block.statements) {
+
+                // Note that defs includes updates, initializations, global configs, etc., that need to be separated out.
+                let { defs: definedHere, uses: usedHere } = this.getDefsUses(statement, symbolTable);
+
+                // Sort definitions and uses into references.
+                let statementRefs: { [level: string]: RefSet } = {};
+                for (let level of Object.keys(ReferenceType)) {
+                    statementRefs[level] = new RefSet();
+                }
+                for (let def of definedHere.items) {
+                    statementRefs[def.level].add(def);
+                    if (TYPES_WITH_DEPENDENCIES.indexOf(def.level) != -1) {
+                        undefinedRefs.add(def);
+                    }
+                }
+                // Only add uses that aren't actually defs.
+                for (let use of usedHere.items) {
+                    if (!definedHere.items.some(def => def.name == use.name && sameLocation(def.location, use.location))) {
+                        statementRefs[ReferenceType.USE].add(use);
+                        undefinedRefs.add(use);
+                    }
+                }
+
+                // Get all new dataflow dependencies.
+                let newFlows = new Set<IDataflow>(getDataflowId);
+                for (let level of Object.keys(ReferenceType)) {
+                    // For everything that's defined coming into this block, if it's used in this block, save connection.
+                    let result = createFlowsFrom(statementRefs[level], defsForLevel[level], statement);
+                    let flowsCreated = result[0].items;
+                    let defined = result[1];
+                    newFlows.add(...flowsCreated);
+                    for (let ref of defined.items) {
+                        undefinedRefs.remove(ref);
+                    }
+                }
+                dataflows = dataflows.union(newFlows);
+
+                for (let level of Object.keys(ReferenceType)) {
+                    // 🙄 it doesn't really make sense to update the "use" set for a block but whatever
+                    defsForLevel[level] = updateDefsForLevel(defsForLevel[level], level, statementRefs, DEPENDENCY_RULES);
+                }
+            }
+
+            // Check to see if definitions have changed. If so, redo the successor blocks.
+            for (let level of Object.keys(ReferenceType)) {
+                if (!oldDefsForLevel[level].equals(defsForLevel[level])) {
+                    defsForLevelByBlock[level][block.id] = defsForLevel[level];
+                    for (let succ of cfg.getSuccessors(block)) {
+                        if (workQueue.indexOf(succ) < 0) {
+                            workQueue.push(succ);
+                        }
+                    }
+                }
+            }
+        }
+
+        // Check to see if any of the undefined names were defined coming into the graph. If so,
+        // don't report them as being undefined.
+        if (namesDefined) {
+            for (let ref of undefinedRefs.items) {
+                if (namesDefined.items.some(n => n == ref.name)) {
+                    undefinedRefs.remove(ref);
+                }
+            }
+        }
+
+        return {
+            flows: dataflows,
+            undefinedRefs: undefinedRefs
+        };
+    }
+    
+    getDefs(
+        statement: ast.ISyntaxNode, symbolTable: SymbolTable): RefSet {
+    
+        let defs = new RefSet();
+        if (!statement) return defs;
+    
+        // ️⚠️ The following is heuristic and unsound, but works for many scripts:
+        // Unless noted in the `slicerConfig`, assume that no instances or arguments are changed
+        // by a function call.
+        let callNamesListener = new CallNamesListener(this._slicerConfig, statement);
+        ast.walk(statement, callNamesListener);
+        defs.add(...callNamesListener.defs.items);
+    
+        let defAnnotationsListener = new DefAnnotationListener(statement);
+        ast.walk(statement, defAnnotationsListener);
+        defs = defs.union(defAnnotationsListener.defs);
+    
+        switch (statement.type) {
+            case ast.IMPORT: {
+                const modnames = statement.names.map(i => i.name || i.path);
+                symbolTable.moduleNames.add(...modnames);
+                defs.add(...statement.names.map(nameNode => {
+                    return {
+                        type: SymbolType.IMPORT,
+                        level: ReferenceType.DEFINITION,
+                        name: nameNode.name || nameNode.path,
+                        location: nameNode.location,
+                        statement: statement
+                    };
+                }));
+                break;
+            }
+            case ast.FROM: {
+                // ⚠️ Doesn't handle 'from <pkg> import *'
+                let modnames: Array<string> = [];
+                if (statement.imports.constructor === Array) {
+                    modnames = statement.imports.map(i => i.name || i.path);
+                    symbolTable.moduleNames.add(...modnames);
+                    defs.add(...statement.imports.map(i => {
+                        return {
+                            type: SymbolType.IMPORT,
+                            level: ReferenceType.DEFINITION,
+                            name: i.name || i.path,
+                            location: i.location,
+                            statement: statement
+                        }
+                    }));
+                }
+                break;
+            }
+            case ast.ASSIGN: {
+                let targetsDefListener = new TargetsDefListener(statement);
+                if (statement.targets) {
+                    for (let target of statement.targets) {
+                        ast.walk(target, targetsDefListener);
+                    }
+                }
+                defs = defs.union(targetsDefListener.defs);
+                break;
+            }
+            case ast.DEF: {
+                defs.add({
+                    type: SymbolType.FUNCTION,
+                    level: ReferenceType.DEFINITION,
+                    name: statement.name,
+                    location: statement.location,
+                    statement: statement
+                });
+                break;
+            }
+            case ast.CLASS: {
+                defs.add({
+                    type: SymbolType.CLASS,
+                    level: ReferenceType.DEFINITION,
+                    name: statement.name,
+                    location: statement.location,
+                    statement: statement
+                })
+            }
+        }
+        return defs;
+    }
+    
+    getUses(statement: ast.ISyntaxNode, _: SymbolTable): RefSet {
+    
+        let uses = new RefSet();
+    
+        switch (statement.type) {
+            // TODO: should we collect when importing with FROM from something else that was already imported...
+            case ast.ASSIGN: {
+                // XXX: Is this supposed to union with funcArgs?
+                const targetNames = gatherNames(statement.targets);
+                const targets = new RefSet(...targetNames.items.map(([name, node]) => {
+                    return {
+                        type: SymbolType.VARIABLE,
+                        level: ReferenceType.USE,
+                        name: name,
+                        location: node.location,
+                        statement: statement
+                    };
+                }));
+                const sourceNames = gatherNames(statement.sources);
+                const sources = new RefSet(...sourceNames.items.map(([name, node]) => {
+                    return {
+                        type: SymbolType.VARIABLE,
+                        level: ReferenceType.USE,
+                        name: name,
+                        location: node.location,
+                        statement: statement
+                    };
+                }));
+                uses = uses.union(sources).union(statement.op ? targets : new RefSet());
+                break;
+            }
+            case ast.DEF:
+                let defCfg = new ControlFlowGraph(statement);
+                let argNames = new StringSet(...statement.params.map(p => {
+                    if (p && p instanceof Array && p.length > 0 && p[0].name) {
+                        return p[0].name;
+                    }
+                }).filter(n => n != undefined));
+                let undefinedRefs = this.analyze(defCfg, this._slicerConfig, argNames).undefinedRefs;
+                uses = undefinedRefs.filter(r => r.level == ReferenceType.USE);
+                break;
+            case ast.CLASS:
+                break;
+            default: {
+                const usedNames = gatherNames(statement);
+                uses = new RefSet(...usedNames.items.map(([name, node]) => {
+                    return {
+                        type: SymbolType.VARIABLE,
+                        level: ReferenceType.USE,
+                        name: name,
+                        location: node.location,
+                        statement: statement
+                    };
+                }));
+                break;
+            }
+        }
+    
+        return uses;
+    }
+
+    private _slicerConfig: SlicerConfig;
+    private _defUsesCache: { [ statementLocation: string ]: IDefUseInfo } = {};
+}
 
 export interface IDataflow {
     fromNode: ast.ISyntaxNode;
@@ -258,163 +553,6 @@ class TargetsDefListener implements ast.IWalkListener {
     readonly defs: RefSet = new RefSet();
 }
 
-
-export function getDefs(
-    statement: ast.ISyntaxNode, symbolTable: SymbolTable, slicerConfig?: SlicerConfig): RefSet {
-
-    let defs = new RefSet();
-    if (!statement) return defs;
-
-    slicerConfig = slicerConfig || DEFAULT_SLICER_CONFIG;
-
-    // ️⚠️ The following is heuristic and unsound, but works for many scripts:
-    // Unless noted in the `slicerConfig`, assume that no instances or arguments are changed
-    // by a function call.
-    let callNamesListener = new CallNamesListener(slicerConfig, statement);
-    ast.walk(statement, callNamesListener);
-    defs.add(...callNamesListener.defs.items);
-
-    let defAnnotationsListener = new DefAnnotationListener(statement);
-    ast.walk(statement, defAnnotationsListener);
-    defs = defs.union(defAnnotationsListener.defs);
-
-    switch (statement.type) {
-        case ast.IMPORT: {
-            const modnames = statement.names.map(i => i.name || i.path);
-            symbolTable.moduleNames.add(...modnames);
-            defs.add(...statement.names.map(nameNode => {
-                return {
-                    type: SymbolType.IMPORT,
-                    level: ReferenceType.DEFINITION,
-                    name: nameNode.name || nameNode.path,
-                    location: nameNode.location,
-                    statement: statement
-                };
-            }));
-            break;
-        }
-        case ast.FROM: {
-            // ⚠️ Doesn't handle 'from <pkg> import *'
-            let modnames: Array<string> = [];
-            if (statement.imports.constructor === Array) {
-                modnames = statement.imports.map(i => i.name || i.path);
-                symbolTable.moduleNames.add(...modnames);
-                defs.add(...statement.imports.map(i => {
-                    return {
-                        type: SymbolType.IMPORT,
-                        level: ReferenceType.DEFINITION,
-                        name: i.name || i.path,
-                        location: i.location,
-                        statement: statement
-                    }
-                }));
-            }
-            break;
-        }
-        case ast.ASSIGN: {
-            let targetsDefListener = new TargetsDefListener(statement);
-            if (statement.targets) {
-                for (let target of statement.targets) {
-                    ast.walk(target, targetsDefListener);
-                }
-            }
-            defs = defs.union(targetsDefListener.defs);
-            break;
-        }
-        case ast.DEF: {
-            defs.add({
-                type: SymbolType.FUNCTION,
-                level: ReferenceType.DEFINITION,
-                name: statement.name,
-                location: statement.location,
-                statement: statement
-            });
-            break;
-        }
-        case ast.CLASS: {
-            defs.add({
-                type: SymbolType.CLASS,
-                level: ReferenceType.DEFINITION,
-                name: statement.name,
-                location: statement.location,
-                statement: statement
-            })
-        }
-    }
-    return defs;
-}
-
-export function getUses(statement: ast.ISyntaxNode, _: SymbolTable, slicerConfig?: SlicerConfig): RefSet {
-
-    let uses = new RefSet();
-
-    switch (statement.type) {
-        // TODO: should we collect when importing with FROM from something else that was already imported...
-        case ast.ASSIGN: {
-            // XXX: Is this supposed to union with funcArgs?
-            const targetNames = gatherNames(statement.targets);
-            const targets = new RefSet(...targetNames.items.map(([name, node]) => {
-                return {
-                    type: SymbolType.VARIABLE,
-                    level: ReferenceType.USE,
-                    name: name,
-                    location: node.location,
-                    statement: statement
-                };
-            }));
-            const sourceNames = gatherNames(statement.sources);
-            const sources = new RefSet(...sourceNames.items.map(([name, node]) => {
-                return {
-                    type: SymbolType.VARIABLE,
-                    level: ReferenceType.USE,
-                    name: name,
-                    location: node.location,
-                    statement: statement
-                };
-            }));
-            uses = uses.union(sources).union(statement.op ? targets : new RefSet());
-            break;
-        }
-        case ast.DEF:
-            let defCfg = new ControlFlowGraph(statement);
-            let argNames = new StringSet(...statement.params.map(p => {
-                if (p && p instanceof Array && p.length > 0 && p[0].name) {
-                    return p[0].name;
-                }
-            }).filter(n => n != undefined));
-            let undefinedRefs = dataflowAnalysis(defCfg, slicerConfig, argNames).undefinedRefs;
-            uses = undefinedRefs.filter(r => r.level == ReferenceType.USE);
-            break;
-        case ast.CLASS:
-            break;
-        default: {
-            const usedNames = gatherNames(statement);
-            uses = new RefSet(...usedNames.items.map(([name, node]) => {
-                return {
-                    type: SymbolType.VARIABLE,
-                    level: ReferenceType.USE,
-                    name: name,
-                    location: node.location,
-                    statement: statement
-                };
-            }));
-            break;
-        }
-    }
-
-    return uses;
-}
-
-export function getDefsUses(
-    statement: ast.ISyntaxNode, symbolTable: SymbolTable, slicerConfig?: SlicerConfig): IDefUseInfo {
-    let defSet = getDefs(statement, symbolTable, slicerConfig);
-    let useSet = getUses(statement, symbolTable, slicerConfig);
-    return {
-        defs: defSet,
-        uses: useSet
-    };
-}
-
 function getDataflowId(df: IDataflow) {
     if (!df.fromNode.location) console.log('*** FROM', df.fromNode, df.fromNode.location);
     if (!df.toNode.location) console.log('*** TO', df.toNode, df.toNode.location);
@@ -517,110 +655,3 @@ export type DataflowAnalysisResult = {
     flows: Set<IDataflow>,
     undefinedRefs: RefSet
 };
-
-
-export function dataflowAnalysis(cfg: ControlFlowGraph,
-    slicerConfig?: SlicerConfig, namesDefined?: StringSet): DataflowAnalysisResult {
-
-    slicerConfig = slicerConfig || DEFAULT_SLICER_CONFIG;
-    let symbolTable: SymbolTable = { moduleNames: new StringSet() };
-    const workQueue: Block[] = cfg.blocks.reverse();
-    let undefinedRefs = new RefSet();
-
-    let defsForLevelByBlock: { [level: string]: { [blockId: number]: RefSet } } = {}
-    for (let level of Object.keys(ReferenceType)) {
-        defsForLevelByBlock[level] = {};
-        for (let block of workQueue) {
-            defsForLevelByBlock[level][block.id] = new RefSet();
-        }
-    }
-
-    let dataflows = new Set<IDataflow>(getDataflowId);
-
-    while (workQueue.length) {
-        const block = workQueue.pop();
-
-        let oldDefsForLevel: { [level: string]: RefSet } = {};
-        let defsForLevel: { [level: string]: RefSet } = {};
-        for (let level of Object.keys(ReferenceType)) {
-            oldDefsForLevel[level] = defsForLevelByBlock[level][block.id];
-            // incoming definitions are come from predecessor blocks
-            defsForLevel[level] = oldDefsForLevel[level].union(...cfg.getPredecessors(block)
-                .map(block => defsForLevelByBlock[level][block.id])
-                .filter(s => s != undefined));
-        }
-
-        // TODO: fix up dataflow computation within this block: check for definitions in
-        // defsWithinBlock first; if found, don't look to defs that come from the predecessor.
-        for (let statement of block.statements) {
-
-            // Note that defs includes updates, initializations, global configs, etc., that need to be separated out.
-            let { defs: definedHere, uses: usedHere } = getDefsUses(statement, symbolTable, slicerConfig);
-
-            // Sort definitions and uses into references.
-            let statementRefs: { [level: string]: RefSet } = {};
-            for (let level of Object.keys(ReferenceType)) {
-                statementRefs[level] = new RefSet();
-            }
-            for (let def of definedHere.items) {
-                statementRefs[def.level].add(def);
-                if (TYPES_WITH_DEPENDENCIES.indexOf(def.level) != -1) {
-                    undefinedRefs.add(def);
-                }
-            }
-            // Only add uses that aren't actually defs.
-            for (let use of usedHere.items) {
-                if (!definedHere.items.some(def => def.name == use.name && sameLocation(def.location, use.location))) {
-                    statementRefs[ReferenceType.USE].add(use);
-                    undefinedRefs.add(use);
-                }
-            }
-
-            // Get all new dataflow dependencies.
-            let newFlows = new Set<IDataflow>(getDataflowId);
-            for (let level of Object.keys(ReferenceType)) {
-                // For everything that's defined coming into this block, if it's used in this block, save connection.
-                let result = createFlowsFrom(statementRefs[level], defsForLevel[level], statement);
-                let flowsCreated = result[0].items;
-                let defined = result[1];
-                newFlows.add(...flowsCreated);
-                for (let ref of defined.items) {
-                    undefinedRefs.remove(ref);
-                }
-            }
-            dataflows = dataflows.union(newFlows);
-
-            for (let level of Object.keys(ReferenceType)) {
-                // 🙄 it doesn't really make sense to update the "use" set for a block but whatever
-                defsForLevel[level] = updateDefsForLevel(defsForLevel[level], level, statementRefs, DEPENDENCY_RULES);
-            }
-        }
-
-        // Check to see if definitions have changed. If so, redo the successor blocks.
-        for (let level of Object.keys(ReferenceType)) {
-            if (!oldDefsForLevel[level].equals(defsForLevel[level])) {
-                defsForLevelByBlock[level][block.id] = defsForLevel[level];
-                for (let succ of cfg.getSuccessors(block)) {
-                    if (workQueue.indexOf(succ) < 0) {
-                        workQueue.push(succ);
-                    }
-                }
-            }
-        }
-    }
-
-    // Check to see if any of the undefined names were defined coming into the graph. If so,
-    // don't report them as being undefined.
-    if (namesDefined) {
-        for (let ref of undefinedRefs.items) {
-            if (namesDefined.items.some(n => n == ref.name)) {
-                undefinedRefs.remove(ref);
-            }
-        }
-    }
-
-    return {
-        flows: dataflows,
-        undefinedRefs: undefinedRefs
-    };
-}

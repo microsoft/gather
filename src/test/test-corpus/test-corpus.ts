@@ -1,6 +1,6 @@
 import { parse } from '../../parsers/python/python_parser';
 import { ControlFlowGraph } from '../../slicing/ControlFlowAnalysis';
-import { dataflowAnalysis } from '../../slicing/DataflowAnalysis';
+import { DataflowAnalyzer } from '../../slicing/DataflowAnalysis';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -32,7 +32,8 @@ function testInDir(rootDir: string) {
                     console.log('CFG FAIL');
                     continue;
                 }
-                const dfa = dataflowAnalysis(cfg);
+                const analyzer = new DataflowAnalyzer();
+                const dfa = analyzer.analyze(cfg);
                 if (!dfa) {
                     console.log('DFA FAIL');
                     continue;
