@@ -288,9 +288,7 @@ export class MarkerManager implements IGatherObserver {
                     sliceLocations.items.forEach(loc => {
                         for (let lineNumber = loc.first_line - 1; lineNumber <= loc.last_line -1; lineNumber++) {
                             numLines += 1;
-                            // Add this as "text", NOT "background", to avoid performance bottlenecks from adding
-                            // CodeMirror trying to update the height of all the editors.
-                            let lineHandle = editor.addLineClass(lineNumber, "text", DEPENDENCY_CLASS);
+                            let lineHandle = editor.addLineClass(lineNumber, "background", DEPENDENCY_CLASS);
                             this._dependencyLineMarkers.push({ editor: editor, lineHandle: lineHandle });
                         }
                     });
@@ -304,7 +302,7 @@ export class MarkerManager implements IGatherObserver {
     private _clearDependencyLineMarkers() {
         log("Cleared all dependency line markers");
         this._dependencyLineMarkers.forEach(marker => {
-            marker.editor.removeLineClass(marker.lineHandle, "text", DEPENDENCY_CLASS);
+            marker.editor.removeLineClass(marker.lineHandle, "background", DEPENDENCY_CLASS);
         })
         this._dependencyLineMarkers = [];
     }
