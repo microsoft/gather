@@ -408,6 +408,7 @@ class Clipboard implements ICellClipboard {
 
     copy(slice: SlicedExecution) {
         if (slice) {
+            // Copy to the Jupyter internal clipboard
             Jupyter.notebook.clipboard = [];
             let cellsJson = sliceToCellJson(slice, true);
             cellsJson.forEach(c => {
@@ -415,6 +416,24 @@ class Clipboard implements ICellClipboard {
             });
             Jupyter.notebook.enable_paste();
             this._listeners.forEach(listener => listener.onCopy(slice, this));
+
+            // Also copy the text to the browser's clipboard, so it can be pasted into a cell.
+            // XXX: attach an invisible textarea to the page, and add the slice text to it, so we
+            // can use a cross-browser command for copying to the clipboard.
+            let fullSliceText = slice.cellSlices.map((cs) => cs.textSliceLines).join("\n\n");
+            let textarea = document.createElement('textarea');
+            textarea.style.top = "0px";
+            textarea.style.left = "0px";
+            textarea.style.width = "2em";
+            textarea.style.height = "2em";
+            textarea.style.border = "none";
+            textarea.style.background = "transparent";
+            textarea.value = fullSliceText;
+            document.body.appendChild(textarea);
+            textarea.focus();
+            textarea.select();
+            document.execCommand("copy");
+            document.body.removeChild(textarea);
         }
     }
 
