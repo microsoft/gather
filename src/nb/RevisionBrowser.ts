@@ -52,7 +52,7 @@ export class RevisionBrowser extends Widget implements IGatherObserver {
         // Add button for exiting the revision browser.
         let exitButton = document.createElement("div");
         let icon = document.createElement("i");
-        icon.classList.add("fa", "fa-window-close");
+        icon.classList.add("fa", "fa-close");
         exitButton.appendChild(icon);
         // exitButton.textContent = "X";
         exitButton.onclick = () => { this.dismiss(); };

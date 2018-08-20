@@ -11,9 +11,8 @@
 /* Revision browser */
 .jp-HistoryViewer {
   width: 100%;
-  height: 95%;
+  height: 100%;
   margin: auto;
-  text-align: center;
 }
 
 .jp-HistoryViewer .jp-HistoryViewer-referenceversion,
@@ -24,61 +23,51 @@
 
 .jp-HistoryViewer-referenceversion {
   max-width: 500px;
-  height: 100%;
-  /* margin-right: 50px; */
+  height: 96%;
+  padding-right: 50px;
 }
 
 .jp-HistoryViewer-olderversions {
-  max-width: 60%;
-  height: 100%;
-  padding-left: 5%;
-  padding-right: 5%;
-  overflow-x: auto;
+  height: 99%;
+  width: 65%;
   overflow-y: hidden;
-  mask-image: linear-gradient(left,  rgba(0,0,0,0) 0%, rgba(0,0,0,1) 5%, rgba(0,0,0,1) 95%, rgba(0,0,0,0) 100%);
-  -webkit-mask-image: -webkit-linear-gradient(left,  rgba(0,0,0,0) 0%, rgba(0,0,0,1) 5%, rgba(0,0,0,1) 95%, rgba(0,0,0,0) 100%)
 }
 
 .jp-HistoryViewer-olderversions-revisions {
-  height: 100%;
+  height: 99%;
   display: flex;
   flex-flow: row;
-  padding-left: 5%;
-  padding-right: 5%; /* Chosen to match the gradient size */
   white-space: nowrap;
+  overflow-x: scroll;
 }
 
 .jp-Revision {
-  height: 100%;
+  height: 99%;
   display: flex;
   flex-flow: column;
   vertical-align: top;
-  padding-left: 20px;
-  padding-right: 20px;
   background-color: #eee;
+  min-width: 350px;
 }
 
 .jp-Revision-notebook {
-  height: 100%;
+  height: 99%;
   overflow-y: auto;
   background-color: white;
   padding-left: 20px;
   padding-right: 20px;
   padding-top: 0.5em;
   padding-bottom: 0.5em;
-  box-shadow: 0px 0px 12px 12px rgba(87,87, 87, 0.2);
+  text-align: center
 }
 
 .jp-HistoryViewer-referenceversion .jp-Revision {
-  max-width: 90%;
-  margin-left: 5%;
-  margin-right: 5%;
+  margin-left: 30px;
 }
 
 .jp-HistoryViewer-olderversions .jp-Revision {
   max-width: 500px;
-  margin-left: 1%;
-  margin-right: 1%;
+  margin-right: 20px;
 }
 
 .jp-HistoryViewer-referenceversion .jp-Revision-header {
@@ -204,6 +193,7 @@
   flex-direction: row;
   display: flex;
   margin-bottom: 0.5em;
+  display: inline-block;
 }
 
 .jp-Revision-button {
@@ -216,12 +206,13 @@
 }
 
 .jp-Revision-button:not(:last-child) {
-  margin-right: 1px;
+  margin-right: 5px;
 }
 
 .jp-Revision-button span.jp-Revision-button-label {
   margin-left: 6px;
   font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  white-space: nowrap;
 }
 
 .jp-Revision-cells {

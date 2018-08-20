@@ -7,7 +7,7 @@
   --brand-color0: #42a5f5;
 }
 
-.jp-Notebook-revisionbrowser {
+.p-Widget.jp-Notebook-revisionbrowser {
   position: absolute;
   top: 0;
   left: 0;
@@ -24,5 +24,5 @@
   cursor: pointer;
   position: absolute;
   right: 30px;
-  top: 20px;
+  top: 8px;
 }
