@@ -21,7 +21,7 @@ describe('program builder', () => {
             createCell("id1", 2, "print(1)"),
             createCell("id2", 1, "print(2)")
         )
-        let code = programBuilder.build().code;
+        let code = programBuilder.build().text;
         expect(code).to.equal(["print(2)", "print(1)", ""].join("\n"))
     });
 
@@ -48,7 +48,7 @@ describe('program builder', () => {
             createCell("id1", 2, "print(1)"),
             createCell("id2", 1, "print(2)")
         );
-        let code = programBuilder.buildTo("id2").code;
+        let code = programBuilder.buildTo("id2").text;
         expect(code).to.equal("print(2)\n");
     });
 
@@ -58,7 +58,7 @@ describe('program builder', () => {
             createCell("id2", 2, "print(2)"),
             createCell("id1", 3, "print(3)")  // cell id1 run twice
         );
-        let code = programBuilder.buildTo("id1").code;
+        let code = programBuilder.buildTo("id1").text;
         expect(code).to.equal(["print(1)", "print(2)", "print(3)", ""].join("\n"));
     });
 
@@ -68,7 +68,7 @@ describe('program builder', () => {
             createCell("id2", 2, "print(2)"),
             createCell("id1", 3, "print(3)")  // cell id1 run twice
         );
-        let code = programBuilder.buildTo("id1", 1).code;
+        let code = programBuilder.buildTo("id1", 1).text;
         expect(code).to.equal("print(1)\n");
     });
 
@@ -82,7 +82,7 @@ describe('program builder', () => {
             badCell,
             createCell("id3", 3, "print(3)")
         );
-        let code = programBuilder.buildTo("id3").code;
+        let code = programBuilder.buildTo("id3").text;
         expect(code).to.equal(["print(1)", "print(3)", ""].join("\n"));
     });
 
@@ -90,12 +90,49 @@ describe('program builder', () => {
      * crash the entire program---just skip it if it can't parse. */
     it('skips cells that fail to parse', () => {
         let badCell = createCell("idE", 2, "causes_syntax_error(");
+
+        // Hide console output from parse errors.
+        let oldConsoleLog = console.log;
+        console.log = () => {};
+
         programBuilder.add(
             createCell("id1", 1, "print(1)"),
             badCell,
             createCell("id3", 3, "print(3)")
         );
-        let code = programBuilder.buildTo("id3").code;
+
+        // Restore console output.
+        console.log = oldConsoleLog;
+
+        let code = programBuilder.buildTo("id3").text;
         expect(code).to.equal(["print(1)", "print(3)", ""].join("\n"));
+    });
+
+    it('constructs a tree for the program', () => {
+        programBuilder.add(
+            createCell("id1", 2, "print(1)"),
+            createCell("id2", 1, "print(2)")
+        )
+        let tree = programBuilder.build().tree;
+        expect(tree.code.length).to.equal(2);
+    });
+
+    it('adjusts the node locations', () => {
+        programBuilder.add(
+            createCell("id1", 2, "print(1)"),
+            createCell("id2", 1, "print(2)")
+        )
+        let tree = programBuilder.build().tree;
+        expect(tree.code[0].location.first_line).to.equal(1);
+        expect(tree.code[1].location.first_line).to.equal(2);
+    });
+
+    it('annotates tree nodes with cell ID info', () => {
+        programBuilder.add(
+            createCell("id1", 2, "print(1)")
+        );
+        let tree = programBuilder.build().tree;
+        expect(tree.code[0].cellId).to.equal("id1");
+        expect(tree.code[0].executionCount).to.equal(2);
     });
 });

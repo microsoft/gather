@@ -5,7 +5,7 @@ import { Widget } from '@phosphor/widgets';
 
 import { NotebookCell, copyCodeCell, nbCellToJson } from './NotebookCell';
 import { ExecutionLogSlicer, SlicedExecution } from '../slicing/ExecutionSlicer';
-import { MarkerManager, ICell, CellEditorResolver, CellOutputResolver } from '../packages/cell';
+import { MarkerManager, ICell, ICellEditorResolver, ICellOutputResolver, ICellProgramResolver } from '../packages/cell';
 
 import { GatherModel, GatherState } from '../packages/gather/model';
 import { GatherController } from '../packages/gather/controller';
@@ -19,6 +19,8 @@ import { RevisionBrowser } from './RevisionBrowser';
 import 'codemirror/mode/python/python';
 import '../../style/nb-vars.css';
 import '../../style/index.css';
+import { DataflowAnalyzer } from '../slicing/DataflowAnalysis';
+import { CellProgram } from '../slicing/ProgramBuilder';
 
 
 /**
@@ -85,13 +87,16 @@ class NbStatePoller implements log.IStatePoller {
  * Saves each cell execution to a history.
  */
 class ExecutionHistory {
-    readonly executionSlicer = new ExecutionLogSlicer();
+    readonly executionSlicer: ExecutionLogSlicer;
     private _cellWithUndefinedCount: ICell;
     private _lastExecutionCount: number;
     private _gatherModel: GatherModel;
 
-    constructor(notebook: Notebook, gatherModel: GatherModel) {
+    constructor(notebook: Notebook, gatherModel: GatherModel, dataflowAnalyzer: DataflowAnalyzer) {
+        
         this._gatherModel = gatherModel;
+        this.executionSlicer = new ExecutionLogSlicer(dataflowAnalyzer);
+
         // We don't know the order that we will receive events for the kernel finishing execution and
         // a cell finishing execution, so this helps us pair execution count to an executed cell.
         notebook.events.on('shell_reply.Kernel', (
@@ -100,6 +105,8 @@ class ExecutionHistory {
                 console.log("Defining cell execution count after the fact...");
                 this._cellWithUndefinedCount.executionCount = data.reply.content.execution_count;
                 this.executionSlicer.logExecution(this._cellWithUndefinedCount);
+                console.log("Defined from shell_reply");
+                gatherModel.lastExecutedCell = this._cellWithUndefinedCount;
                 this._cellWithUndefinedCount = undefined;
             } else {
                 this._lastExecutionCount = data.reply.content.execution_count;
@@ -111,6 +118,8 @@ class ExecutionHistory {
             if (this._lastExecutionCount) {
                 cellClone.input_prompt_number = this._lastExecutionCount;
                 this.executionSlicer.logExecution(cell);
+                console.log("Defined from finished_execute");
+                gatherModel.lastExecutedCell = cell;
                 this._lastExecutionCount = undefined;
             } else {
                 this._cellWithUndefinedCount = cell;
@@ -216,24 +225,28 @@ class CellFetcher {
     }
 
     /**
-     * Get a cell from the notebook with the specified properties.
+     * Get a cell from the notebook with the ID.
      */
-    getCellWidget(cellId: string, executionCount?: number): Cell {
+    getCellWidgetWithId(cellId: string): Cell {
         // If the cells haven't been cached, cache 'em here.
         if (this._cachedCells == null) {
             this._cachedCells = this._notebook.get_cells();
         }
         let matchingCells = this._cachedCells
-            .filter(c => {
-                if (c.cell_id != cellId) return false;
-                if (executionCount != undefined) {
-                    if (!(c instanceof CodeCell)) return false;
-                    if ((c as CodeCell).input_prompt_number != executionCount) return false;
-                }
-                return true;
-            });
+            .filter(c => c.cell_id == cellId);
         if (matchingCells.length > 0) {
             return matchingCells.pop();
+        }
+        return null;
+    }
+
+    /**
+     * Get a cell from the notebook with the specified properties.
+     */
+    getCellWidget(cellId: string, executionCount?: number): Cell {
+        let cellWidget = this.getCellWidgetWithId(cellId);
+        if ((cellWidget as CodeCell).input_prompt_number == executionCount) {
+            return cellWidget;
         }
         return null;
     }
@@ -246,7 +259,7 @@ class CellFetcher {
  * Resolve the active editors for cells in Jupyter notebook.
  * This only works for cells that are still in the notebook---i.e. breaks for deleted cells.
  */
-class NotebookCellEditorResolver implements CellEditorResolver {
+class NotebookCellEditorResolver implements ICellEditorResolver {
     /**
      * Construct a new cell editor resolver.
      */
@@ -255,11 +268,19 @@ class NotebookCellEditorResolver implements CellEditorResolver {
     }
 
     resolve(cell: ICell): CodeMirror.Editor {
-        let cellWidget = this._cellFetcher.getCellWidget(cell.id, cell.executionCount);
+        let cellWidget = this._cellFetcher.getCellWidgetWithId(cell.id);
         if (cellWidget) {
             return cellWidget.code_mirror;
         }
         return null;
+    }
+
+    resolveWithExecutionCount(cell: ICell): CodeMirror.Editor {
+        let cellWidget = this._cellFetcher.getCellWidget(cell.id, cell.executionCount);
+        if (cellWidget) {
+            return cellWidget.code_mirror;
+        }
+        return null; 
     }
 
     private _cellFetcher: CellFetcher;
@@ -268,7 +289,7 @@ class NotebookCellEditorResolver implements CellEditorResolver {
 /**
  * Finds HTML elements for cell outputs in a notebook.
  */
-class NotebookCellOutputResolver implements CellOutputResolver {
+class NotebookCellOutputResolver implements ICellOutputResolver {
     /**
      * Construct a new cell editor resolver.
      */
@@ -277,7 +298,7 @@ class NotebookCellOutputResolver implements CellOutputResolver {
     }
 
     resolve(cell: ICell): HTMLElement[] {
-        let cellWidget = this._cellFetcher.getCellWidget(cell.id, cell.executionCount);
+        let cellWidget = this._cellFetcher.getCellWidgetWithId(cell.id);
         let outputElements = [];
         if (cellWidget) {
             let cellElement = cellWidget.element[0];
@@ -295,6 +316,24 @@ class NotebookCellOutputResolver implements CellOutputResolver {
 }
 
 /**
+ * Maps cells to the code analysis information.
+ */
+class CellProgramResolver implements ICellProgramResolver {
+    /**
+     * Construct a new cell program resolver
+     */
+    constructor(executionLogSlicer: ExecutionLogSlicer) {
+        this._executionLogSlicer = executionLogSlicer;
+    }
+
+    resolve(cell: ICell): CellProgram {
+        return this._executionLogSlicer.getCellProgram(cell);
+    }
+
+    private _executionLogSlicer: ExecutionLogSlicer;
+}
+
+/**
  * Highlights gatherable entities.
  */
 class ResultsHighlighter {
@@ -304,11 +343,8 @@ class ResultsHighlighter {
     constructor(notebook: Notebook, gatherModel: GatherModel, markerManager: MarkerManager) {
         this._markerManager = markerManager;
 
-        // Listen to the events that change the cells and update the model to report that the cells
-        // have changed. These events can be used to update the markers.
-        notebook.events.on('finished_execute.CodeCell', (_: Jupyter.Event, data: { cell: CodeCell }) => {
-            gatherModel.lastExecutedCell = new NotebookCell(data.cell);
-        });
+        // Event listener for execution is in execution history, as we need to parse and
+        // detect defs in a cell before updating the markers.
         notebook.events.on('change.Cell', (_: Jupyter.Event, data: { cell: Cell, change: CodeMirror.EditorChange }) => {
             let change = data.change;
             // Ignore all `setValue` events---these are invoked programatically.
@@ -372,6 +408,7 @@ class Clipboard implements ICellClipboard {
 
     copy(slice: SlicedExecution) {
         if (slice) {
+            // Copy to the Jupyter internal clipboard
             Jupyter.notebook.clipboard = [];
             let cellsJson = sliceToCellJson(slice, true);
             cellsJson.forEach(c => {
@@ -379,6 +416,24 @@ class Clipboard implements ICellClipboard {
             });
             Jupyter.notebook.enable_paste();
             this._listeners.forEach(listener => listener.onCopy(slice, this));
+
+            // Also copy the text to the browser's clipboard, so it can be pasted into a cell.
+            // XXX: attach an invisible textarea to the page, and add the slice text to it, so we
+            // can use a cross-browser command for copying to the clipboard.
+            let fullSliceText = slice.cellSlices.map((cs) => cs.textSliceLines).join("\n\n");
+            let textarea = document.createElement('textarea');
+            textarea.style.top = "0px";
+            textarea.style.left = "0px";
+            textarea.style.width = "2em";
+            textarea.style.height = "2em";
+            textarea.style.border = "none";
+            textarea.style.background = "transparent";
+            textarea.value = fullSliceText;
+            document.body.appendChild(textarea);
+            textarea.focus();
+            textarea.select();
+            document.execCommand("copy");
+            document.body.removeChild(textarea);
         }
     }
 
@@ -414,7 +469,10 @@ class NotebookOpener implements INotebookOpener {
             let model = { type: "notebook", content: notebookJson };
             this._notebook.contents.save(notebookPath, model).then(() => {
                 // XXX: This seems to open up a file in different places on different machines???
-                window.open(fileName + "?kernel_name=python3", '_blank');
+                let nbWindow = window.open(fileName + "?kernel_name=python3", '_blank');
+                if (nbWindow == null) {
+                    window.alert("Please allow popups for Jupyter notebook.");
+                }
             });
         });
     }
@@ -450,9 +508,7 @@ const GATHER_PREFIX = 'gather_extension';
 export function load_ipython_extension() {
     console.log('extension started');
 
-    /**
-     * Initialize logging.
-     */
+    // Initialize logging.
     const LOG_NB_CELLS = false;
     log.initLogger({ ajax: utils.ajax });
     log.registerPollers(new NbStatePoller(Jupyter.notebook, LOG_NB_CELLS));
@@ -461,10 +517,14 @@ export function load_ipython_extension() {
     // Object containing global UI state.
     let gatherModel = new GatherModel();
 
+    // Shared dataflow analysis object.
+    let dataflowAnalyzer = new DataflowAnalyzer();
+
     // Plugin initializations.
-    executionHistory = new ExecutionHistory(Jupyter.notebook, gatherModel);
+    executionHistory = new ExecutionHistory(Jupyter.notebook, gatherModel, dataflowAnalyzer);
     let cellFetcher = new CellFetcher(Jupyter.notebook);
     let markerManager = new MarkerManager(gatherModel,
+        new CellProgramResolver(executionHistory.executionSlicer),
         new NotebookCellEditorResolver(cellFetcher),
         new NotebookCellOutputResolver(cellFetcher));
     new ResultsHighlighter(Jupyter.notebook, gatherModel, markerManager);

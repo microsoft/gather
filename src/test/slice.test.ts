@@ -1,14 +1,16 @@
 import { expect } from "chai";
+import { parse } from '../parsers/python/python_parser';
 import { slice, LocationSet } from "../slicing/Slice";
 
 describe('slices', () => {
 
     it('statements including the def and use', () => {
-        let locations = slice([
+        let ast = parse([
             "a = 1",
             "b = a",
             ""
-        ].join("\n"), new LocationSet(
+        ].join("\n"));
+        let locations = slice(ast, new LocationSet(
             { first_line: 2, first_column: 0, last_line: 2, last_column: 5 }
         ));
         expect(locations.items).to.deep.include(
@@ -17,10 +19,11 @@ describe('slices', () => {
     });
 
     it('at least yields the statement for a seed', () => {
-        let locations = slice([
+        let ast = parse([
             "c = 1",
             ""
-        ].join("\n"), new LocationSet(
+        ].join("\n"));
+        let locations = slice(ast, new LocationSet(
             { first_line: 1, first_column: 0, last_line: 1, last_column: 2 }
         ));
         expect(locations.contains(

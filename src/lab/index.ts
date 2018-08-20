@@ -15,7 +15,7 @@ import { IOutputModel } from '@jupyterlab/rendermime';
 
 import { ToolbarCheckbox } from './ToolboxCheckbox';
 import { HistoryViewer, buildHistoryModel } from '../packages/history';
-import { CellProgram, DataflowDirection, LocationSet } from '../slicing/Slice';
+import { OldCellProgram, DataflowDirection, LocationSet } from '../slicing/Slice';
 
 import { JSONObject } from '@phosphor/coreutils';
 import { LabCell, copyICodeCellModel } from './LabCell';
@@ -27,6 +27,7 @@ import { NotificationWidget } from '../packages/notification/widget';
 import '../../style/lab-vars.css';
 import '../../style/index.css';
 import { GatherModel } from '../packages/gather';
+import { DataflowAnalyzer } from '../slicing/DataflowAnalysis';
 
 /**
  * Try to only write Jupyter Lab-specific implementation code in this file.
@@ -56,7 +57,7 @@ class ExecutionLoggerExtension implements DocumentRegistry.IWidgetExtension<Note
 
     // private _markerManager: MarkerManager = new MarkerManager();
     // private _commands: CommandRegistry;
-    private _executionSlicer: ExecutionLogSlicer = new ExecutionLogSlicer();
+    private _executionSlicer: ExecutionLogSlicer = new ExecutionLogSlicer(new DataflowAnalyzer());
 
     constructor(commands: CommandRegistry) {
         // this._commands = commands;
@@ -358,7 +359,7 @@ class CellLiveness {
     public dispose() { }
 
     private findStaleCells(changedCell: LabCell, cells: LabCell[]): LabCell[] {
-        const program = new CellProgram<LabCell>(changedCell, cells);
+        const program = new OldCellProgram<LabCell>(changedCell, cells);
         return program.getDataflowCells(DataflowDirection.Forward).map(r => r[0]);
     }
 

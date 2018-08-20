@@ -2,6 +2,7 @@ import { NumberSet } from "./Set";
 import * as ast from "../parsers/python/python_parser";
 import { MagicsRewriter } from "./MagicsRewriter";
 import { ICell } from "../packages/cell/model";
+import { Ref, DataflowAnalyzer } from "./DataflowAnalysis";
 
 /**
  * Maps to find out what line numbers over a program correspond to what cells.
@@ -13,19 +14,40 @@ export type LineToCellMap = { [line: number]: ICell };
  * A program built from cells.
  */
 export class Program {
-
     /**
      * Construct a program.
      */
-    constructor(code: string, cellToLineMap: CellToLineMap, lineToCellMap: LineToCellMap) {
-        this.code = code;
+    constructor(text: string, tree: ast.IModule, cellToLineMap: CellToLineMap, lineToCellMap: LineToCellMap) {
+        this.text = text;
+        this.tree = tree;
         this.cellToLineMap = cellToLineMap;
         this.lineToCellMap = lineToCellMap;
     }
 
-    readonly code: string;
+    readonly text: string;
+    readonly tree: ast.IModule;
     readonly cellToLineMap: CellToLineMap;
     readonly lineToCellMap: LineToCellMap;
+}
+
+/**
+ * Program fragment for a cell. Used to cache parsing results.
+ */
+export class CellProgram {
+    /**
+     * Construct a cell program
+     */
+    constructor(cell: ICell, statements: ast.ISyntaxNode[], defs: Ref[], uses: Ref[]) {
+        this.cell = cell;
+        this.statements = statements;
+        this.defs = defs;
+        this.uses = uses;
+    }
+
+    readonly cell: ICell;
+    readonly statements: ast.ISyntaxNode[];
+    readonly defs: Ref[];
+    readonly uses: Ref[];
 }
 
 /**
@@ -36,8 +58,9 @@ export class ProgramBuilder {
     /**
      * Construct a program builder.
      */
-    constructor() {
-        this._cells = [];
+    constructor(dataflowAnalyzer?: DataflowAnalyzer) {
+        this._dataflowAnalyzer = dataflowAnalyzer
+        this._cellPrograms = [];
     }
 
     /**
@@ -45,17 +68,44 @@ export class ProgramBuilder {
      */
     add(...cells: ICell[]) {
         for (let cell of cells) {
-            // Proactively try to parse each block with our parser. If it can't parse,
-            // then discard it:
-            let parseSucceeded: boolean = false;
+            // Proactively try to parse and find defs and uses in each block.
+            // If there is a failure, discard that cell.
+            let tree: ast.IModule = undefined;
+            let defs: Ref[] = undefined;
+            let uses: Ref[] = undefined;
+            let analysisFinished = false;
             try {
-                ast.parse(this._magicsRewriter.rewrite(cell.text) + "\n");
-                parseSucceeded = true;
+                // Parse the cell's code.
+                tree = ast.parse(this._magicsRewriter.rewrite(cell.text) + "\n");
+                // Annotate each node with cell ID info, for dataflow caching.
+                for (let node of ast.walk(tree)) {
+                    // Sanity check that this is actually a node.
+                    if (node.hasOwnProperty("type")) {
+                        node.executionCount = cell.executionCount;
+                        node.cellId = cell.id;
+                    }
+                }
+                // By querying for defs and uses right when a cell is added to the log, we
+                // can cache these results, making dataflow analysis faster.
+                if (this._dataflowAnalyzer) {
+                    defs = [];
+                    uses = [];
+                    for (let stmt of tree.code) {
+                        let defsUses = this._dataflowAnalyzer.getDefsUses(stmt);
+                        defs.push(...defsUses.defs.items);
+                        uses.push(...defsUses.uses.items);
+                    }
+                } else {
+                    defs = [];
+                    uses = [];
+                }
+                analysisFinished = true;
             } catch(e) {
-                console.log("Couldn't parse block", cell.text, ", not adding to programs.");
+                console.log("Couldn't analyze block", cell.text, 
+                    ", error encountered, ", e, ", not adding to programs.");
             }
-            if (parseSucceeded) {
-                this._cells.push(cell);
+            if (analysisFinished) {
+                this._cellPrograms.push(new CellProgram(cell, tree.code, defs, uses));
             }
         }
     }
@@ -64,7 +114,7 @@ export class ProgramBuilder {
      * Reset (removing all cells).
      */
     reset() {
-        this._cells = [];
+        this._cellPrograms = [];
     }
 
     /**
@@ -73,7 +123,9 @@ export class ProgramBuilder {
      */
     buildTo(cellId: string, executionCount?: number): Program {
 
-        let cellVersions = this._cells.filter(cell => cell.id == cellId);
+        let cellVersions = this._cellPrograms
+            .filter(cp => cp.cell.id == cellId)
+            .map(cp => cp.cell);
         let lastCell: ICell;
         if (executionCount) {
             lastCell = cellVersions.filter(cell => cell.executionCount == executionCount)[0];
@@ -83,19 +135,28 @@ export class ProgramBuilder {
             ).pop();
         }
 
-        let sortedCells = this._cells
-            .filter(cell => cell.executionCount != null && cell.executionCount <= lastCell.executionCount)
-            .filter(cell => !cell.hasError || cell.id == cellId)  // can have error only if it's the last cell
-            .sort((cell1, cell2) => cell1.executionCount - cell2.executionCount);
+        let sortedCellPrograms = this._cellPrograms
+            .filter(cp => cp.cell.executionCount != null && cp.cell.executionCount <= lastCell.executionCount)
+            .filter(cp => !cp.cell.hasError || cp.cell.id == cellId)  // can have error only if it's the last cell
+            .sort((cp1, cp2) => cp1.cell.executionCount - cp2.cell.executionCount);
 
         let code = "";
         let currentLine = 1;
         let lineToCellMap: LineToCellMap = {};
         let cellToLineMap: CellToLineMap = {};
 
-        sortedCells.forEach(cell => {
+        // Synthetic parse tree built from the cell parse trees.
+        let tree: ast.IModule = {
+            code: [],
+            type: ast.MODULE,
+            location: undefined
+        };
 
+        sortedCellPrograms.forEach(cp => {
+
+            let cell = cp.cell;
             let cellCode = cell.text;
+            let statements = [];
 
             // Build a mapping from the cells to their lines.
             let cellLength = cellCode.split("\n").length;
@@ -110,22 +171,47 @@ export class ProgramBuilder {
                 cellToLineMap[cell.id][cell.executionCount].add(l);
             });
 
-            // Accumulate the code.
+            // Accumulate the code text.
             let cellText = this._magicsRewriter.rewrite(cell.text);
             code += (cellText + "\n");
             currentLine += cellLength;
+
+            // Accumulate the code statements.
+            // This includes resetting the locations of all of the nodes in the tree,
+            // relative to the cells that come before this one.
+            // This can be sped up by saving this computation.
+            let cellStart = Math.min(...cellLines);
+            for (let statement of cp.statements) {
+                let statementCopy = JSON.parse(JSON.stringify(statement));
+                for (let node of ast.walk(statementCopy)) {
+                    if (node.location) {
+                        node.location.first_line += cellStart - 1;
+                        node.location.last_line += cellStart - 1;
+                    }
+                }
+                statements.push(statementCopy);
+            }
+            tree.code.push(...statements);
         });
 
-        return new Program(code, cellToLineMap, lineToCellMap);
+        return new Program(code, tree, cellToLineMap, lineToCellMap);
     }
 
     build(): Program {
-        let lastCell = this._cells
-            .filter(cell => cell.executionCount != null)
-            .sort((cell1, cell2) => cell1.executionCount - cell2.executionCount).pop();
-        return this.buildTo(lastCell.id);
+        let lastCell = this._cellPrograms
+            .filter(cp => cp.cell.executionCount != null)
+            .sort((cp1, cp2) => cp1.cell.executionCount - cp2.cell.executionCount).pop();
+        return this.buildTo(lastCell.cell.id);
     }
 
-    private _cells: ICell[];
+    getCellProgram(cell: ICell): CellProgram {
+        let matchingPrograms = this._cellPrograms.filter(
+            (cp) => cp.cell.id == cell.id && cp.cell.executionCount == cell.executionCount);
+        if (matchingPrograms.length >= 1) return matchingPrograms.pop();
+        return null;
+    }
+
+    private _cellPrograms: CellProgram[];
+    private _dataflowAnalyzer: DataflowAnalyzer;
     private _magicsRewriter: MagicsRewriter = new MagicsRewriter();
 }

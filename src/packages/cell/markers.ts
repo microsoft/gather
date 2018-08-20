@@ -2,16 +2,13 @@
  * Helpers for marking up CodeMirror editors.
  */
 import { ISyntaxNode, ILocation } from "../../parsers/python/python_parser";
-import { parse } from '../../parsers/python/python_parser';
-import { getDefs, SymbolType, Ref } from "../../slicing/DataflowAnalysis";
-import { StringSet } from "../../slicing/Set";
-import { SlicerConfig } from "../../slicing/SlicerConfig";
-import { MagicsRewriter } from "../../slicing/MagicsRewriter";
+import { SymbolType, Ref } from "../../slicing/DataflowAnalysis";
 import { GatherModel, IGatherObserver, GatherEventData, GatherModelEvent, EditorDef, DefSelection, OutputSelection } from "../gather";
 import { ICell } from "./model";
 import { SlicedExecution } from "../../slicing/ExecutionSlicer";
 import { log } from "../../utils/log";
 import { LineHandle } from "../../../node_modules/@types/codemirror";
+import { CellProgram } from "../../slicing/ProgramBuilder";
 
 /**
  * Class for a highlighted, clickable output.
@@ -48,19 +45,37 @@ const DEPENDENCY_CLASS = "jp-InputArea-editor-dependencyline";
  * Necessary because most of the cell data passed around the notebook are clones with editors
  * that aren't actually active on the page.
  */
-export interface CellEditorResolver {
+export interface ICellEditorResolver {
     /**
      * Get the active CodeMirror editor for this cell.
      */
     resolve(cell: ICell): CodeMirror.Editor;
+
+    /**
+     * Additionally filter to make sure the execution count matches.
+     * (Don't call this right after a cell execution event, as it takes a while for the
+     * execution count to update in an executed cell).
+     */
+    resolveWithExecutionCount(cell: ICell): CodeMirror.Editor;
+}
+
+/**
+ * Resolves cells to their program information (parse tree, definitions, etc.)
+ * This makes sure we don't have to do any parsing / dataflow analysis within
+ * this display module.
+ */
+export interface ICellProgramResolver {
+    resolve(cell: ICell): CellProgram;
 }
 
 /**
  * Resolves cells to the HTML elements for their outputs.
  */
-export interface CellOutputResolver {
+export interface ICellOutputResolver {
     /**
      * Get the divs containing output for this cell.
+     * Currently, we recommend implementations don't pay attention to the execution
+     * count, but just get the outputs for a cell with an ID.
      */
     resolve(cell: ICell): HTMLElement[];
 }
@@ -72,22 +87,24 @@ export class MarkerManager implements IGatherObserver {
     /**
      * Construct a new marker manager.
      */
-    constructor(model: GatherModel, cellEditorResolver: CellEditorResolver,
-            cellOutputResolver: CellOutputResolver) {
+    constructor(model: GatherModel, cellProgramResolver: ICellProgramResolver,
+            cellEditorResolver: ICellEditorResolver,
+            cellOutputResolver: ICellOutputResolver) {
         this._model = model;
         this._model.addObserver(this);
+        this._cellProgramResolver = cellProgramResolver;
         this._cellEditorResolver = cellEditorResolver;
         this._cellOutputResolver = cellOutputResolver;
     }
 
     private _model: GatherModel;
-    private _cellEditorResolver: CellEditorResolver;
-    private _cellOutputResolver: CellOutputResolver;
+    private _cellProgramResolver: ICellProgramResolver;
+    private _cellEditorResolver: ICellEditorResolver;
+    private _cellOutputResolver: ICellOutputResolver;
     private _defMarkers: DefMarker[] = [];
     private _defLineHandles: DefLineHandle[] = [];
     private _outputMarkers: OutputMarker[] = [];
     private _dependencyLineMarkers: DependencyLineMarker[] = [];
-    private _slicerConfig: SlicerConfig = new SlicerConfig();
 
     /**
      * Click-handler---pass on click event to markers.
@@ -109,7 +126,7 @@ export class MarkerManager implements IGatherObserver {
             this.clearSelectablesForCell(cell);
             let editor = this._cellEditorResolver.resolve(cell);
             if (editor) {
-                this.findDefs(editor, cell);
+                this.highlightDefs(editor, cell);
             }
             let outputElements = this._cellOutputResolver.resolve(cell);
             this.highlightOutputs(cell, outputElements);
@@ -225,25 +242,13 @@ export class MarkerManager implements IGatherObserver {
     /**
      * Highlight all of the definitions in an editor.
      */
-    findDefs(editor: CodeMirror.Editor, cell: ICell) {
-
-        // Clean up the code of magics.
-        let code = editor.getValue();
-        let rewriter = new MagicsRewriter();
-        let cleanedCode = rewriter.rewrite(code);
-
-        // Parse the code, get the statements.
-        const ast = parse(cleanedCode + "\n");
-        let statements = ast.code;
-
-        // Add marker for all of the definitions in the code.
-        statements.forEach((statement: ISyntaxNode) => {
-            getDefs(statement, { moduleNames: new StringSet() }, this._slicerConfig)
-            .items.filter(d => [SymbolType.VARIABLE, SymbolType.MUTATION].indexOf(d.type) != -1)
-            .forEach(def => {
-                this._model.addEditorDef({ def: def, editor: editor, cell: cell });
-            });
-        });
+    highlightDefs(editor: CodeMirror.Editor, cell: ICell) {
+        let cellProgram = this._cellProgramResolver.resolve(cell);
+        for (let ref of cellProgram.defs) {
+            if (ref.type == SymbolType.VARIABLE) {
+                this._model.addEditorDef({ def: ref, editor: editor, cell: cell });
+            }
+        }
         log("Highlighted definitions", { numActive: this._defMarkers.length });
     }
 
@@ -274,7 +279,7 @@ export class MarkerManager implements IGatherObserver {
         slice.cellSlices.forEach(cellSlice => {
             let cell = cellSlice.cell;
             let sliceLocations = cellSlice.slice;
-            let editor = this._cellEditorResolver.resolve(cell);
+            let editor = this._cellEditorResolver.resolveWithExecutionCount(cell);
 
             if (editor) {
                 let numLines = 0;
@@ -283,9 +288,7 @@ export class MarkerManager implements IGatherObserver {
                     sliceLocations.items.forEach(loc => {
                         for (let lineNumber = loc.first_line - 1; lineNumber <= loc.last_line -1; lineNumber++) {
                             numLines += 1;
-                            // Add this as "text", NOT "background", to avoid performance bottlenecks from adding
-                            // CodeMirror trying to update the height of all the editors.
-                            let lineHandle = editor.addLineClass(lineNumber, "text", DEPENDENCY_CLASS);
+                            let lineHandle = editor.addLineClass(lineNumber, "background", DEPENDENCY_CLASS);
                             this._dependencyLineMarkers.push({ editor: editor, lineHandle: lineHandle });
                         }
                     });
@@ -299,7 +302,7 @@ export class MarkerManager implements IGatherObserver {
     private _clearDependencyLineMarkers() {
         log("Cleared all dependency line markers");
         this._dependencyLineMarkers.forEach(marker => {
-            marker.editor.removeLineClass(marker.lineHandle, "text", DEPENDENCY_CLASS);
+            marker.editor.removeLineClass(marker.lineHandle, "background", DEPENDENCY_CLASS);
         })
         this._dependencyLineMarkers = [];
     }
@@ -380,6 +383,7 @@ class DefMarker {
     }
 
     handleClick(event: MouseEvent) {
+        console.log("In handleClick");
         let editor = this.editor;
         if (editor.getWrapperElement().contains(event.target as Node)) {
             // In Chrome, if you click in the top of an editor's text area, it will trigger this
