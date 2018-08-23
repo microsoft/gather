@@ -38,7 +38,7 @@
   display: flex;
   flex-flow: row;
   white-space: nowrap;
-  overflow-x: scroll;
+  overflow-x: auto;
 }
 
 .jp-Revision {

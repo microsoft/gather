@@ -1,7 +1,6 @@
-declare var require: any
 import { CharacterRange } from "../codeversion";
 import { ILocation } from "../../parsers/python/python_parser";
-let diff_match_patch = require('./diff-match-patch').diff_match_patch;
+import { diff_match_patch } from 'diff-match-patch';
 
 
 /**
@@ -18,7 +17,7 @@ export type Diff = {
 
 type DiffLine = {
     text: string;
-    version: "before"|"after"|"both";
+    version: "before" | "after" | "both";
     changeRanges: CharacterRange[];
     index: number;
 }
@@ -29,10 +28,10 @@ type DiffLine = {
  * - line numbers of the versions of the line from before, and from after
  * - character ranges of all locations where the text has changed
  */
-export function textdiff(before: string, after: string): Diff {
+export function computeTextDiff(before: string, after: string): Diff {
 
     // Diff the two versions of the text.
-    let diff: Array<[number, string]> = diffMatchPatch.diff_main(before, after);
+    let diff = diffMatchPatch.diff_main(before, after);
     diffMatchPatch.diff_cleanupSemantic(diff);
 
     // Plaintext for the diff representation.
@@ -44,8 +43,12 @@ export function textdiff(before: string, after: string): Diff {
     let beforeLineChanges: CharacterRange[] = [];
     let afterLineChanges: CharacterRange[] = [];
 
-    function addLines(beforeLine: string, afterLine: string, beforeLineChanges?: CharacterRange[],
-            afterLineChanges?: CharacterRange[]) {
+    function addLines(
+        beforeLine: string,
+        afterLine: string,
+        beforeLineChanges?: CharacterRange[],
+        afterLineChanges?: CharacterRange[]
+    ): void {
         beforeLineChanges = beforeLineChanges || [];
         afterLineChanges = afterLineChanges || [];
         if (beforeLine == afterLine) {
@@ -124,7 +127,7 @@ export function textdiff(before: string, after: string): Diff {
             (diffLine1.version == diffLine2.version)) {
             return diffLine1.index - diffLine2.index;
         }
-        else return diffLine1.version == "before" ? -1: 1;
+        else return diffLine1.version == "before" ? -1 : 1;
     });
 
     let diffTextLines = [];

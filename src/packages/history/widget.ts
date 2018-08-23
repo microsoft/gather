@@ -43,9 +43,11 @@ export class HistoryViewer<TOutputModel> extends Widget {
         let referenceVersion = new Widget({ node: document.createElement("div") });
         referenceVersion.addClass(REFERENCE_VERSION_CLASS);
         referenceVersion.layout = new PanelLayout();
+        const now = new Date();
         (referenceVersion.layout as PanelLayout).addWidget(new Revision({
             model: this._model.revisions[this._model.revisions.length - 1],
-            outputRenderer: options.outputRenderer
+            outputRenderer: options.outputRenderer,
+            now: now
         }));
         layout.addWidget(referenceVersion);
 
@@ -61,7 +63,8 @@ export class HistoryViewer<TOutputModel> extends Widget {
                 let revisionModel = this._model.revisions[i];
                 (olderVersionsContents.layout as PanelLayout).addWidget(new Revision({
                     model: revisionModel,
-                    outputRenderer: options.outputRenderer
+                    outputRenderer: options.outputRenderer,
+                    now: now
                 }));
             }
             layout.addWidget(olderVersions);
@@ -106,7 +109,7 @@ export namespace HistoryViewer {
         /**
          * The model used by the history viewer.
          */
-         model: IHistoryModel<TOutputModel>;
+        model: IHistoryModel<TOutputModel>;
 
         /**
          * The renderer for output models.

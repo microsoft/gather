@@ -4,7 +4,7 @@ import { CodeVersionModel } from '../codeversion/model';
 import { SlicedCellModel } from '../slicedcell/model';
 import { SlicedExecution } from '../../slicing/ExecutionSlicer';
 import { ICell, IOutputterCell, instanceOfIOutputterCell, CellSlice } from '../cell/model';
-import { textdiff } from './diff';
+import { computeTextDiff } from './diff';
 import { GatherModel } from '../gather';
 
 
@@ -45,7 +45,7 @@ export function buildHistoryModel<TOutputModel>(
             }
 
             let thisVersionText: string = cellSlice.textSlice;
-            let diff = textdiff(latestText, thisVersionText);
+            let diff = computeTextDiff(latestText, thisVersionText);
 
             let slicedCell: SlicedCellModel = new SlicedCellModel({
                 cellId: cell.id,

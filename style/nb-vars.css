@@ -18,7 +18,7 @@
   background-color: rgba(0, 0, 0, .7);
 }
 
-.jp-Notebook-revisionbrowser-exit {
+.p-Widget.jp-Notebook-revisionbrowser-exit {
   color: white;
   font-size: xx-large;
   cursor: pointer;
