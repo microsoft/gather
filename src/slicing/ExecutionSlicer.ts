@@ -109,6 +109,9 @@ export class ExecutionLogSlicer {
 
                 // Build the program up to that cell.
                 let program = this._programBuilder.buildTo(execution.cellId, execution.executionCount);
+                if (program == null) return null;
+
+                // Set the seed locations for the slice.
                 let seedLocations;
                 if (pSeedLocations) {
                     seedLocations = pSeedLocations;
@@ -171,7 +174,8 @@ export class ExecutionLogSlicer {
                         executionTime);
                 });
                 return new SlicedExecution(execution.executionTime, cellSlices);
-            });
+            })
+            .filter((s) => s != null && s != undefined);
     }
 
     /**

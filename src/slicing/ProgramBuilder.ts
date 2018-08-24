@@ -37,17 +37,19 @@ export class CellProgram {
     /**
      * Construct a cell program
      */
-    constructor(cell: ICell, statements: ast.ISyntaxNode[], defs: Ref[], uses: Ref[]) {
+    constructor(cell: ICell, statements: ast.ISyntaxNode[], defs: Ref[], uses: Ref[], hasError: boolean) {
         this.cell = cell;
         this.statements = statements;
         this.defs = defs;
         this.uses = uses;
+        this.hasError = hasError;
     }
 
     readonly cell: ICell;
     readonly statements: ast.ISyntaxNode[];
     readonly defs: Ref[];
     readonly uses: Ref[];
+    readonly hasError: boolean;
 }
 
 /**
@@ -73,7 +75,7 @@ export class ProgramBuilder {
             let tree: ast.IModule = undefined;
             let defs: Ref[] = undefined;
             let uses: Ref[] = undefined;
-            let analysisFinished = false;
+            let hasError = false;
             try {
                 // Parse the cell's code.
                 tree = ast.parse(this._magicsRewriter.rewrite(cell.text) + "\n");
@@ -99,14 +101,12 @@ export class ProgramBuilder {
                     defs = [];
                     uses = [];
                 }
-                analysisFinished = true;
             } catch(e) {
                 console.log("Couldn't analyze block", cell.text, 
                     ", error encountered, ", e, ", not adding to programs.");
+                hasError = true;
             }
-            if (analysisFinished) {
-                this._cellPrograms.push(new CellProgram(cell, tree.code, defs, uses));
-            }
+            this._cellPrograms.push(new CellProgram(cell, tree.code, defs, uses, hasError));
         }
     }
 
@@ -134,10 +134,11 @@ export class ProgramBuilder {
                 (cell1, cell2) => cell1.executionCount - cell2.executionCount
             ).pop();
         }
+        if (!lastCell) return null;
 
         let sortedCellPrograms = this._cellPrograms
+            .filter(cp => cp.cell == lastCell || !cp.cell.hasError)  // can have error only if it's the last cell
             .filter(cp => cp.cell.executionCount != null && cp.cell.executionCount <= lastCell.executionCount)
-            .filter(cp => !cp.cell.hasError || cp.cell.id == cellId)  // can have error only if it's the last cell
             .sort((cp1, cp2) => cp1.cell.executionCount - cp2.cell.executionCount);
 
         let code = "";
