@@ -172,7 +172,7 @@ export class GatherToClipboardButton extends GatherButton {
             this._gatherModel.requestStateChange(GatherState.GATHER_TO_CLIPBOARD);
         } else {
             log("Button: Clicked gather to clipboard without selections");
-            window.alert("To gather, you must first select some definitions or results from the notebook.");
+            window.alert("Before you gather, click on one of the blue variable names, or one of the outputs with a blue border.");
         }
     }
 }
@@ -206,7 +206,7 @@ export class GatherToNotebookButton extends GatherButton {
             this._gatherModel.requestStateChange(GatherState.GATHER_TO_NOTEBOOK);
         } else {
             log("Button: Clicked gather to clipboard without selections");
-            window.alert("To gather, you must first select some definitions or results from the notebook.");
+            window.alert("Before you gather, click on one of the blue variable names, or one of the outputs with a blue border.");
         }
     }
 }
@@ -253,10 +253,10 @@ export class GatherHistoryButton extends GatherButton {
             this._gatherModel.requestStateChange(GatherState.GATHER_HISTORY);
         } else if (this._gatherModel.selectedSlices.length == 0) {
             log("Button: Clicked gather to history without any selections");
-            window.alert("To gather, you must first select some definitions or results from the notebook.");
+            window.alert("Before bringing up a history, first click on one of the blue variables, or one of the outputs with a blue border.");
         } else if (this._gatherModel.selectedSlices.length > 1) {
             log("Button: Clicked gather to history with too many selections");
-            window.alert("To gather history, you can only select one variable or result.");
+            window.alert("You cannot bring up a history if more than one blue variable name or output has been selected. Make sure only one variable or output is selectedß");
         }
     }
 }
