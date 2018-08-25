@@ -244,9 +244,11 @@ export class MarkerManager implements IGatherObserver {
      */
     highlightDefs(editor: CodeMirror.Editor, cell: ICell) {
         let cellProgram = this._cellProgramResolver.resolve(cell);
-        for (let ref of cellProgram.defs) {
-            if (ref.type == SymbolType.VARIABLE) {
-                this._model.addEditorDef({ def: ref, editor: editor, cell: cell });
+        if (!cellProgram.hasError) {
+            for (let ref of cellProgram.defs) {
+                if (ref.type == SymbolType.VARIABLE) {
+                    this._model.addEditorDef({ def: ref, editor: editor, cell: cell });
+                }
             }
         }
         log("Highlighted definitions", { numActive: this._defMarkers.length });
