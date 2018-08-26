@@ -17,6 +17,7 @@ declare namespace Jupyter {
         clipboard: Array<any>;
         enable_paste: () => void;
         paste_enabled: boolean;
+        execute_cells: (indices: number[]) => void;
         toJSON: () => NotebookJson;
         metadata: NotebookMetadata;
     }
@@ -74,6 +75,7 @@ declare namespace Jupyter {
         output_area: OutputArea;
         kernel: Kernel;
         tooltip: Tooltip;
+        execute: (stop_on_error: boolean) => void;
         fromJSON: (data: CellJson) => void;
         toJSON: () => CellJson;
     }

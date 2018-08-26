@@ -527,8 +527,50 @@ class NotebookOpener implements INotebookOpener {
  */
 const GATHER_PREFIX = 'gather_extension';
 
+type UrlOptions = {
+    autoExecute: boolean,
+    gatheringDisabled: boolean
+};
+
+function getUrlOptions(window: Window): UrlOptions {
+    let url = window.location.href;
+    function getOption(url: string, name: string): string {
+        let match = url.match(new RegExp("(?:&|\\?)" + name + "=([^$&]*)"));
+        if (match == null || !match.length || match.length <= 1) return null;
+        return match[1];
+    }
+    return {
+        autoExecute: getOption(url, "autoExecute") == "true",
+        gatheringDisabled: getOption(url, "gatheringDisabled") == "true"
+    }
+}
+
 export function load_ipython_extension() {
     console.log('extension started');
+
+    // Get options for the plugin from the URL
+    let options = getUrlOptions(window);
+
+    // Exit early if gathering is disabled.
+    if (options.gatheringDisabled) return;
+
+    // If the notebook is set to autoExecute, find all cells that have been executed before and
+    // execute them again.
+    if (options.autoExecute) {
+        let cells = Jupyter.notebook.get_cells();
+        for (let i = 0; i < cells.length; i++) {
+            let cell = cells[i];
+            if (cell.cell_type == "code") {
+                let codeCell = cell as CodeCell;
+                if (codeCell.input_prompt_number) {
+                    // When executing, don't stop the kernel on error---keep running the other
+                    // cells, even if some of them throw an exception, so we can replicate
+                    // those exceptions.
+                    codeCell.execute(false);
+                }
+            }
+        }
+    }
 
     // Initialize logging.
     const LOG_NB_CELLS = false;
