@@ -239,8 +239,11 @@ export class MarkerManager implements IGatherObserver {
             { className: DEFINITION_CLASS }
         );
         let defSelection = new DefSelection({ editorDef: editorDef, cell: editorDef.cell });
-        let clickHandler = (_: ICell, __: ILocation, selected: boolean) => {
+        let clickHandler = (_: ICell, __: ILocation, selected: boolean, event: MouseEvent) => {
             if (selected) {
+                if (!event.shiftKey) {
+                    this._model.deselectAll();
+                }
                 this._model.selectDef(defSelection);
             } else {
                 this._model.deselectDef(defSelection);
@@ -252,8 +255,12 @@ export class MarkerManager implements IGatherObserver {
 
     highlightOutput(output: CellOutput) {
         let selection = { cell: output.cell, outputIndex: output.outputIndex };
-        let outputMarker = new OutputMarker(output.element, output.outputIndex, output.cell, selected => {
+        let outputMarker = new OutputMarker(output.element, output.outputIndex, output.cell, 
+                (selected, event: MouseEvent) => {
             if (selected) {
+                if (!event.shiftKey) {
+                    this._model.deselectAll();
+                }
                 this._model.selectOutput(selection);
             } else {
                 this._model.deselectOutput(selection);
@@ -345,17 +352,17 @@ type DependencyLineMarker = {
 class OutputMarker {
 
     constructor(outputElement: HTMLElement, outputIndex: number, cell: ICell,
-            onToggle: (selected: boolean) => void) {
+            onToggle: (selected: boolean, event: MouseEvent) => void) {
         this._element = outputElement;
         this._element.classList.add(OUTPUT_HIGHLIGHTED_CLASS);
         this.outputIndex = outputIndex;
         this.cell = cell;
         this._onToggle = onToggle;
 
-        this._clickListener = (_: MouseEvent) => {
+        this._clickListener = (event: MouseEvent) => {
             if (this._onToggle) {
                 this.toggleSelected();
-                this._onToggle(this._selected);
+                this._onToggle(this._selected, event);
             }
             log("Clicked on output area", { outputIndex, cell, toggledOn: this._selected });
         };
@@ -387,7 +394,7 @@ class OutputMarker {
     readonly cell: ICell;
     private _element: HTMLElement;
     private _clickListener: (_: MouseEvent) => void;
-    private _onToggle: (selected: boolean) => void;
+    private _onToggle: (selected: boolean, event: MouseEvent) => void;
     private _selected: boolean = false;
 }
 
@@ -406,7 +413,7 @@ class DefMarker {
 
     constructor(marker: CodeMirror.TextMarker, editor: CodeMirror.Editor, def: Ref, location: ILocation,
             statement: ISyntaxNode, cell: ICell,
-            clickHandler: (cell: ICell, selection: ILocation, selected: boolean) => void) {
+            clickHandler: (cell: ICell, selection: ILocation, selected: boolean, event: MouseEvent) => void) {
         this.marker = marker;
         this.def = def;
         this.editor = editor;
@@ -431,7 +438,7 @@ class DefMarker {
                 if (this.clickHandler) {
                     this.toggleSelected();
                     log("Clicked on definition", { toggledOn: this._selected, cell: this.cell });
-                    this.clickHandler(this.cell, this.location, this._selected);
+                    this.clickHandler(this.cell, this.location, this._selected, event);
                 }
                 event.preventDefault();
             }
@@ -466,5 +473,5 @@ class DefMarker {
     readonly location: ILocation;
     readonly statement: ISyntaxNode;
     readonly cell: ICell;
-    readonly clickHandler: (cell: ICell, selection: ILocation, selected: boolean) => void;
+    readonly clickHandler: (cell: ICell, selection: ILocation, selected: boolean, event: MouseEvent) => void;
 };

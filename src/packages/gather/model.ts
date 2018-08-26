@@ -352,6 +352,14 @@ export class GatherModel {
     }
 
     /**
+     * Deselect all defs and outputs.
+     */
+    deselectAll() {
+        this.deselectAllDefs();
+        this.deselectAllOutputs();
+    }
+
+    /**
      * Store all execution slices for an output selection
      */
     addSelectedOutputSlices(outputSelection: OutputSelection, ...slices: SlicedExecution[]) {
