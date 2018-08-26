@@ -430,7 +430,13 @@ class DefMarker {
             // In Chrome, if you click in the top of an editor's text area, it will trigger this
             // event, and is considered as a click at the start of the box. This filter for
             // span elements filters out those spurious clicks.
-            if ((event.target as HTMLElement).tagName != "SPAN") return;
+            let target = event.target as HTMLElement;
+            let badTarget = (
+                !target.tagName ||
+                target.tagName != "SPAN" ||
+                !target.classList.contains(DEFINITION_CLASS)
+            )
+            if (badTarget) return;
             let clickPosition: CodeMirror.Position = editor.coordsChar(
                 { left: event.clientX, top: event.clientY });
             let editorMarkers = editor.getDoc().findMarksAt(clickPosition);
