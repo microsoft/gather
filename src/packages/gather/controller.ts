@@ -47,6 +47,8 @@ export class GatherController implements IGatherObserver {
                 model.deselectAllDefs();
                 model.deselectAllOutputs();
                 model.resetChosenSlices();
+                model.clearEditorDefs();
+                model.clearOutputs();
                 model.requestStateChange(GatherState.SELECTING);
             }
         }

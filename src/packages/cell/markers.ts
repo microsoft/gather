@@ -3,7 +3,7 @@
  */
 import { ISyntaxNode, ILocation } from "../../parsers/python/python_parser";
 import { SymbolType, Ref } from "../../slicing/DataflowAnalysis";
-import { GatherModel, IGatherObserver, GatherEventData, GatherModelEvent, EditorDef, DefSelection, OutputSelection } from "../gather";
+import { GatherModel, IGatherObserver, GatherEventData, GatherModelEvent, EditorDef, DefSelection, OutputSelection, CellOutput } from "../gather";
 import { ICell } from "./model";
 import { SlicedExecution } from "../../slicing/ExecutionSlicer";
 import { log } from "../../utils/log";
@@ -160,6 +160,25 @@ export class MarkerManager implements IGatherObserver {
             }
         }
 
+        // When outputs are found, highlight them.
+        if (eventType == GatherModelEvent.OUTPUT_FOUND) {
+            let output = eventData as CellOutput;
+            this.highlightOutput(output);
+        }
+
+        // When outputs are removed from the model, deselect and remove their markers.
+        if (eventType == GatherModelEvent.OUTPUT_REMOVED) {
+            let output = eventData as CellOutput;
+            for (let i = this._outputMarkers.length - 1; i >= 0; i--) {
+                let outputMarker = this._outputMarkers[i];
+                if (outputMarker.cell == output.cell && outputMarker.outputIndex == output.outputIndex) {
+                    this._model.deselectOutput({ cell: output.cell, outputIndex: output.outputIndex });
+                    outputMarker.destroy();
+                    this._outputMarkers.splice(i, 1);
+                }
+            }
+        }
+
         // Whenever a definition is selected, add a marker to its line.
         if (eventType == GatherModelEvent.DEF_SELECTED) {
             let defSelection = eventData as DefSelection;
@@ -231,6 +250,18 @@ export class MarkerManager implements IGatherObserver {
             marker, editor, def, def.location, def.statement, editorDef.cell, clickHandler));
     }
 
+    highlightOutput(output: CellOutput) {
+        let selection = { cell: output.cell, outputIndex: output.outputIndex };
+        let outputMarker = new OutputMarker(output.element, output.outputIndex, output.cell, selected => {
+            if (selected) {
+                this._model.selectOutput(selection);
+            } else {
+                this._model.deselectOutput(selection);
+            }
+        });
+        this._outputMarkers.push(outputMarker);
+    }
+
     /**
      * Clear all def markers that belong to this editor.
      */
@@ -260,15 +291,8 @@ export class MarkerManager implements IGatherObserver {
     highlightOutputs(cell: ICell, outputElements: HTMLElement[]) {
         for (let i = 0; i < outputElements.length; i++) {
             let outputElement = outputElements[i];
-            let outputSelection = { outputIndex: i, cell };
-            let outputMarker = new OutputMarker(outputElement, i, cell, selected => {
-                if (selected) {
-                    this._model.selectOutput(outputSelection);
-                } else {
-                    this._model.deselectOutput(outputSelection);
-                }
-            });
-            this._outputMarkers.push(outputMarker);
+            let output = { cell: cell, element: outputElement, outputIndex: i };
+            this._model.addOutput(output);
         }
         log("Highlighted outputs", { numActive: this._outputMarkers.length });
     }
@@ -328,13 +352,14 @@ class OutputMarker {
         this.cell = cell;
         this._onToggle = onToggle;
 
-        this._element.onclick = (_: MouseEvent) => {
+        this._clickListener = (_: MouseEvent) => {
             if (this._onToggle) {
                 this.toggleSelected();
                 this._onToggle(this._selected);
             }
             log("Clicked on output area", { outputIndex, cell, toggledOn: this._selected });
-        }
+        };
+        this._element.addEventListener("click", this._clickListener);
     }
 
     toggleSelected() {
@@ -351,10 +376,17 @@ class OutputMarker {
         this._selected = false;
         this._element.classList.remove(OUTPUT_SELECTED_CLASS);
     }
+
+    destroy() {
+        this.deselect();
+        this._element.classList.remove(OUTPUT_HIGHLIGHTED_CLASS);
+        this._element.removeEventListener("click", this._clickListener);
+    }
     
     readonly outputIndex: number;
     readonly cell: ICell;
     private _element: HTMLElement;
+    private _clickListener: (_: MouseEvent) => void;
     private _onToggle: (selected: boolean) => void;
     private _selected: boolean = false;
 }
