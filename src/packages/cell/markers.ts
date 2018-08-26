@@ -360,6 +360,10 @@ class OutputMarker {
         this._onToggle = onToggle;
 
         this._clickListener = (event: MouseEvent) => {
+            let target = event.target as HTMLElement;
+            // If the click is on a child of the output area (the actual content), then handle
+            // that click event like normal without selecting the output.
+            if (!target || !target.classList.contains(OUTPUT_HIGHLIGHTED_CLASS)) return;
             if (this._onToggle) {
                 this.toggleSelected();
                 this._onToggle(this._selected, event);

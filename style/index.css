@@ -83,6 +83,12 @@ div.CodeMirror-linebackground.jp-InputArea-editor-dependencyline {
   cursor: pointer;
 }
 
+/* Children of an output area (the output content) should not be
+ * clickable---you should be able to interact with it normally */
+.jp-OutputArea-highlighted *:hover {
+  cursor: initial;
+}
+
 .jp-OutputArea-highlighted.jp-OutputArea-selected {
   box-shadow: inset 0 0 10px var(--brand-color0);
 }
