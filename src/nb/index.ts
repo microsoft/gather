@@ -21,6 +21,7 @@ import '../../style/nb-vars.css';
 import '../../style/index.css';
 import { DataflowAnalyzer } from '../slicing/DataflowAnalysis';
 import { CellProgram } from '../slicing/ProgramBuilder';
+import { OutputSelection } from '../packages/gather';
 
 
 /**
@@ -367,10 +368,15 @@ class ResultsHighlighter {
 /**
  * Convert program slice to list of cell JSONs
  */
-function sliceToCellJson(slice: SlicedExecution, annotatePaste?: boolean): CellJson[] {
+function sliceToCellJson(slice: SlicedExecution, outputSelections?: OutputSelection[],
+        annotatePaste?: boolean): CellJson[] {
+
     const SHOULD_SLICE_CELLS = true;
-    const SHOULD_OMIT_NONTERMINAL_OUTPUT = true;
+    const OMIT_UNSELECTED_OUTPUT = true;
+
+    outputSelections = outputSelections || [];
     annotatePaste = annotatePaste || false;
+
     return slice.cellSlices
         .map((cellSlice, i) => {
             let slicedCell = cellSlice.cell;
@@ -388,9 +394,16 @@ function sliceToCellJson(slice: SlicedExecution, annotatePaste?: boolean): CellJ
                 if (annotatePaste) {
                     cellJson.metadata.justPasted = true;
                 }
-                // If this isn't the last cell, don't include its output.
-                if (SHOULD_OMIT_NONTERMINAL_OUTPUT && i != slice.cellSlices.length - 1) {
+                // Filter to just those outputs that were selected.
+                if (OMIT_UNSELECTED_OUTPUT) {
+                    let originalOutputs = cellJson.outputs;
                     cellJson.outputs = [];
+                    for (let i = 0; i < originalOutputs.length; i++) {
+                        let output = originalOutputs[i];
+                        if (outputSelections.some(s => s.cell.id == slicedCell.id && s.outputIndex == i)) {
+                            cellJson.outputs.push(output);
+                        }
+                    }
                 }
                 return cellJson;
             }
@@ -402,6 +415,10 @@ function sliceToCellJson(slice: SlicedExecution, annotatePaste?: boolean): CellJ
  */
 class Clipboard implements ICellClipboard {
 
+    constructor(gatherModel: GatherModel) {
+        this._gatherModel = gatherModel;
+    }
+
     addListener(listener: IClipboardListener) {
         this._listeners.push(listener);
     }
@@ -410,7 +427,7 @@ class Clipboard implements ICellClipboard {
         if (slice) {
             // Copy to the Jupyter internal clipboard
             Jupyter.notebook.clipboard = [];
-            let cellsJson = sliceToCellJson(slice, true);
+            let cellsJson = sliceToCellJson(slice, this._gatherModel.selectedOutputs.concat(), true);
             cellsJson.forEach(c => {
                 Jupyter.notebook.clipboard.push(c);
             });
@@ -437,6 +454,7 @@ class Clipboard implements ICellClipboard {
         }
     }
 
+    private _gatherModel: GatherModel;
     private _listeners: IClipboardListener[] = [];
 }
 
@@ -446,8 +464,9 @@ class Clipboard implements ICellClipboard {
 class NotebookOpener implements INotebookOpener {
 
     // Pass in the current notebook. This class will open new notebooks.
-    constructor(thisNotebook: Notebook) {
+    constructor(thisNotebook: Notebook, gatherModel: GatherModel) {
         this._notebook = thisNotebook;
+        this._gatherModel = gatherModel;
     }
 
     private _openSlice(notebookJson: NotebookJson, gatherIndex: number) {
@@ -486,7 +505,7 @@ class NotebookOpener implements INotebookOpener {
 
         // Replace the notebook model's cells with the copied cells.
         if (slice) {
-            let cellsJson = sliceToCellJson(slice, false);
+            let cellsJson = sliceToCellJson(slice, this._gatherModel.selectedOutputs.concat(), false);
             for (let i = 0; i < cellsJson.length; i++) {
                 let cellJson = cellsJson[i];
                 notebookJson.cells.push(cellJson);
@@ -497,6 +516,7 @@ class NotebookOpener implements INotebookOpener {
         }
     }
 
+    private _gatherModel: GatherModel;
     private _notebook: Notebook;
 }
 
@@ -530,7 +550,7 @@ export function load_ipython_extension() {
     new ResultsHighlighter(Jupyter.notebook, gatherModel, markerManager);
 
     // Initialize clipboard for copying cells.
-    let clipboard = new Clipboard();
+    let clipboard = new Clipboard(gatherModel);
     clipboard.addListener({
         onCopy: () => {
             if (notificationWidget) {
@@ -540,7 +560,7 @@ export function load_ipython_extension() {
     });
 
     // Initialize utility for opening new notebooks.
-    let opener = new NotebookOpener(Jupyter.notebook);
+    let opener = new NotebookOpener(Jupyter.notebook, gatherModel);
 
     // Controller for global UI state.
     new GatherController(gatherModel, executionHistory.executionSlicer, clipboard, opener);
