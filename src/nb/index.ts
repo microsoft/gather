@@ -129,6 +129,8 @@ class ExecutionHistory {
         // Clear the history and selections whenever the kernel has been restarted.Z
         notebook.events.on('kernel_restarting.Kernel', () => {
             this.executionSlicer.reset();
+            this._gatherModel.clearEditorDefs();
+            this._gatherModel.clearOutputs();
             this._gatherModel.requestStateChange(GatherState.RESET);
         });
     }
@@ -246,7 +248,7 @@ class CellFetcher {
      */
     getCellWidget(cellId: string, executionCount?: number): Cell {
         let cellWidget = this.getCellWidgetWithId(cellId);
-        if ((cellWidget as CodeCell).input_prompt_number == executionCount) {
+        if (cellWidget != null && (cellWidget as CodeCell).input_prompt_number == executionCount) {
             return cellWidget;
         }
         return null;

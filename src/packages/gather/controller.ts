@@ -40,15 +40,13 @@ export class GatherController implements IGatherObserver {
                     log("Gathering to notebook", { slice: mergedSlice });
                     this._notebookOpener.openNotebookForSlice(mergedSlice);
                     model.resetChosenSlices();
-                    model.requestStateChange(GatherState.SELECTING);
+                    model.requestStateChange(GatherState.RESET);
                 }
             } else if (newState == GatherState.RESET) {
                 // When a reset is selected, clear selections and transition to selection mode.
                 model.deselectAllDefs();
                 model.deselectAllOutputs();
                 model.resetChosenSlices();
-                model.clearEditorDefs();
-                model.clearOutputs();
                 model.requestStateChange(GatherState.SELECTING);
             }
         }
