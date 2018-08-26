@@ -137,7 +137,7 @@ export class ProgramBuilder {
         if (!lastCell) return null;
 
         let sortedCellPrograms = this._cellPrograms
-            .filter(cp => cp.cell == lastCell || !cp.cell.hasError)  // can have error only if it's the last cell
+            .filter(cp => cp.cell == lastCell || !cp.hasError)  // can have error only if it's the last cell
             .filter(cp => cp.cell.executionCount != null && cp.cell.executionCount <= lastCell.executionCount)
             .sort((cp1, cp2) => cp1.cell.executionCount - cp2.cell.executionCount);
 
@@ -188,6 +188,10 @@ export class ProgramBuilder {
                     if (node.location) {
                         node.location.first_line += cellStart - 1;
                         node.location.last_line += cellStart - 1;
+                    }
+                    if (node.type == ast.FOR) {
+                        node.decl_location.first_line += cellStart - 1;
+                        node.decl_location.last_line += cellStart - 1;
                     }
                 }
                 statements.push(statementCopy);
