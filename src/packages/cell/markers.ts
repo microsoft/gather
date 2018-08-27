@@ -277,6 +277,7 @@ export class MarkerManager implements IGatherObserver {
                 this._model.deselectOutput(selection);
             }
             if (event.shiftKey) {
+                // Don't select cells or text when multiple outputs are clicked on
                 event.preventDefault();
                 event.stopPropagation();
                 clearSelectionsInWindow();
