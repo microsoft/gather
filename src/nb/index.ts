@@ -598,7 +598,7 @@ export function load_ipython_extension() {
     clipboard.addListener({
         onCopy: () => {
             if (notificationWidget) {
-                notificationWidget.set_message("Copied cells. To paste, type 'v' or right-click.", 5000);
+                notificationWidget.set_message("Copied cells to clipboard.", 5000);
             }
         }
     });

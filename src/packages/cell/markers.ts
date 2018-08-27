@@ -41,6 +41,17 @@ const DEFINITION_LINE_SELECTED_CLASS = "jp-InputArea-editor-nameline-selected";
 const DEPENDENCY_CLASS = "jp-InputArea-editor-dependencyline";
 
 /**
+ * Clear existing selections in the window.
+ */
+function clearSelectionsInWindow() {
+    if (window && window.getSelection) {
+        window.getSelection().removeAllRanges();
+    } else if (document.hasOwnProperty("selection")) {
+        (document as any).selection.empty();
+    }
+}
+
+/**
  * Resolves cells to active editors in the notebook.
  * Necessary because most of the cell data passed around the notebook are clones with editors
  * that aren't actually active on the page.
@@ -265,6 +276,11 @@ export class MarkerManager implements IGatherObserver {
             } else {
                 this._model.deselectOutput(selection);
             }
+            if (event.shiftKey) {
+                event.preventDefault();
+                event.stopPropagation();
+                clearSelectionsInWindow();
+            }
         });
         this._outputMarkers.push(outputMarker);
     }
@@ -428,7 +444,6 @@ class DefMarker {
     }
 
     handleClick(event: MouseEvent) {
-        console.log("In handleClick");
         let editor = this.editor;
         if (editor.getWrapperElement().contains(event.target as Node)) {
             // In Chrome, if you click in the top of an editor's text area, it will trigger this

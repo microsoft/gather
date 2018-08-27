@@ -74,6 +74,10 @@ export class SlicerConfig {
             pattern: { functionName: "set_option", instanceNames: [ "pd" ] },
             instanceEffect: ReferenceType.GLOBAL_CONFIG
         }),
+        new FunctionConfig({
+            pattern: { functionName: "drop" },
+            instanceEffect: ReferenceType.UPDATE
+        }),
         // Scikit-learn, though really anything machine learning-y.
         new FunctionConfig({
             pattern: { functionName: "fit" },
