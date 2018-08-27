@@ -50,6 +50,15 @@ export type EditorDef = {
 }
 
 /**
+ * An output for a cell.
+ */
+export type CellOutput = {
+    outputIndex: number,
+    element: HTMLElement,
+    cell: ICell
+}
+
+/**
  * An ouput selected for a cell.
  */
 export type OutputSelection = {

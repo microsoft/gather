@@ -21,6 +21,7 @@ import '../../style/nb-vars.css';
 import '../../style/index.css';
 import { DataflowAnalyzer } from '../slicing/DataflowAnalysis';
 import { CellProgram } from '../slicing/ProgramBuilder';
+import { OutputSelection } from '../packages/gather';
 
 
 /**
@@ -128,6 +129,8 @@ class ExecutionHistory {
         // Clear the history and selections whenever the kernel has been restarted.Z
         notebook.events.on('kernel_restarting.Kernel', () => {
             this.executionSlicer.reset();
+            this._gatherModel.clearEditorDefs();
+            this._gatherModel.clearOutputs();
             this._gatherModel.requestStateChange(GatherState.RESET);
         });
     }
@@ -245,7 +248,7 @@ class CellFetcher {
      */
     getCellWidget(cellId: string, executionCount?: number): Cell {
         let cellWidget = this.getCellWidgetWithId(cellId);
-        if ((cellWidget as CodeCell).input_prompt_number == executionCount) {
+        if (cellWidget != null && (cellWidget as CodeCell).input_prompt_number == executionCount) {
             return cellWidget;
         }
         return null;
@@ -367,10 +370,15 @@ class ResultsHighlighter {
 /**
  * Convert program slice to list of cell JSONs
  */
-function sliceToCellJson(slice: SlicedExecution, annotatePaste?: boolean): CellJson[] {
+function sliceToCellJson(slice: SlicedExecution, outputSelections?: OutputSelection[],
+        annotatePaste?: boolean): CellJson[] {
+
     const SHOULD_SLICE_CELLS = true;
-    const SHOULD_OMIT_NONTERMINAL_OUTPUT = true;
+    const OMIT_UNSELECTED_OUTPUT = true;
+
+    outputSelections = outputSelections || [];
     annotatePaste = annotatePaste || false;
+
     return slice.cellSlices
         .map((cellSlice, i) => {
             let slicedCell = cellSlice.cell;
@@ -388,9 +396,16 @@ function sliceToCellJson(slice: SlicedExecution, annotatePaste?: boolean): CellJ
                 if (annotatePaste) {
                     cellJson.metadata.justPasted = true;
                 }
-                // If this isn't the last cell, don't include its output.
-                if (SHOULD_OMIT_NONTERMINAL_OUTPUT && i != slice.cellSlices.length - 1) {
+                // Filter to just those outputs that were selected.
+                if (OMIT_UNSELECTED_OUTPUT) {
+                    let originalOutputs = cellJson.outputs;
                     cellJson.outputs = [];
+                    for (let i = 0; i < originalOutputs.length; i++) {
+                        let output = originalOutputs[i];
+                        if (outputSelections.some(s => s.cell.id == slicedCell.id && s.outputIndex == i)) {
+                            cellJson.outputs.push(output);
+                        }
+                    }
                 }
                 return cellJson;
             }
@@ -402,6 +417,10 @@ function sliceToCellJson(slice: SlicedExecution, annotatePaste?: boolean): CellJ
  */
 class Clipboard implements ICellClipboard {
 
+    constructor(gatherModel: GatherModel) {
+        this._gatherModel = gatherModel;
+    }
+
     addListener(listener: IClipboardListener) {
         this._listeners.push(listener);
     }
@@ -410,7 +429,7 @@ class Clipboard implements ICellClipboard {
         if (slice) {
             // Copy to the Jupyter internal clipboard
             Jupyter.notebook.clipboard = [];
-            let cellsJson = sliceToCellJson(slice, true);
+            let cellsJson = sliceToCellJson(slice, this._gatherModel.selectedOutputs.concat(), true);
             cellsJson.forEach(c => {
                 Jupyter.notebook.clipboard.push(c);
             });
@@ -437,6 +456,7 @@ class Clipboard implements ICellClipboard {
         }
     }
 
+    private _gatherModel: GatherModel;
     private _listeners: IClipboardListener[] = [];
 }
 
@@ -446,8 +466,9 @@ class Clipboard implements ICellClipboard {
 class NotebookOpener implements INotebookOpener {
 
     // Pass in the current notebook. This class will open new notebooks.
-    constructor(thisNotebook: Notebook) {
+    constructor(thisNotebook: Notebook, gatherModel: GatherModel) {
         this._notebook = thisNotebook;
+        this._gatherModel = gatherModel;
     }
 
     private _openSlice(notebookJson: NotebookJson, gatherIndex: number) {
@@ -486,7 +507,7 @@ class NotebookOpener implements INotebookOpener {
 
         // Replace the notebook model's cells with the copied cells.
         if (slice) {
-            let cellsJson = sliceToCellJson(slice, false);
+            let cellsJson = sliceToCellJson(slice, this._gatherModel.selectedOutputs.concat(), false);
             for (let i = 0; i < cellsJson.length; i++) {
                 let cellJson = cellsJson[i];
                 notebookJson.cells.push(cellJson);
@@ -497,6 +518,7 @@ class NotebookOpener implements INotebookOpener {
         }
     }
 
+    private _gatherModel: GatherModel;
     private _notebook: Notebook;
 }
 
@@ -505,8 +527,50 @@ class NotebookOpener implements INotebookOpener {
  */
 const GATHER_PREFIX = 'gather_extension';
 
+type UrlOptions = {
+    autoExecute: boolean,
+    gatheringDisabled: boolean
+};
+
+function getUrlOptions(window: Window): UrlOptions {
+    let url = window.location.href;
+    function getOption(url: string, name: string): string {
+        let match = url.match(new RegExp("(?:&|\\?)" + name + "=([^$&]*)"));
+        if (match == null || !match.length || match.length <= 1) return null;
+        return match[1];
+    }
+    return {
+        autoExecute: getOption(url, "autoExecute") == "true",
+        gatheringDisabled: getOption(url, "gatheringDisabled") == "true"
+    }
+}
+
 export function load_ipython_extension() {
     console.log('extension started');
+
+    // Get options for the plugin from the URL
+    let options = getUrlOptions(window);
+
+    // Exit early if gathering is disabled.
+    if (options.gatheringDisabled) return;
+
+    // If the notebook is set to autoExecute, find all cells that have been executed before and
+    // execute them again.
+    if (options.autoExecute) {
+        let cells = Jupyter.notebook.get_cells();
+        for (let i = 0; i < cells.length; i++) {
+            let cell = cells[i];
+            if (cell.cell_type == "code") {
+                let codeCell = cell as CodeCell;
+                if (codeCell.input_prompt_number) {
+                    // When executing, don't stop the kernel on error---keep running the other
+                    // cells, even if some of them throw an exception, so we can replicate
+                    // those exceptions.
+                    codeCell.execute(false);
+                }
+            }
+        }
+    }
 
     // Initialize logging.
     const LOG_NB_CELLS = false;
@@ -530,17 +594,17 @@ export function load_ipython_extension() {
     new ResultsHighlighter(Jupyter.notebook, gatherModel, markerManager);
 
     // Initialize clipboard for copying cells.
-    let clipboard = new Clipboard();
+    let clipboard = new Clipboard(gatherModel);
     clipboard.addListener({
         onCopy: () => {
             if (notificationWidget) {
-                notificationWidget.set_message("Copied cells. To paste, type 'v' or right-click.", 5000);
+                notificationWidget.set_message("Copied cells to clipboard.", 5000);
             }
         }
     });
 
     // Initialize utility for opening new notebooks.
-    let opener = new NotebookOpener(Jupyter.notebook);
+    let opener = new NotebookOpener(Jupyter.notebook, gatherModel);
 
     // Controller for global UI state.
     new GatherController(gatherModel, executionHistory.executionSlicer, clipboard, opener);

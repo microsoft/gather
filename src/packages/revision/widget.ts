@@ -82,6 +82,24 @@ export class Revision<TOutputModel> extends Widget {
                 }));
             }
         }
+
+        // Scroll to the bottom. Create as an observer as the cells will be initialized dynamically.
+        if (MutationObserver) {
+            let observer = new MutationObserver((mutations) => {
+                for (let mutation of mutations) {
+                    let target = mutation.target as HTMLElement;
+                    if (target.classList && target.classList.contains("CodeMirror-measure")) {
+                        cellsWidget.node.scrollTop = cellsWidget.node.scrollHeight;
+                    }
+                    break;
+                }
+            });
+            observer.observe(cellsWidget.node, {
+                attributes: false,
+                childList: true,
+                subtree: true
+            });
+        }
     }
 
     private createButton(label: string, gatherState: GatherState) {

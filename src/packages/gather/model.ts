@@ -1,4 +1,4 @@
-import { DefSelection, SliceSelection, EditorDef, OutputSelection } from "./selections";
+import { DefSelection, SliceSelection, EditorDef, OutputSelection, CellOutput } from "./selections";
 import { ICell } from "../cell";
 import { log } from "../../utils/log";
 import { SlicedExecution } from "../../slicing/ExecutionSlicer";
@@ -26,6 +26,8 @@ export enum GatherModelEvent {
     EDITOR_DEF_REMOVED,
     DEF_SELECTED,
     DEF_DESELECTED,
+    OUTPUT_FOUND,
+    OUTPUT_REMOVED,
     OUTPUT_SELECTED,
     OUTPUT_DESELECTED,
     SLICE_SELECTED,
@@ -40,6 +42,7 @@ export type GatherEventData =
     ICell |
     EditorDef |
     DefSelection |
+    CellOutput |
     OutputSelection |
     SliceSelection
     ;
@@ -153,6 +156,43 @@ export class GatherModel {
      */
     get editorDefs(): ReadonlyArray<EditorDef> {
         return this._editorDefs;
+    }
+
+    /**
+     * Clear all editor defs.
+     */
+    clearEditorDefs() {
+        for (let i = this._editorDefs.length - 1; i >= 0; i--) {
+            let editorDef = this._editorDefs[i];
+            this._editorDefs.splice(i, 1);
+            this.notifyObservers(GatherModelEvent.EDITOR_DEF_REMOVED, editorDef);
+        }
+    }
+
+    /**
+     * Add output to the list of outputs discovered.
+     */
+    addOutput(output: CellOutput) {
+        this._outputs.push(output);
+        this.notifyObservers(GatherModelEvent.OUTPUT_FOUND, output);
+    }
+
+    /**
+     * Get the list of detected outputs.
+     */
+    get outputs(): ReadonlyArray<CellOutput> {
+        return this._outputs;
+    }
+
+    /**
+     * Clear all outputs.
+     */
+    clearOutputs() {
+        for (let i = this._outputs.length - 1; i >= 0; i--) {
+            let output = this._outputs[i];
+            this._outputs.splice(i, 1);
+            this.notifyObservers(GatherModelEvent.OUTPUT_REMOVED, output);
+        }
     }
 
     /**
@@ -312,6 +352,14 @@ export class GatherModel {
     }
 
     /**
+     * Deselect all defs and outputs.
+     */
+    deselectAll() {
+        this.deselectAllDefs();
+        this.deselectAllOutputs();
+    }
+
+    /**
      * Store all execution slices for an output selection
      */
     addSelectedOutputSlices(outputSelection: OutputSelection, ...slices: SlicedExecution[]) {
@@ -376,6 +424,7 @@ export class GatherModel {
     private _lastEditedCell: ICell;
     private _editorDefs: EditorDef[] = [];
     private _selectedDefs: DefSelection[] = [];
+    private _outputs: CellOutput[] = [];
     private _selectedOutputs: OutputSelection[] = [];
     private _sliceSelections: SliceSelection[] = [];
     private _selectedDefSlices: [DefSelection, SlicedExecution[]][] = [];

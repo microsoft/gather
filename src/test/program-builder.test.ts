@@ -86,6 +86,18 @@ describe('program builder', () => {
         expect(code).to.equal(["print(1)", "print(3)", ""].join("\n"));
     });
 
+    it('includes cells that end with errors', () => {
+        let badCell = createCell("idE", 3, "print(bad_name)");
+        badCell.hasError = true;
+        programBuilder.add(
+            createCell("id1", 1, "print(1)"),
+            createCell("id2", 2, "print(2)"),
+            badCell,
+        );
+        let code = programBuilder.build().text;
+        expect(code).to.equal(["print(1)", "print(2)", "print(bad_name)", ""].join("\n"));
+    });
+
     /* Sometimes, a cell might not throw an error, but our parser might choke. This shouldn't
      * crash the entire program---just skip it if it can't parse. */
     it('skips cells that fail to parse', () => {

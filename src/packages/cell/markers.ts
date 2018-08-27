@@ -3,7 +3,7 @@
  */
 import { ISyntaxNode, ILocation } from "../../parsers/python/python_parser";
 import { SymbolType, Ref } from "../../slicing/DataflowAnalysis";
-import { GatherModel, IGatherObserver, GatherEventData, GatherModelEvent, EditorDef, DefSelection, OutputSelection } from "../gather";
+import { GatherModel, IGatherObserver, GatherEventData, GatherModelEvent, EditorDef, DefSelection, OutputSelection, CellOutput } from "../gather";
 import { ICell } from "./model";
 import { SlicedExecution } from "../../slicing/ExecutionSlicer";
 import { log } from "../../utils/log";
@@ -39,6 +39,17 @@ const DEFINITION_LINE_SELECTED_CLASS = "jp-InputArea-editor-nameline-selected";
  * Class for a data dependency.
  */
 const DEPENDENCY_CLASS = "jp-InputArea-editor-dependencyline";
+
+/**
+ * Clear existing selections in the window.
+ */
+function clearSelectionsInWindow() {
+    if (window && window.getSelection) {
+        window.getSelection().removeAllRanges();
+    } else if (document.hasOwnProperty("selection")) {
+        (document as any).selection.empty();
+    }
+}
 
 /**
  * Resolves cells to active editors in the notebook.
@@ -160,6 +171,25 @@ export class MarkerManager implements IGatherObserver {
             }
         }
 
+        // When outputs are found, highlight them.
+        if (eventType == GatherModelEvent.OUTPUT_FOUND) {
+            let output = eventData as CellOutput;
+            this.highlightOutput(output);
+        }
+
+        // When outputs are removed from the model, deselect and remove their markers.
+        if (eventType == GatherModelEvent.OUTPUT_REMOVED) {
+            let output = eventData as CellOutput;
+            for (let i = this._outputMarkers.length - 1; i >= 0; i--) {
+                let outputMarker = this._outputMarkers[i];
+                if (outputMarker.cell == output.cell && outputMarker.outputIndex == output.outputIndex) {
+                    this._model.deselectOutput({ cell: output.cell, outputIndex: output.outputIndex });
+                    outputMarker.destroy();
+                    this._outputMarkers.splice(i, 1);
+                }
+            }
+        }
+
         // Whenever a definition is selected, add a marker to its line.
         if (eventType == GatherModelEvent.DEF_SELECTED) {
             let defSelection = eventData as DefSelection;
@@ -220,8 +250,11 @@ export class MarkerManager implements IGatherObserver {
             { className: DEFINITION_CLASS }
         );
         let defSelection = new DefSelection({ editorDef: editorDef, cell: editorDef.cell });
-        let clickHandler = (_: ICell, __: ILocation, selected: boolean) => {
+        let clickHandler = (_: ICell, __: ILocation, selected: boolean, event: MouseEvent) => {
             if (selected) {
+                if (!event.shiftKey) {
+                    this._model.deselectAll();
+                }
                 this._model.selectDef(defSelection);
             } else {
                 this._model.deselectDef(defSelection);
@@ -229,6 +262,28 @@ export class MarkerManager implements IGatherObserver {
         };
         this._defMarkers.push(new DefMarker(
             marker, editor, def, def.location, def.statement, editorDef.cell, clickHandler));
+    }
+
+    highlightOutput(output: CellOutput) {
+        let selection = { cell: output.cell, outputIndex: output.outputIndex };
+        let outputMarker = new OutputMarker(output.element, output.outputIndex, output.cell, 
+                (selected, event: MouseEvent) => {
+            if (selected) {
+                if (!event.shiftKey) {
+                    this._model.deselectAll();
+                }
+                this._model.selectOutput(selection);
+            } else {
+                this._model.deselectOutput(selection);
+            }
+            if (event.shiftKey) {
+                // Don't select cells or text when multiple outputs are clicked on
+                event.preventDefault();
+                event.stopPropagation();
+                clearSelectionsInWindow();
+            }
+        });
+        this._outputMarkers.push(outputMarker);
     }
 
     /**
@@ -244,9 +299,11 @@ export class MarkerManager implements IGatherObserver {
      */
     highlightDefs(editor: CodeMirror.Editor, cell: ICell) {
         let cellProgram = this._cellProgramResolver.resolve(cell);
-        for (let ref of cellProgram.defs) {
-            if (ref.type == SymbolType.VARIABLE) {
-                this._model.addEditorDef({ def: ref, editor: editor, cell: cell });
+        if (!cellProgram.hasError) {
+            for (let ref of cellProgram.defs) {
+                if (ref.type == SymbolType.VARIABLE) {
+                    this._model.addEditorDef({ def: ref, editor: editor, cell: cell });
+                }
             }
         }
         log("Highlighted definitions", { numActive: this._defMarkers.length });
@@ -258,15 +315,8 @@ export class MarkerManager implements IGatherObserver {
     highlightOutputs(cell: ICell, outputElements: HTMLElement[]) {
         for (let i = 0; i < outputElements.length; i++) {
             let outputElement = outputElements[i];
-            let outputSelection = { outputIndex: i, cell };
-            let outputMarker = new OutputMarker(outputElement, i, cell, selected => {
-                if (selected) {
-                    this._model.selectOutput(outputSelection);
-                } else {
-                    this._model.deselectOutput(outputSelection);
-                }
-            });
-            this._outputMarkers.push(outputMarker);
+            let output = { cell: cell, element: outputElement, outputIndex: i };
+            this._model.addOutput(output);
         }
         log("Highlighted outputs", { numActive: this._outputMarkers.length });
     }
@@ -319,20 +369,25 @@ type DependencyLineMarker = {
 class OutputMarker {
 
     constructor(outputElement: HTMLElement, outputIndex: number, cell: ICell,
-            onToggle: (selected: boolean) => void) {
+            onToggle: (selected: boolean, event: MouseEvent) => void) {
         this._element = outputElement;
         this._element.classList.add(OUTPUT_HIGHLIGHTED_CLASS);
         this.outputIndex = outputIndex;
         this.cell = cell;
         this._onToggle = onToggle;
 
-        this._element.onclick = (_: MouseEvent) => {
+        this._clickListener = (event: MouseEvent) => {
+            let target = event.target as HTMLElement;
+            // If the click is on a child of the output area (the actual content), then handle
+            // that click event like normal without selecting the output.
+            if (!target || !target.classList.contains(OUTPUT_HIGHLIGHTED_CLASS)) return;
             if (this._onToggle) {
                 this.toggleSelected();
-                this._onToggle(this._selected);
+                this._onToggle(this._selected, event);
             }
             log("Clicked on output area", { outputIndex, cell, toggledOn: this._selected });
-        }
+        };
+        this._element.addEventListener("click", this._clickListener);
     }
 
     toggleSelected() {
@@ -349,11 +404,18 @@ class OutputMarker {
         this._selected = false;
         this._element.classList.remove(OUTPUT_SELECTED_CLASS);
     }
+
+    destroy() {
+        this.deselect();
+        this._element.classList.remove(OUTPUT_HIGHLIGHTED_CLASS);
+        this._element.removeEventListener("click", this._clickListener);
+    }
     
     readonly outputIndex: number;
     readonly cell: ICell;
     private _element: HTMLElement;
-    private _onToggle: (selected: boolean) => void;
+    private _clickListener: (_: MouseEvent) => void;
+    private _onToggle: (selected: boolean, event: MouseEvent) => void;
     private _selected: boolean = false;
 }
 
@@ -372,7 +434,7 @@ class DefMarker {
 
     constructor(marker: CodeMirror.TextMarker, editor: CodeMirror.Editor, def: Ref, location: ILocation,
             statement: ISyntaxNode, cell: ICell,
-            clickHandler: (cell: ICell, selection: ILocation, selected: boolean) => void) {
+            clickHandler: (cell: ICell, selection: ILocation, selected: boolean, event: MouseEvent) => void) {
         this.marker = marker;
         this.def = def;
         this.editor = editor;
@@ -383,13 +445,18 @@ class DefMarker {
     }
 
     handleClick(event: MouseEvent) {
-        console.log("In handleClick");
         let editor = this.editor;
         if (editor.getWrapperElement().contains(event.target as Node)) {
             // In Chrome, if you click in the top of an editor's text area, it will trigger this
             // event, and is considered as a click at the start of the box. This filter for
             // span elements filters out those spurious clicks.
-            if ((event.target as HTMLElement).tagName != "SPAN") return;
+            let target = event.target as HTMLElement;
+            let badTarget = (
+                !target.tagName ||
+                target.tagName != "SPAN" ||
+                !target.classList.contains(DEFINITION_CLASS)
+            )
+            if (badTarget) return;
             let clickPosition: CodeMirror.Position = editor.coordsChar(
                 { left: event.clientX, top: event.clientY });
             let editorMarkers = editor.getDoc().findMarksAt(clickPosition);
@@ -397,7 +464,7 @@ class DefMarker {
                 if (this.clickHandler) {
                     this.toggleSelected();
                     log("Clicked on definition", { toggledOn: this._selected, cell: this.cell });
-                    this.clickHandler(this.cell, this.location, this._selected);
+                    this.clickHandler(this.cell, this.location, this._selected, event);
                 }
                 event.preventDefault();
             }
@@ -432,5 +499,5 @@ class DefMarker {
     readonly location: ILocation;
     readonly statement: ISyntaxNode;
     readonly cell: ICell;
-    readonly clickHandler: (cell: ICell, selection: ILocation, selected: boolean) => void;
+    readonly clickHandler: (cell: ICell, selection: ILocation, selected: boolean, event: MouseEvent) => void;
 };

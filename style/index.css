@@ -67,7 +67,8 @@
 }
 
 div.CodeMirror-linebackground.jp-InputArea-editor-dependencyline {
-  background-color: var(--brand-color4);
+  /* background-color: var(--brand-color4); */
+  background-color: #f4eafc;
 }
 
 /**
@@ -81,6 +82,12 @@ div.CodeMirror-linebackground.jp-InputArea-editor-dependencyline {
 .jp-OutputArea-highlighted:hover {
   box-shadow: inset 0 0 3px var(--brand-color2);
   cursor: pointer;
+}
+
+/* Children of an output area (the output content) should not be
+ * clickable---you should be able to interact with it normally */
+.jp-OutputArea-highlighted *:hover {
+  cursor: initial;
 }
 
 .jp-OutputArea-highlighted.jp-OutputArea-selected {
