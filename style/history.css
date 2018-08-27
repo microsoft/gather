@@ -23,7 +23,7 @@
 
 .jp-HistoryViewer-referenceversion {
   max-width: 500px;
-  height: 96%;
+  height: 98%;
   padding-right: 50px;
 }
 
@@ -43,22 +43,24 @@
 
 .jp-Revision {
   height: 99%;
-  display: flex;
-  flex-flow: column;
   vertical-align: top;
   background-color: #eee;
   min-width: 350px;
+  padding-left: 2em;
+  padding-right: 2em;
 }
 
 .jp-Revision-notebook {
-  height: 99%;
+  height: 100%;
   overflow-y: auto;
   background-color: white;
   padding-left: 20px;
   padding-right: 20px;
   padding-top: 0.5em;
   padding-bottom: 0.5em;
-  text-align: center
+  text-align: center;
+  display: flex;
+  flex-flow: column;
 }
 
 .jp-HistoryViewer-referenceversion .jp-Revision {
