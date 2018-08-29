@@ -46,6 +46,7 @@
   font-weight: bold;
   background-color: var(--brand-color3);
   border-radius: 3px;
+  padding: 3px;
 }
 
 .jp-InputArea-editor-nametext:hover {

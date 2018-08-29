@@ -2,89 +2,28 @@ import { PanelLayout } from '@phosphor/widgets';
 import { Widget } from '@phosphor/widgets';
 import { ISlicedCellModel } from './model';
 import CodeMirror = require('codemirror');
-
 import 'codemirror/addon/scroll/simplescrollbars';
 import 'codemirror/addon/scroll/simplescrollbars.css';
 
-/**
- * The class name added to sliced cell widgets.
- */
-const SLICED_CELL_CLASS = 'jp-SlicedCell';
+// The HTML class names used in these widgets
+const SLICED_CELL_CLASS                     = 'jp-SlicedCell';
+const DIFFED_SLICED_CELL_CLASS              = 'jp-DiffedSlicedCell';
+const SLICED_CELL_EDITOR_CLASS              = 'jp-SlicedCell-editor';
+const DIFFED_CELL_BEFORE_TEXT_CLASS         = 'jp-DiffedCell-editor-beforetext';
+const DIFFED_CELL_BEFORE_BACKGROUND_CLASS   = 'jp-DiffedCell-editor-beforebackground';
+const DIFFED_CELL_AFTER_TEXT_CLASS          = 'jp-DiffedCell-editor-aftertext';
+const DIFFED_CELL_CHANGED_TEXT_CLASS        = 'jp-DiffedCell-editor-changedtext';
+const CELL_AREA_CLASS                       = 'jp-CellArea';
 
-/**
- * The class name added to diffed sliced cell widgets.
- */
-const DIFFED_SLICED_CELL_CLASS = 'jp-DiffedSlicedCell';
-
-/**
- * The class name added to the editor area of a sliced cell.
- */
-const SLICED_CELL_EDITOR_CLASS = 'jp-SlicedCell-editor';
-
-/**
- * The class name added to editor text that was updated.
- */
-// const SLICED_CELL_UPDATED_TEXT_CLASS = 'jp-SlicedCell-editor-updatedtext';
-
-/**
- * The class name added to editor text from before version of text.
- */
-const DIFFED_CELL_BEFORE_TEXT_CLASS = 'jp-DiffedCell-editor-beforetext';
-
-/**
- * The class name added to the background for the after version of text.
- */
-const DIFFED_CELL_BEFORE_BACKGROUND_CLASS = 'jp-DiffedCell-editor-beforebackground';
-
-/**
- * The class name added to editor text from after version of text.
- */
-const DIFFED_CELL_AFTER_TEXT_CLASS = 'jp-DiffedCell-editor-aftertext';
-
-/**
- * The class name added to all text that has changed between versions.
- */
-const DIFFED_CELL_CHANGED_TEXT_CLASS = 'jp-DiffedCell-editor-changedtext';
-
-// const SLICED_CELL_UNCHANGED_TEXT_CLASS = 'jp-SlicedCell-editor-unchangedtext';
-
-/**
- * The class name to add to editor text that is out of the slice.
- */
-// const SLICED_CELL_OUTOFSLICE_TEXT_CLASS = 'jp-SlicedCell-editor-outofslicetext';
-
-/**
- * The class name added to editor text for hiding lines.
- */
-// const SLICED_CELL_HIDE_TEXT_CLASS = 'jp-SlicedCell-editor-hidetext';
-
-/**
- * The class name to add to editor text for revealed lines.
- */
-// const SLICED_CELL_REVEAL_TEXT_CLASS = 'jp-SlicedEditor-editor-revealtext';
-
-/**
- * Number of lines of context to show before and after updated code.
- */
-// const CONTEXT_SIZE = 1;
-
-/**
- * The class name given to cell area widgets.
- */
-const CELL_AREA_CLASS = 'jp-CellArea';
-
-/**
- * The class name added to the prompt area of cell.
- */
-// const INPUT_AREA_PROMPT_CLASS = 'jp-InputArea-prompt';
 
 /**
  * A widget for showing a cell with a code slice.
  */
 export class SlicedCell extends Widget {
-    /**
-     * Construct a new sliced cell.
-     */
+    protected editor: CodeMirror.Editor = null;
+    protected codeMirrorWidget: Widget;
+    readonly model: ISlicedCellModel;
+
     constructor(options: SlicedCell.IOptions) {
         super();
         this.addClass(SLICED_CELL_CLASS);
@@ -99,8 +38,8 @@ export class SlicedCell extends Widget {
             scrollbarStyle: "simple"  // show simple (thin) scrollbar
         });
         let codeMirrorWidget = new Widget({ node: codeMirror.getWrapperElement() });
-        this._editor = codeMirror;
-        this._codeMirrorWidget = codeMirrorWidget;
+        this.editor = codeMirror;
+        this.codeMirrorWidget = codeMirrorWidget;
         codeMirrorWidget.addClass(SLICED_CELL_EDITOR_CLASS);
 
         let layout = (this.layout = new PanelLayout());
@@ -131,56 +70,52 @@ export class SlicedCell extends Widget {
 
     initializeEditor() {
         // XXX: If I don't call this method with a delay, the text doesn't appear.
-        let codeMirrorEditor: CodeMirror.Editor = this._editor;
-        setTimeout(function() {
+        let codeMirrorEditor: CodeMirror.Editor = this.editor;
+        setTimeout(function () {
             codeMirrorEditor.refresh();
         }, 1);
     }
 
-    /**
-     * The model used by the widget.
-     */
-    readonly model: ISlicedCellModel;
-
-    /**
-     * Dispose of the resources held by the widget.
-     */
     dispose() {
         // Do nothing if already disposed.
         if (this.isDisposed) {
             return;
         }
-        this._editor = null;
+        this.editor = null;
         super.dispose();
     }
-
-    protected _editor: CodeMirror.Editor = null;
-    protected _codeMirrorWidget: Widget;
 }
+
+
+
+export namespace SlicedCell {
+    export interface IOptions {
+        model: ISlicedCellModel;
+    }
+}
+
 
 /**
  * A widget for showing a cell with a code slice, diff'd to another cell.
  */
 export class DiffedSlicedCell extends SlicedCell {
-    /**
-     * Construct a new diffed sliced cell.
-     */
+
     constructor(options: SlicedCell.IOptions) {
 
         super(options);
         this.addClass(DIFFED_SLICED_CELL_CLASS);
 
-        let codeMirrorDoc: CodeMirror.Doc = this._editor.getDoc();
+        let codeMirrorDoc: CodeMirror.Doc = this.editor.getDoc();
 
         // Mark up differences
         for (let beforeLine of this.model.diff.beforeLines) {
-            this._editor.addLineClass(beforeLine - 1, "background",
+            this.editor.addLineClass(beforeLine - 1, "background",
                 DIFFED_CELL_BEFORE_BACKGROUND_CLASS);
-            this._editor.addLineClass(beforeLine - 1, "wrap",
+            this.editor.addLineClass(beforeLine - 1, "wrap",
                 DIFFED_CELL_BEFORE_TEXT_CLASS);
         }
         for (let afterLine of this.model.diff.afterLines) {
-            this._editor.addLineClass(afterLine - 1, "background",
+            this.editor.addLineClass(afterLine - 1, "background",
                 DIFFED_CELL_AFTER_TEXT_CLASS)
         }
         for (let loc of this.model.diff.changeLocations) {
@@ -190,9 +125,9 @@ export class DiffedSlicedCell extends SlicedCell {
                 { className: DIFFED_CELL_CHANGED_TEXT_CLASS }
             );
             let versionClass;
-            if (this.model.diff.beforeLines.indexOf(loc.first_line) != -1) {
+            if (this.model.diff.beforeLines.indexOf(loc.first_line) !== -1) {
                 versionClass = DIFFED_CELL_BEFORE_TEXT_CLASS;
-            } else if (this.model.diff.afterLines.indexOf(loc.first_line) != -1) {
+            } else if (this.model.diff.afterLines.indexOf(loc.first_line) !== -1) {
                 versionClass = DIFFED_CELL_AFTER_TEXT_CLASS;
             }
             codeMirrorDoc.markText(
@@ -239,12 +174,12 @@ export class DiffedSlicedCell extends SlicedCell {
         for (let i = codeMirrorDoc.firstLine(); i <= codeMirrorDoc.lastLine(); i++) {
             if (linesToShow.indexOf(i) == -1 && hiddenRangeStart == -1) {
                 hiddenRangeStart = i;
-            } else if (linesToShow.indexOf(i) != -1 && hiddenRangeStart != -1) {
+            } else if (linesToShow.indexOf(i) !== -1 && hiddenRangeStart !== -1) {
                 hiddenLineRanges.push([hiddenRangeStart, i]);
                 hiddenRangeStart = -1;
             }
         }
-        if (hiddenRangeStart != -1) {
+        if (hiddenRangeStart !== -1) {
             hiddenLineRanges.push([hiddenRangeStart, codeMirrorDoc.lastLine() + 1]);
         }
         
@@ -285,7 +220,7 @@ export class DiffedSlicedCell extends SlicedCell {
             let clickPosition: CodeMirror.Position = editor.coordsChar({ left: event.clientX, top: event.clientY });
             for (let marker of editor.getDoc().findMarksAt(clickPosition)) {
                 let markerIndex = revealMarkers.indexOf(marker);
-                if (markerIndex != -1) {
+                if (markerIndex !== -1) {
                     let range = marker.find();
                     marker.clear();
                     revealMarkers.splice(markerIndex, 1);
@@ -298,33 +233,26 @@ export class DiffedSlicedCell extends SlicedCell {
         // TODO(andrewhead): set this as a configuration parameter.
         // If there is no new code in this cell, hide it.
         // if (linesToShow.length == 0) {
-            // this.hide();
+        // this.hide();
         // }
     }
 }
 
-/**
- * A namespace for `SlicedCell` statics.
- */
-export namespace SlicedCell {
-    /**
-     * The options used to create a `SlicedCell`.
-     */
+
+export namespace CellArea {
     export interface IOptions {
-        /**
-         * The model used by the widget.
-         */
         model: ISlicedCellModel;
+        showDiff: boolean;
     }
 }
+
 
 /**
  * A cell area widget, which hosts a prompt and a cell editor widget.
  */
 export class CellArea extends Widget {
-    /**
-     * Construct a cell area widget.
-     */
+    readonly model: ISlicedCellModel;
+
     constructor(options: CellArea.IOptions) {
         super()
         this.addClass(CELL_AREA_CLASS);
@@ -346,32 +274,5 @@ export class CellArea extends Widget {
         } else {
             layout.addWidget(new DiffedSlicedCell(cellOptions));
         }
-    }
-
-    /**
-     * The model used by the widget.
-     */
-    readonly model: ISlicedCellModel;
-
-    // private _prompt: InputPrompt;
-}
-
-/**
- * A namespace for `CellArea` statics.
- */
-export namespace CellArea {
-    /**
-     * The options used to create a `CellArea`.
-     */
-    export interface IOptions {
-        /**
-         * The model used by the widget.
-         */
-        model: ISlicedCellModel;
-
-        /**
-         * Whether to show a differenced version of the cell.
-         */
-        showDiff: boolean;
     }
 }
