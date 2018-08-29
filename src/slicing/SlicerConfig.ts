@@ -55,6 +55,11 @@ export class SlicerConfig {
     private _functionConfigs: FunctionConfig[];
     
     private _defaultFunctionConfigs = [
+        // Python builtings
+        new FunctionConfig({
+            pattern: { functionName: "append" },
+            instanceEffect: ReferenceType.UPDATE
+        }),
         // OpenCV
         // new FunctionConfig({
         //     pattern: { functionName: "load" },

@@ -10,7 +10,7 @@ import { MarkerManager, ICell, ICellEditorResolver, ICellOutputResolver, ICellPr
 import { GatherModel, GatherState } from '../packages/gather/model';
 import { GatherController } from '../packages/gather/controller';
 
-import { GatherToClipboardButton, ClearButton, GatherToNotebookButton, MergeButton, GatherHistoryButton } from './buttons';
+import { GatherToClipboardButton, ClearButton, GatherToNotebookButton, GatherHistoryButton } from './buttons';
 import { ICellClipboard, IClipboardListener } from '../packages/gather/clipboard';
 import { INotebookOpener } from '../packages/gather/opener';
 import * as log from '../utils/log';
@@ -637,17 +637,6 @@ export function load_ipython_extension() {
     gatherToNotebookButton.node = new Widget({ node: buttonsGroup.children()[2] });
     gatherHistoryButton.node = new Widget({ node: buttonsGroup.children()[3] });
     clearButton.node = new Widget({ node: buttonsGroup.children()[4] });
-
-    let mergeButton = new MergeButton(Jupyter.actions, Jupyter.notebook);
-    let mergeButtonGroup = Jupyter.toolbar.add_buttons_group(
-        [{
-            label: mergeButton.label,
-            icon: mergeButton.action.icon,
-            callback: mergeButton.action.handler,
-            action: Jupyter.actions.register(mergeButton.action, mergeButton.actionName, GATHER_PREFIX)
-        }]
-    );
-    mergeButton.node = new Widget({ node: mergeButtonGroup.children()[0] });
 
     // Add widget for viewing history
     let revisionBrowser = new RevisionBrowser(gatherModel);
