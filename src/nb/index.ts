@@ -66,6 +66,7 @@ class NbStatePoller implements log.IStatePoller {
         let data: any = {
             gathered: this._notebook.metadata && this._notebook.metadata.gathered,
             uuid: (this._notebook.metadata ? this._notebook.metadata.gatheringId : undefined),
+            path: this._notebook.notebook_path
         };
         if (this._logCells) {
             let cells = this._notebook.get_cells();
