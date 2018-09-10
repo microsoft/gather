@@ -17,6 +17,7 @@ declare namespace Jupyter {
         clipboard: Array<any>;
         enable_paste: () => void;
         paste_enabled: boolean;
+        notebook_path: string;
         execute_cells: (indices: number[]) => void;
         toJSON: () => NotebookJson;
         metadata: NotebookMetadata;
