@@ -13,8 +13,9 @@ steps:
   displayName: 'Install Node.js'
 
 - script: |
-    npm install -g webpack webpack-cli --save-dev
-    npm run build_parser
+    npm i -g typescript
+    npm install
     npm run build
+    npm run build_parser
     npx webpack --config webpack.config.js
   displayName: 'npm install, run webpack'
