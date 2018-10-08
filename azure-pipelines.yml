@@ -1,0 +1,21 @@
+# Node.js with webpack
+# Build a Node.js project using the webpack CLI.
+# Add steps that analyze code, save build artifacts, deploy, and more:
+# https://docs.microsoft.com/azure/devops/pipelines/languages/javascript
+
+pool:
+  vmImage: 'Ubuntu 16.04'
+
+steps:
+- task: NodeTool@0
+  inputs:
+    versionSpec: '8.x'
+  displayName: 'Install Node.js'
+
+- script: |
+    npm i -g typescript
+    npm install
+    npm run build
+    npm run build_parser
+    npx webpack --config webpack.config.js
+  displayName: 'npm install, run webpack'
