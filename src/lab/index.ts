@@ -18,7 +18,7 @@ import { HistoryViewer, buildHistoryModel } from '../packages/history';
 import { OldCellProgram, DataflowDirection, LocationSet } from '../slicing/Slice';
 
 import { JSONObject } from '@phosphor/coreutils';
-import { LabCell, copyICodeCellModel } from './LabCell';
+import { LabCell, copyICodeCellModel } from './labcell';
 import { GatherWidget } from '../packages/contextmenu/widget';
 import { ExecutionLogSlicer } from '../slicing/ExecutionSlicer';
 import { CodeEditor } from '@jupyterlab/codeeditor';
