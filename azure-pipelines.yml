@@ -13,7 +13,7 @@ steps:
   displayName: 'Install Node.js'
 
 - script: |
-    npm install -g webpack webpack-cli --save-dev
+    npm install
     npm run build_parser
     npm run build
     npx webpack --config webpack.config.js
