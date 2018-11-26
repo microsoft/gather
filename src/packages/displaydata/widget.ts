@@ -27,7 +27,7 @@ export class DisplayData extends Widget {
         // TODO(andrewhead): support other types of display data.
         // TODO(andrewhead): change second argument (preferSafe) based on display data field.
         if (nbformat.isExecuteResult(model) || nbformat.isDisplayData(model)) {
-            let mimeType = rendermime.preferredMimeType(model.data, true);
+            let mimeType = rendermime.preferredMimeType(model.data, "ensure");
             let output = rendermime.createRenderer(mimeType);
             output.renderModel(new OutputModel({ value: model }));
             layout.addWidget(output);

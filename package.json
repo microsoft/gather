@@ -14,7 +14,7 @@
     "build_nb_extension": "npm run build && npx webpack",
     "watch_nb_extension": "npx webpack -w",
     "install_nb_extension": "jupyter nbextension install dist && jupyter nbextension enable dist/gather",
-    "prepack": "npm run clean && npm run build_parser && npm run build",
+    "prepack": "npm run clean && npm run build && npm run build_parser ",
     "clean": "rimraf lib",
     "watch": "tsc -w",
     "test": "mocha -r ts-node/register src/test/*.test.ts"
@@ -27,12 +27,12 @@
     "extension": true
   },
   "dependencies": {
-    "@jupyterlab/application": "^0.16.3",
-    "@jupyterlab/apputils": "^0.16.4",
+    "@jupyterlab/application": "^0.17.2",
+    "@jupyterlab/apputils": "^0.17.2",
     "@jupyterlab/coreutils": "^2.0.0-0",
-    "@jupyterlab/docmanager": "^0.16.3",
-    "@jupyterlab/fileeditor": "^0.16.3",
-    "@jupyterlab/notebook": "^0.16.3",
+    "@jupyterlab/docmanager": "^0.17.2",
+    "@jupyterlab/fileeditor": "^0.17.2",
+    "@jupyterlab/notebook": "^0.17.2",
     "@phosphor/widgets": "^1.6.0",
     "diff-match-patch": "^1.0.1",
     "jquery": "^3.3.1"

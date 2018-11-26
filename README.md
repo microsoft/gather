@@ -51,6 +51,17 @@ But I don't know if either of these *really* fixed the issue. They're worth tryi
 
 Then run `jupyter notebook` and the extension will be running.
 
+### `500` message when launching Jupyter notebook
+
+Install these versions of Jupyter notebook and dependencies
+to see something working, before trying out other versions:
+
+```
+nbconvert==5.3.1
+nbformat==4.4.0
+notebook==5.6.0
+```
+
 ### Backend (logging) extension (optional)
 
 If you want to add logging to the project, look in the `src/nb/python` directory. This Python plugin needs to be installed to receive logging requests and save them to file (`~/.jupyter/events.txt`). To register this Python extension in Jupyter notebook or lab, see this guide: https://jupyter-notebook.readthedocs.io/en/latest/extending/handlers.html. As of the time of this writing, installation involves:

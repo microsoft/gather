@@ -7,7 +7,7 @@ import { IClientSession, ICommandPalette } from '@jupyterlab/apputils';
 import { Clipboard } from '@jupyterlab/apputils';
 import { ICellModel, CodeCell, ICodeCellModel } from '@jupyterlab/cells';
 import { IDocumentManager } from '@jupyterlab/docmanager';
-import { DocumentRegistry } from '@jupyterlab/docregistry';
+import { DocumentRegistry, IDocumentWidget } from '@jupyterlab/docregistry';
 import { FileEditor } from '@jupyterlab/fileeditor';
 import { NotebookPanel, INotebookModel, Notebook, INotebookTracker } from '@jupyterlab/notebook';
 import { IObservableList } from '@jupyterlab/observables';
@@ -68,9 +68,9 @@ class ExecutionLoggerExtension implements DocumentRegistry.IWidgetExtension<Note
     }
 
     createNew(panel: NotebookPanel, context: DocumentRegistry.IContext<INotebookModel>): IDisposable {
-        panel.notebook.model.cells.changed.connect(
+        panel.content.model.cells.changed.connect(
             (cells, value) =>
-                this.onCellsChanged(panel.notebook, panel.session, cells, value),
+                this.onCellsChanged(panel.content, panel.session, cells, value),
             this);
 
         /*
@@ -204,13 +204,13 @@ function activateExtension(app: JupyterLab, palette: ICommandPalette, notebooks:
         // Choose cell from options or the active cell.
         let chosenCell;
         if (options.cellId) {
-            let cells = notebooks.currentWidget.notebook.widgets.filter(cell => cell.model.id == options.cellId);
+            let cells = notebooks.currentWidget.content.widgets.filter(cell => cell.model.id == options.cellId);
             if (cells.length > 0) {
                 chosenCell = cells.pop();
             }
         }
-        if (!chosenCell && panel && panel.notebook && panel.notebook.activeCell && panel.notebook.activeCell.model.type === 'code') {
-            chosenCell = panel.notebook.activeCell;
+        if (!chosenCell && panel && panel.content && panel.content.activeCell && panel.content.activeCell.model.type === 'code') {
+            chosenCell = panel.content.activeCell;
         }
 
         if (!chosenCell || !(chosenCell.model.type == 'code')) return;
@@ -252,8 +252,8 @@ function activateExtension(app: JupyterLab, palette: ICommandPalette, notebooks:
 
     addCommand('livecells:gatherToNotebook', 'Gather this result into a new notebook', () => {
         const panel = notebooks.currentWidget;
-        if (panel && panel.notebook && panel.notebook.activeCell.model.type === 'code') {
-            const activeCell = panel.notebook.activeCell;
+        if (panel && panel.content && panel.content.activeCell.model.type === 'code') {
+            const activeCell = panel.content.activeCell;
             let slicer = executionLogger.executionSlicer;
             let cellModel = activeCell.model as ICodeCellModel;
             let slice = slicer.sliceLatestExecution(new LabCell(cellModel));
@@ -261,7 +261,7 @@ function activateExtension(app: JupyterLab, palette: ICommandPalette, notebooks:
 
             docManager.newUntitled({ ext: 'ipynb' }).then(model => {
                 const widget = docManager.open(model.path, undefined, panel.session.kernel.model) as NotebookPanel;
-                const newModel = widget.notebook.model;
+                const newModel = widget.content.model;
                 setTimeout(() => {
                     newModel.cells.remove(0); // remove the default blank cell                        
                     newModel.cells.pushAll(cells.map(c => {
@@ -274,8 +274,8 @@ function activateExtension(app: JupyterLab, palette: ICommandPalette, notebooks:
 
     addCommand('livecells:gatherToScript', 'Gather this result into a new script', () => {
         const panel = notebooks.currentWidget;
-        if (panel && panel.notebook && panel.notebook.activeCell.model.type === 'code') {
-            const activeCell = panel.notebook.activeCell;
+        if (panel && panel.content && panel.content.activeCell.model.type === 'code') {
+            const activeCell = panel.content.activeCell;
             let slicer = executionLogger.executionSlicer;
             let cellModel = activeCell.model as ICodeCellModel;
             let slice = slicer.sliceLatestExecution(new LabCell(cellModel));
@@ -289,9 +289,9 @@ function activateExtension(app: JupyterLab, palette: ICommandPalette, notebooks:
             console.log(selection);
 
             docManager.newUntitled({ ext: 'py' }).then(model => {
-                const editor = docManager.open(model.path, undefined, panel.session.kernel.model) as FileEditor;
+                const editor = docManager.open(model.path, undefined, panel.session.kernel.model) as IDocumentWidget<FileEditor>;
                 setTimeout(() => {
-                    editor.model.value.text = scriptText;
+                    editor.content.model.value.text = scriptText;
                 }, 100);
             });
         }
@@ -300,8 +300,8 @@ function activateExtension(app: JupyterLab, palette: ICommandPalette, notebooks:
     addCommand('livecells:gatherFromHistory', 'Compare previous versions of this result', () => {
 
         const panel = notebooks.currentWidget;
-        if (panel && panel.notebook && panel.notebook.activeCell.model.type === 'code') {
-            const activeCell = panel.notebook.activeCell;
+        if (panel && panel.content && panel.content.activeCell.model.type === 'code') {
+            const activeCell = panel.content.activeCell;
             let slicer = executionLogger.executionSlicer;
             let cellModel = activeCell.model as ICodeCellModel;
             let slicedExecutions = slicer.sliceAllExecutions(new LabCell(cellModel));
@@ -328,7 +328,7 @@ export class LiveCheckboxExtension implements DocumentRegistry.IWidgetExtension<
     private liveness: CellLiveness;
 
     createNew(panel: NotebookPanel, context: DocumentRegistry.IContext<INotebookModel>): IDisposable {
-        const checkbox = new ToolbarCheckbox(panel.notebook);
+        const checkbox = new ToolbarCheckbox(panel.content);
         panel.toolbar.insertItem(9, 'liveCode', checkbox);
         this.liveness = new CellLiveness(checkbox, panel);
 
@@ -350,9 +350,9 @@ class CellLiveness {
         private checkbox: ToolbarCheckbox,
         panel: NotebookPanel
     ) {
-        panel.notebook.model.cells.changed.connect(
+        panel.content.model.cells.changed.connect(
             (cells, value) =>
-                this.onCellsChanged(panel.notebook, panel.session, cells, value),
+                this.onCellsChanged(panel.content, panel.session, cells, value),
             this);
     }
 
