@@ -72,13 +72,14 @@ export class ProgramBuilder {
         for (let cell of cells) {
             // Proactively try to parse and find defs and uses in each block.
             // If there is a failure, discard that cell.
-            let tree: ast.IModule = undefined;
+            let statements: ast.ISyntaxNode[] = [];
             let defs: Ref[] = undefined;
             let uses: Ref[] = undefined;
-            let hasError = false;
+            let hasError = cell.hasError;
             try {
                 // Parse the cell's code.
-                tree = ast.parse(this._magicsRewriter.rewrite(cell.text) + "\n");
+                let tree = ast.parse(this._magicsRewriter.rewrite(cell.text) + "\n");
+                statements = tree.code;
                 // Annotate each node with cell ID info, for dataflow caching.
                 for (let node of ast.walk(tree)) {
                     // Sanity check that this is actually a node.
@@ -106,7 +107,7 @@ export class ProgramBuilder {
                     ", error encountered, ", e, ", not adding to programs.");
                 hasError = true;
             }
-            this._cellPrograms.push(new CellProgram(cell, tree.code, defs, uses, hasError));
+            this._cellPrograms.push(new CellProgram(cell, statements, defs, uses, hasError));
         }
     }
 

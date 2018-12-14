@@ -75,7 +75,7 @@ describe('program builder', () => {
     /* We might want the program builder to include code that was executed before a runtime
      * error, though this will probably require us to rewrite the code. */
     it('skips cells with errors', () => {
-        let badCell = createCell("idE", 2, "print(bad_name)");
+        let badCell = createCell("idE", 2, "print(2)");
         badCell.hasError = true;
         programBuilder.add(
             createCell("id1", 1, "print(1)"),
