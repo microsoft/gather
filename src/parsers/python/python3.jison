@@ -3,26 +3,6 @@
 /* https://docs.python.org/3.4/reference/grammar.html */
 
 /* lexical gammar */
-%{ 
-    var indents = [0], 
-        indent = 0, 
-        dedents = 0,
-        loc = undefined,
-        partial = undefined,
-
-        // we don't need to implement a full stack here to ensure symmetry
-        // because it's ensured by the grammar
-        brackets_count = 0; 
-
-    var keywords = [
-        "continue", "nonlocal", "finally", "lambda", "return", "assert",
-        "global", "import", "except", "raise", "break", "False", "class",
-        "while", "yield", "None", "True", "from", "with", "elif", "else",
-        "pass", "for", "try", "def", "and", "del", "not", "is", "as", "if",
-        "or", "in"
-    ]
-%}
-
 %lex
 
 uppercase               [A-Z]
@@ -86,36 +66,39 @@ imagnumber              ({floatnumber}|{intpart})[jJ]
 
 <INITIAL,INLINE><<EOF>> %{ 
                             // if the last statement in indented, need to force a dedent before EOF
-                            if (indents.length > 1) { 
+                            if (this.indents == undefined) this.indents == [0];
+                            if (this.indents.length > 1) { 
                                this.begin( 'DEDENTS' ); 
                                this.unput(' '); // make sure EOF is not triggered 
-                               dedents = 1; 
-                               indents.pop();
+                               this.dedents = 1; 
+                               this.indents.pop();
                             } else { 
                                 return 'EOF'; 
                             } 
                         %}
-<INITIAL>\              %{ indent += 1 %}
-<INITIAL>\t             %{ indent = ( indent + 8 ) & -7 %}
-<INITIAL>\n             %{ indent = 0 %} // blank line
+<INITIAL>\              %{ if (this.indent == undefined) this.indent = 0; this.indent += 1 %}
+<INITIAL>\t             %{ if (this.indent == undefined) this.indent = 0; this.indent = ( this.indent + 8 ) & -7 %}
+<INITIAL>\n             %{ this.indent = 0 %} // blank line
 <INITIAL>\#[^\n]*       /* skip comments */
 <INITIAL>.              %{ 
                             this.unput( yytext )
-                            var last = indents[ indents.length - 1 ]
-                            if ( indent > last ) {
+                            if (this.indents == undefined) this.indents = [0];
+                            var last = this.indents[ this.indents.length - 1 ]
+                            if (this.indent == undefined) this.indent = 0;
+                            if ( this.indent > last ) {
                                 this.begin( 'INLINE' )
-                                indents.push( indent )
+                                this.indents.push( this.indent )
                                 return 'INDENT'
-                            } else if ( indent < last ) {
+                            } else if ( this.indent < last ) {
                                 this.begin( 'DEDENTS' )
-                                dedents = 0 // how many dedents occured
-                                while( indents.length ) {
-                                    dedents += 1
-                                    indents.pop()
-                                    last = indents[ indents.length - 1 ]
-                                    if ( last == indent ) break
+                                this.dedents = 0 // how many dedents occured
+                                while( this.indents.length ) {
+                                    this.dedents += 1
+                                    this.indents.pop()
+                                    last = this.indents[ this.indents.length - 1 ]
+                                    if ( last == this.indent ) break
                                 }
-                                if ( !indents.length ) {
+                                if ( !this.indents.length ) {
                                     throw new Error( "TabError: Inconsistent" )
                                 }
                             } else {
@@ -124,7 +107,8 @@ imagnumber              ({floatnumber}|{intpart})[jJ]
                         %}
 <DEDENTS>.              %{
                             this.unput( yytext )
-                            if ( dedents-- > 0 ) {
+                            if (this.dedents == undefined) this.dedents = 0;
+                            if ( this.dedents-- > 0 ) {
                                 return 'DEDENT'
                             } else {
                                 this.begin( 'INLINE' )
@@ -133,8 +117,9 @@ imagnumber              ({floatnumber}|{intpart})[jJ]
 
 <INLINE>\n              %{
                             // implicit line joining
-                            if ( brackets_count <= 0 ) {
-                                indent = 0; 
+                            if (this.brackets_count == undefined) this.brackets_count = 0;
+                            if ( this.brackets_count <= 0 ) {
+                                this.indent = 0; 
                                 this.begin( 'INITIAL' )
                                 return 'NEWLINE'
                             }
@@ -155,10 +140,11 @@ imagnumber              ({floatnumber}|{intpart})[jJ]
                         %}
 <INLINE>{integer}       return 'NUMBER'
 <INLINE>{operators}     %{
+                            if (this.brackets_count == undefined) this.brackets_count = 0;
                             if ( yytext == '{' || yytext == '[' || yytext == '(' ) {
-                                brackets_count += 1
+                                this.brackets_count += 1
                             } else if ( yytext == '}' || yytext == ']' || yytext == ')' ) {
-                                brackets_count -= 1
+                                this.brackets_count -= 1
                             }
                             return yytext 
                         %}
@@ -185,7 +171,14 @@ imagnumber              ({floatnumber}|{intpart})[jJ]
                             return 'BYTES'
                         %}
 <INLINE>{identifier}    %{
-                            return ( keywords.indexOf( yytext ) == -1 )
+                            this.keywords = [
+                                "continue", "nonlocal", "finally", "lambda", "return", "assert",
+                                "global", "import", "except", "raise", "break", "False", "class",
+                                "while", "yield", "None", "True", "from", "with", "elif", "else",
+                                "pass", "for", "try", "def", "and", "del", "not", "is", "as", "if",
+                                "or", "in"
+                            ]
+                            return ( this.keywords.indexOf( yytext ) == -1 )
                                 ? 'NAME'
                                 : yytext;
                         %}
@@ -1298,5 +1291,4 @@ yield_arg
     : 'from' test
     | testlist
     ;
-
 

@@ -56,6 +56,11 @@ describe('python parser', () => {
             last_column: 10
         });
     });
+
+    it('does not crash on correct code after parsing bad code', () => {
+        expect(() => parse("print(1\n")).to.throw();
+        expect(() => parse("a + 1\nb = a\n")).not.to.throw();
+    });
 });
 
 describe('ast walker', () => {

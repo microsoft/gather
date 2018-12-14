@@ -1,6 +1,17 @@
-import * as python3txt from './python3.js.txt';
-import * as fs from 'fs';
-import * as path from 'path';
+import { parse as python3Parse, parser } from './python3';
+
+/**
+ * Reset the lexer state after an error. Otherwise, parses after a failed parse can fail too.
+ */
+let yy = parser.yy as any;
+let oldParseError = yy.parseError;
+oldParseError = function(text: String, hash: any) {
+    this.indents = [0];
+    this.indent = 0;
+    this.dedents = 0;
+    this.brackets_count = 0;
+    oldParseError.call(this, text, hash);
+};
 
 /**
  * This is the main interface for parsing code.
@@ -13,18 +24,7 @@ export function parse(program: string): IModule {
         // eliminate byte order mark
         program = program.slice(1);
     }
-    // We avoid using require since loading/unloading the module causes a memory leak.
-    let exports = { parse: (s: string): IModule => null };
-    if (typeof(python3txt) == "string") {
-        eval(python3txt); // overwrites parse function
-    // During unit tests, python3txt will be an object, not a string, causing unexpected
-    // behavior. If python3txt isn't a string, read it using `fs`.
-    } else {
-        const fname = path.join(path.dirname(__filename), 'python3.js.txt');
-        const python3txtString = fs.readFileSync(fname).toString();
-        eval(python3txtString); // overwrites parse function
-    }
-    return exports.parse(program);
+    return python3Parse(program);
 }
 
 

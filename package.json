@@ -9,18 +9,18 @@
     "jupyterlab"
   ],
   "scripts": {
-    "build_parser": "node ./node_modules/jison/lib/cli.js --outfile lib/parsers/python/python3.js.txt src/parsers/python/python3.jison",
+    "build_parser": "node ./node_modules/jison/lib/cli.js --outfile src/parsers/python/python3.js src/parsers/python/python3.jison",
     "build": "tsc",
     "build_nb_extension": "npm run build && npx webpack",
     "watch_nb_extension": "npx webpack -w",
     "install_nb_extension": "jupyter nbextension install dist && jupyter nbextension enable dist/gather",
-    "prepack": "npm run clean && npm run build && npm run build_parser",
+    "prepack": "npm run clean && npm run build_parser && npm run build",
     "clean": "rimraf lib",
     "watch": "tsc -w",
     "test": "mocha -r ts-node/register src/test/*.test.ts"
   },
   "files": [
-    "lib/**/*.{d.ts,txt,eot,gif,html,jpg,js,js.map,json,png,svg,woff2,ttf}",
+    "lib/**/*.{d.ts,eot,gif,html,jpg,js,js.map,json,png,svg,woff2,ttf}",
     "style/**/*.{css,eot,gif,html,jpg,json,png,svg,woff2,ttf}"
   ],
   "jupyterlab": {
