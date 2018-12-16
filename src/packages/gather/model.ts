@@ -11,6 +11,7 @@ export enum GatherState {
     SELECTING,
     GATHER_TO_CLIPBOARD,
     GATHER_TO_NOTEBOOK,
+    GATHER_TO_SCRIPT,
     GATHER_HISTORY
 };
 

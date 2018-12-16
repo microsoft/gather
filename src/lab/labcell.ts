@@ -70,6 +70,10 @@ export class LabCell extends AbstractOutputterCell<IOutputModel[]> {
         return new LabCell(clonedModel);
     }
 
+    toJSON(): any {
+        return this._model.toJSON();
+    }
+
     is_cell: boolean = true;
     is_outputter_cell: boolean = true;
     private _model: ICodeCellModel;

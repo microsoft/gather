@@ -1,11 +1,28 @@
-*.bundle.*
-lib/
+# NPM stuff
+package-lock.json
+
+# Dependencies
 node_modules/
 *.egg-info/
-.ipynb_checkpoints
+
+# Generated parsers
+python3.js
+
+# Log files
+*.log
+
+# Source code editing
 .vscode/
 .vs/
-package-lock.json
+
+# Build files
 dist/
-python3.js.txt
-*.log
+lib/
+
+# Notebooks
+notebooks/
+Untitled*
+.ipynb_checkpoints
+
+# Miscellany
+*.bundle.*

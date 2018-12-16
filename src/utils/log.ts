@@ -15,6 +15,7 @@ export interface AjaxCaller {
  * Utility for calling Jupyter server using AJAX.
  */
 let _ajaxCaller: AjaxCaller = undefined;
+let _showedLogUninitializedError = false;
 
 /**
  * Initialize logger with Ajax method. The reason we can't just use the default jQuery AJAX
@@ -54,7 +55,10 @@ export function log(eventName: string, data?: any) {
     data = data || {};
     
     if (_ajaxCaller == undefined) {
-        console.error("Logger not initialized, skipping logging");
+        if (_showedLogUninitializedError == false) {
+            console.info("Logger not initialized, skipping logging");
+            _showedLogUninitializedError = true;
+        }
         return;
     }
     

@@ -3,7 +3,7 @@ import { ExecutionLogSlicer } from "../../slicing/ExecutionSlicer";
 import { DefSelection, OutputSelection } from "./selections";
 import { LocationSet } from "../../slicing/Slice";
 import { ICellClipboard } from "./clipboard";
-import { INotebookOpener } from "./opener";
+import { INotebookOpener, IScriptOpener } from "./opener";
 import { log } from "../../utils/log";
 
 /**
@@ -14,11 +14,12 @@ export class GatherController implements IGatherObserver {
      * Constructor for gather controller.
      */
     constructor(model: GatherModel, executionSlicer: ExecutionLogSlicer, clipboard: ICellClipboard,
-        opener: INotebookOpener) {
+        notebookOpener?: INotebookOpener, scriptOpener?: IScriptOpener) {
         model.addObserver(this);
         this._executionSlicer = executionSlicer;
         this._cellClipboard = clipboard;
-        this._notebookOpener = opener;
+        this._notebookOpener = notebookOpener;
+        this._scriptOpener = scriptOpener;
     }
 
     /**
@@ -29,19 +30,26 @@ export class GatherController implements IGatherObserver {
         // If a gather action was requested, do the gather.
         if (eventType == GatherModelEvent.STATE_CHANGED) {
             let newState = eventData as GatherState;
-            if (newState == GatherState.GATHER_TO_CLIPBOARD || newState == GatherState.GATHER_TO_NOTEBOOK) {
+            if (newState == GatherState.GATHER_TO_CLIPBOARD || newState == GatherState.GATHER_TO_NOTEBOOK || newState == GatherState.GATHER_TO_SCRIPT) {
                 let slices = model.chosenSlices;
                 let mergedSlice = slices[0].merge(...slices.slice(1));
                 if (newState == GatherState.GATHER_TO_CLIPBOARD) {
                     log("Gathering to clipboard", { slice: mergedSlice });
                     this._cellClipboard.copy(mergedSlice);
-                    model.requestStateChange(GatherState.RESET);
                 } else if (newState == GatherState.GATHER_TO_NOTEBOOK) {
                     log("Gathering to notebook", { slice: mergedSlice });
-                    this._notebookOpener.openNotebookForSlice(mergedSlice);
-                    model.resetChosenSlices();
-                    model.requestStateChange(GatherState.RESET);
+                    if (this._notebookOpener !== undefined) {
+                        this._notebookOpener.openNotebookForSlice(mergedSlice);
+                        model.resetChosenSlices();
+                    }
+                } else if (newState == GatherState.GATHER_TO_SCRIPT) {
+                    log("Gathering to script", { slice: mergedSlice });
+                    if (this._scriptOpener !== undefined) {
+                        this._scriptOpener.openScriptForSlice(mergedSlice);
+                        model.resetChosenSlices();
+                    }
                 }
+                model.requestStateChange(GatherState.RESET);
             } else if (newState == GatherState.RESET) {
                 // When a reset is selected, clear selections and transition to selection mode.
                 model.deselectAllDefs();
@@ -97,4 +105,5 @@ export class GatherController implements IGatherObserver {
     private _executionSlicer: ExecutionLogSlicer;
     private _cellClipboard: ICellClipboard;
     private _notebookOpener: INotebookOpener;
+    private _scriptOpener: IScriptOpener;
 }
