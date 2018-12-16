@@ -1,36 +1,27 @@
-# livecells
+# Code Gathering Tools
 
-Tool for gathering, recalling, comparing implicit versions of code in Jupyter Notebook / Lab.
+Tool for gathering, recalling, comparing implicit versions of code in Jupyter Lab. Read the paper [here](dead link).
 
-## Prerequisites
-
-* JupyterLab
-
-## Jupyter Lab extension
+## Download the Jupyter Lab extension
 
 ```bash
-jupyter labextension install livecells
+# This download link is currently dead
+jupyter labextension install gathering-tools
 ```
 
-### Development
+## Development
 
 For a development install (requires npm version 4 or later), do the following in the repository directory:
 
 ```bash
 npm install
-jupyter labextension link .
+jlpm run watch       # automatically recompile sources
+jupyter lab --watch  # launch Jupyter Lab, automatically re-load extension
 ```
 
-To rebuild the package and the JupyterLab app:
+### Pre-alpha Jupyter notebook version
 
-```bash
-npm run build
-jupyter lab build
-```
-
-## Notebook extension
-
-### Frontend extension
+This project was initially developed as a Jupyter notebook extension. It is not being maintained, as it requires access to the internal API, including parts that change across minor versions. Still, if you want to build and install the notebook version, run these commands:
 
 ```bash
 npm run build
@@ -38,7 +29,7 @@ npm run build_nb_extension
 npm run install_nb_extension
 ```
 
-#### Troubleshooting
+### Troubleshooting
 
 ##### The extension UI doesn't get loaded
 
