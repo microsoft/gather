@@ -14,9 +14,10 @@ jupyter labextension install gathering-tools
 For a development install (requires npm version 4 or later), do the following in the repository directory:
 
 ```bash
-npm install
-jlpm run watch       # automatically recompile sources
-jupyter lab --watch  # launch Jupyter Lab, automatically re-load extension
+npm install                   # download dependencies
+jupyter labextension link .   # install this package in Jupyter Lab
+jlpm run watch                # automatically recompile sources
+jupyter lab --watch           # launch Jupyter Lab, automatically re-load extension
 ```
 
 ### Pre-alpha Jupyter notebook version
