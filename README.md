@@ -34,7 +34,7 @@ npm run install_nb_extension
 
 ### Troubleshooting
 
-##### The extension UI doesn't get loaded
+#### The extension UI doesn't get loaded
 
 Sometimes you might reload the page and see that the buttons on the page are missing. I haven't been able to track the cause of the issue. [This Stack Overflow post](https://stackoverflow.com/questions/11991218/undefined-object-being-passed-via-requirejs) suggests the issue might be with circular `require` dependencies. The problem has disappeared when I have:
 
@@ -45,7 +45,7 @@ But I don't know if either of these *really* fixed the issue. They're worth tryi
 
 Then run `jupyter notebook` and the extension will be running.
 
-### `500` message when launching Jupyter notebook
+#### `500` message when launching Jupyter notebook
 
 Install these versions of Jupyter notebook and dependencies
 to see something working, before trying out other versions:
@@ -55,6 +55,13 @@ nbconvert==5.3.1
 nbformat==4.4.0
 notebook==5.6.0
 ```
+
+#### Build errors
+
+* **Errors about missing semicolons in React types files**: upgrade the `typescript` and `ts-node` packages
+* **Conflicting dependencies**: upgrade either the Python Jupyter Lab (may require Python upgrade) or the Jupyter Lab npm pacakges
+* **Issues with duplicated React types**: download React types in `@jupyterlab/` packages
+* **Other issues**: delete your node_modules files and reinstall them
 
 ### Backend (logging) extension (optional)
 
