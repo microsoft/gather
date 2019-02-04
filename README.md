@@ -59,7 +59,7 @@ notebook==5.6.0
 #### Build errors
 
 * **Errors about missing semicolons in React types files**: upgrade the `typescript` and `ts-node` packages
-* **Conflicting dependencies**: upgrade either the Python Jupyter Lab (may require Python upgrade) or the Jupyter Lab npm pacakges
+* **Conflicting dependencies**: upgrade either the Python Jupyter Lab (may require Python upgrade to Python 3 to get the most recent version of Jupyter Lab) or the Jupyter Lab npm pacakges
 * **Issues with duplicated React types**: download React types in `@jupyterlab/` packages
 * **Other issues**: delete your node_modules files and reinstall them
 
