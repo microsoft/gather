@@ -77,4 +77,5 @@ export class LabCell extends AbstractOutputterCell<IOutputModel[]> {
     is_cell: boolean = true;
     is_outputter_cell: boolean = true;
     private _model: ICodeCellModel;
+
 }

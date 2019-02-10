@@ -28,6 +28,8 @@ import { nbformat } from '@jupyterlab/coreutils';
 import { log } from '../utils/log';
 import { INotebookOpener, IScriptOpener } from '../packages/gather/opener';
 
+//import { UUID } from '@phosphor/coreutils';
+
 /**
  * Try to only write Jupyter Lab-specific implementation code in this file.
  * If there is any program analysis / text processing, widgets that could be shared with Jupyter
@@ -140,6 +142,9 @@ class ExecutionLoggerExtension implements DocumentRegistry.IWidgetExtension<Note
                     const cell = new LabCell(cellClone);
                     this._executionSlicer.logExecution(cell);
                     this._gatherModel.lastExecutedCell = cell;
+
+                    
+
                 }
             });
         }
@@ -337,6 +342,7 @@ class NotebookOpener implements INotebookOpener {
             // TODO put more safety checks on this
             const widget = this._documentManager.open(model.path, undefined, this._notebooks.currentWidget.session.kernel.model) as NotebookPanel;
             setTimeout(() => {
+
                 const notebookModel = widget.content.model;
                 let notebookJson = notebookModel.toJSON() as nbformat.INotebookContent;
                 notebookJson.cells = []
@@ -418,6 +424,15 @@ class Clipboard implements ICellClipboard {
 function activateExtension(app: JupyterLab, palette: ICommandPalette, notebooks: INotebookTracker, docManager: IDocumentManager) {
 
     console.log('Activating code gathering tools');
+   
+
+    docManager.activateRequested.connect(
+            (docMan, msg) => {
+                notebooks.forEach((widget: NotebookPanel) => print(widget))
+
+    });
+
+    
 
     let gatherModel = new GatherModel();
 
@@ -425,6 +440,99 @@ function activateExtension(app: JupyterLab, palette: ICommandPalette, notebooks:
     app.docRegistry.addWidgetExtension('Notebook', notificationExtension);
 
     let executionSlicer = new ExecutionLogSlicer(new DataflowAnalyzer());
+   
+
+
+
+   
+    let historyLoaded = 0;
+    let previousSaveLogLength = executionSlicer._executionLog.length
+    function print(notebook: NotebookPanel){
+
+        //deserializes execution history on load of the notebook metadata
+        if (executionSlicer._executionLog.length == 0 && historyLoaded == 0) {
+            var seconds = 0;
+            var intervalId = setInterval(function(){
+                seconds+=1
+                if(seconds == 10) { 
+                    console.log("history is empty")
+                    clearInterval(intervalId);
+                    historyLoaded = 1;
+                } else {
+
+                    if (notebook.model.metadata.get("executionHistory")) {
+                        let history = notebook.model.metadata.get("executionHistory");
+
+                        console.log("History Loading...")
+                        console.log("Loading Before", executionSlicer._executionLog);
+                        console.log("Notebook Stored Execution History", notebook.model.metadata.get("executionHistory"));
+
+                        for (let x in (<any>history)){
+                            let cell =(<ICell>(<any>history)[x.toString()]);
+                       
+                            executionSlicer.logExecution(cell)
+                        }
+                        //notebook.model.metadata.set("executionHistory","")
+                        historyLoaded = 1;
+                        previousSaveLogLength = executionSlicer._executionLog.length
+                        console.log("Loading After", executionSlicer._executionLog);
+                        clearInterval(intervalId);
+                    } else {
+                        console.log(notebook.model.metadata.get("executionHistory"));
+                        console.log("still waiting!", seconds);
+                    } 
+                }
+            }, 1000);
+        }
+
+        //Notebook listener serializes execution log to metadata on save
+        notebook.context.saveState.connect((context, msg) => {
+
+                let currentSaveLogLength = executionSlicer._programBuilder._cellPrograms.length
+                if (msg == "started" &&  currentSaveLogLength != previousSaveLogLength){
+
+                    console.log("Saving File and Updating Execution History...");
+                    console.log("before", notebook.model.metadata.get("executionHistory"));
+                    
+                    let cellPrograms = executionSlicer._programBuilder._cellPrograms;
+                    let tempCellGroup: any = [];
+
+                    for (var i = previousSaveLogLength; i < cellPrograms.length; i++) {
+                        let cell = cellPrograms[i].cell;
+                        let tempCell: any = {};
+                        tempCell["id"] = cell.id;
+                        tempCell["is_cell"] = cell.is_cell;
+                        tempCell["executionCount"] = cell.executionCount;
+                        tempCell["hasError"] = cell.hasError;
+                        tempCell["isCode"] = cell.isCode;
+                        tempCell["text"] = cell.text;
+                        tempCell["gathered"] = cell.gathered;
+                        tempCellGroup.push(tempCell);
+                    }
+
+                    let history = notebook.model.metadata.get("executionHistory");
+                    let tempHistory: any = {};
+                    let counter = 0
+
+                    for (let x in (<any>history)){
+                        tempHistory[counter.toString()] = (<any>history)[x.toString()];
+                        counter += 1;
+                    }
+                    for (var i = 0; i<tempCellGroup.length; i++) {
+                        tempHistory[counter.toString()] = tempCellGroup[i];
+                        counter+=1;
+                    }
+
+                    previousSaveLogLength = currentSaveLogLength;
+                    notebook.model.metadata.set("executionHistory",tempHistory)
+
+                    console.log("after", notebook.model.metadata.get("executionHistory"));
+                }
+               
+        });
+
+    }
+
 
     let notebookOpener = new NotebookOpener(docManager, notebooks);
     let scriptOpener = new ScriptOpener(docManager, notebooks);
@@ -448,6 +556,8 @@ function activateExtension(app: JupyterLab, palette: ICommandPalette, notebooks:
 
     const executionLogger = new ExecutionLoggerExtension(executionSlicer, gatherModel, app.commands, markerManager);
     app.docRegistry.addWidgetExtension('Notebook', executionLogger);
+
+   
 
     function addCommand(command: string, label: string, execute: (options?: JSONObject) => void) {
         app.commands.addCommand(command, { label, execute });

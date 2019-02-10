@@ -52,8 +52,8 @@ export class SlicedExecution {
  */
 export class ExecutionLogSlicer {
 
-    private _executionLog = new Array<CellExecution>();
-    private _programBuilder: ProgramBuilder;
+    public _executionLog = new Array<CellExecution>();
+    public _programBuilder: ProgramBuilder;
     private _dataflowAnalyzer: DataflowAnalyzer;
     
     /**

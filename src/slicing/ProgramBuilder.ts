@@ -217,7 +217,7 @@ export class ProgramBuilder {
         return null;
     }
 
-    private _cellPrograms: CellProgram[];
+    public _cellPrograms: CellProgram[];
     private _dataflowAnalyzer: DataflowAnalyzer;
     private _magicsRewriter: MagicsRewriter = new MagicsRewriter();
 }
