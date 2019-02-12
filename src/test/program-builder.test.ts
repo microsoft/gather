@@ -7,8 +7,8 @@ describe('program builder', () => {
 
     function createCell(id: string, executionCount: number, ...codeLines: string[]): ICell {
         let text = codeLines.join("\n");
-        return { is_cell: true, id, executionCount, text: text, hasError: false, isCode: true,
-            gathered: false, copy: () => null };
+        return { is_cell: true, id, executionCount, persistentId: "persistent-id", text: text,
+            hasError: false, isCode: true, gathered: false, copy: () => null, toJupyterJSON: () => {} };
     }
 
     let programBuilder: ProgramBuilder;
@@ -144,7 +144,7 @@ describe('program builder', () => {
             createCell("id1", 2, "print(1)")
         );
         let tree = programBuilder.build().tree;
-        expect(tree.code[0].cellId).to.equal("id1");
+        expect(tree.code[0].cellPersistentId).to.equal("id1");
         expect(tree.code[0].executionCount).to.equal(2);
     });
 });

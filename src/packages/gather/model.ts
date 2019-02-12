@@ -1,7 +1,8 @@
 import { DefSelection, SliceSelection, EditorDef, OutputSelection, CellOutput } from "./selections";
 import { ICell } from "../cell";
 import { log } from "../../utils/log";
-import { SlicedExecution } from "../../slicing/ExecutionSlicer";
+import { SlicedExecution, ExecutionLogSlicer } from "../../slicing/ExecutionSlicer";
+import { CellProgram } from "../../slicing/ProgramBuilder";
 
 /**
  * Available states for the gathering application.
@@ -52,6 +53,11 @@ export type GatherEventData =
  * Model for the state of a "gather" application.
  */
 export class GatherModel {
+
+    constructor(executionLog: ExecutionLogSlicer) {
+        this._executionLog = executionLog;
+    }
+
     /**
      * Add an observer to listen to changes to the model.
      */
@@ -66,6 +72,17 @@ export class GatherModel {
         for (let observer of this._observers) {
             observer.onModelChange(property, eventData, this);
         }
+    }
+
+    /**
+     * Get execution history for this notebook.
+     */
+    get executionLog(): ExecutionLogSlicer {
+        return this._executionLog;
+    }
+
+    getCellProgram(cell: ICell): CellProgram {
+        return this._executionLog.getCellProgram(cell);
     }
 
     /**
@@ -142,10 +159,10 @@ export class GatherModel {
     /**
      * Remove the editor def from the list of editor definitions.
      */
-    removeEditorDefsForCell(cellId: string) {
+    removeEditorDefsForCell(cellPersistentId: string) {
         for (let i = this._editorDefs.length - 1; i >= 0; i--) {
             let editorDef = this._editorDefs[i];
-            if (editorDef.cell.id == cellId) {
+            if (editorDef.cell.persistentId == cellPersistentId) {
                 this._editorDefs.splice(i, 1);
                 this.notifyObservers(GatherModelEvent.EDITOR_DEF_REMOVED, editorDef);
             }
@@ -332,10 +349,10 @@ export class GatherModel {
     /**
      * Deselect all outputs.
      */
-    deselectOutputsForCell(cellId: string) {
+    deselectOutputsForCell(cellPersistentId: string) {
         for (let i = this._selectedOutputs.length - 1; i >= 0; i--) {
             let output = this._selectedOutputs[i];
-            if (output.cell.id == cellId) {
+            if (output.cell.persistentId == cellPersistentId) {
                 this._selectedOutputs.splice(i, 1);
                 this.notifyObservers(GatherModelEvent.OUTPUT_DESELECTED, output);
             }
@@ -419,6 +436,7 @@ export class GatherModel {
     }
 
     private _state: GatherState = GatherState.SELECTING;
+    private _executionLog: ExecutionLogSlicer;
     private _observers: IGatherObserver[] = [];
     private _lastExecutedCell: ICell;
     private _lastDeletedCell: ICell;

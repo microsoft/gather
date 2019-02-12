@@ -1,6 +1,7 @@
 import { AbstractOutputterCell } from "../packages/cell";
 import { ICodeCellModel, CodeCellModel } from "@jupyterlab/cells";
 import { IOutputModel } from "@jupyterlab/rendermime";
+import { UUID } from "@phosphor/coreutils";
 
 /**
  * Create a new cell with the same ID and content.
@@ -25,6 +26,13 @@ export class LabCell extends AbstractOutputterCell<IOutputModel[]> {
 
     get id(): string {
         return this._model.id;
+    }
+
+    get persistentId(): string {
+        if (!this._model.metadata.has("persistent_id")) {
+            this._model.metadata.set("persistent_id", UUID.uuid4());
+        }
+        return this._model.metadata.get("persistent_id") as string;
     }
 
     get text(): string {
@@ -70,7 +78,7 @@ export class LabCell extends AbstractOutputterCell<IOutputModel[]> {
         return new LabCell(clonedModel);
     }
 
-    toJSON(): any {
+    toJupyterJSON(): any {
         return this._model.toJSON();
     }
 

@@ -8,6 +8,7 @@ describe('CellSlice', () => {
         let cellSlice = new CellSlice({
             is_cell: true,
             id: "id",
+            persistentId: "persistent-id",
             text: [
                 "a = 1",
                 "b = 2",
@@ -19,7 +20,8 @@ describe('CellSlice', () => {
             executionCount: 1,
             isCode: true,
             gathered: false,
-            copy: () => null
+            copy: () => null,
+            toJupyterJSON: () => null
         }, new LocationSet(
             { first_line: 1, first_column: 0, last_line: 1, last_column: 5 },
             { first_line: 2, first_column: 4, last_line: 3, last_column: 4 }
@@ -35,6 +37,7 @@ describe('CellSlice', () => {
         let cellSlice = new CellSlice({
             is_cell: true,
             id: "id",
+            persistentId: "persistent-id",
             text: [
                 "a = 1",
                 "b = 2",
@@ -46,7 +49,8 @@ describe('CellSlice', () => {
             executionCount: 1,
             isCode: true,
             gathered: false,
-            copy: () => null
+            copy: () => null,
+            toJupyterJSON: () => null
         }, new LocationSet(
             { first_line: 1, first_column: 0, last_line: 1, last_column: 5 },
             { first_line: 2, first_column: 4, last_line: 3, last_column: 4 }

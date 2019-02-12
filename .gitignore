@@ -4,6 +4,7 @@ package-lock.json
 # Dependencies
 node_modules/
 *.egg-info/
+venv/
 
 # Generated parsers
 python3.js

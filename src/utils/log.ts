@@ -51,7 +51,7 @@ export function registerPollers(...pollers: IStatePoller[]) {
  * Call this after a batch of operations instead of each item, as calls can take a while.
  */
 export function log(eventName: string, data?: any) {
-    
+
     data = data || {};
     
     if (_ajaxCaller == undefined) {

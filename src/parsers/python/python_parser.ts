@@ -79,7 +79,7 @@ export interface ILocation {
 
 export interface ILocatable {
     location: ILocation;
-    cellId?: string;
+    cellPersistentId?: string;
     executionCount?: number;
 }
 

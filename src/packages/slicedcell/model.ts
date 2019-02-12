@@ -9,7 +9,7 @@ export interface ISlicedCellModel extends CodeEditor.IModel {
     /**
      * A unique ID for a cell.
      */
-    readonly cellId: string;
+    readonly cellPersistentId: string;
 
     /**
      * The execution count for the cell.
@@ -38,7 +38,7 @@ export class SlicedCellModel extends CodeEditor.Model implements ISlicedCellMode
     constructor(options: SlicedCellModel.IOptions) {
         super({ modelDB: options.modelDB });
 
-        this._cellId = options.cellId;
+        this._cellPersistentId = options.cellPersistentId;
         this._executionCount = options.executionCount;
         this._sourceCode = options.sourceCode;
         this._diff = options.diff;
@@ -50,8 +50,8 @@ export class SlicedCellModel extends CodeEditor.Model implements ISlicedCellMode
     /**
      * Get the cell ID.
      */
-    get cellId(): string {
-        return this._cellId;
+    get cellPersistentId(): string {
+        return this._cellPersistentId;
     }
 
     /**
@@ -76,7 +76,7 @@ export class SlicedCellModel extends CodeEditor.Model implements ISlicedCellMode
         return this._diff;
     }
 
-    private _cellId: string;
+    private _cellPersistentId: string;
     private _executionCount: number;
     private _sourceCode: string;
     private _diff:Diff;
@@ -93,7 +93,7 @@ export namespace SlicedCellModel {
         /**
          * A unique ID for a cell.
          */
-        cellId: string;
+        cellPersistentId: string;
 
         /**
          * The execution count for the cell.

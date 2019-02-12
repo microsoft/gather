@@ -1,14 +1,15 @@
 /**
  * Helpers for marking up CodeMirror editors.
  */
-import { ISyntaxNode, ILocation } from "../../parsers/python/python_parser";
-import { SymbolType, Ref } from "../../slicing/DataflowAnalysis";
-import { GatherModel, IGatherObserver, GatherEventData, GatherModelEvent, EditorDef, DefSelection, OutputSelection, CellOutput } from "../gather";
-import { ICell } from "./model";
+import { NotebookPanel } from "@jupyterlab/notebook";
+import { LineHandle } from "../../../node_modules/@types/codemirror";
+import { NotebookElementFinder } from "../../lab/element-finder";
+import { ILocation, ISyntaxNode } from "../../parsers/python/python_parser";
+import { Ref, SymbolType } from "../../slicing/DataflowAnalysis";
 import { SlicedExecution } from "../../slicing/ExecutionSlicer";
 import { log } from "../../utils/log";
-import { LineHandle } from "../../../node_modules/@types/codemirror";
-import { CellProgram } from "../../slicing/ProgramBuilder";
+import { CellOutput, DefSelection, EditorDef, GatherEventData, GatherModel, GatherModelEvent, IGatherObserver, OutputSelection } from "../gather";
+import { ICell } from "./model";
 
 /**
  * Class for a highlighted, clickable output.
@@ -52,70 +53,33 @@ function clearSelectionsInWindow() {
 }
 
 /**
- * Resolves cells to active editors in the notebook.
- * Necessary because most of the cell data passed around the notebook are clones with editors
- * that aren't actually active on the page.
- */
-export interface ICellEditorResolver {
-    /**
-     * Get the active CodeMirror editor for this cell.
-     */
-    resolve(cell: ICell): CodeMirror.Editor;
-
-    /**
-     * Additionally filter to make sure the execution count matches.
-     * (Don't call this right after a cell execution event, as it takes a while for the
-     * execution count to update in an executed cell).
-     */
-    resolveWithExecutionCount(cell: ICell): CodeMirror.Editor;
-}
-
-/**
- * Resolves cells to their program information (parse tree, definitions, etc.)
- * This makes sure we don't have to do any parsing / dataflow analysis within
- * this display module.
- */
-export interface ICellProgramResolver {
-    resolve(cell: ICell): CellProgram;
-}
-
-/**
- * Resolves cells to the HTML elements for their outputs.
- */
-export interface ICellOutputResolver {
-    /**
-     * Get the divs containing output for this cell.
-     * Currently, we recommend implementations don't pay attention to the execution
-     * count, but just get the outputs for a cell with an ID.
-     */
-    resolve(cell: ICell): HTMLElement[];
-}
-
-/**
  * Adds and manages text markers.
  */
 export class MarkerManager implements IGatherObserver {
-    /**
-     * Construct a new marker manager.
-     */
-    constructor(model: GatherModel, cellProgramResolver: ICellProgramResolver,
-            cellEditorResolver: ICellEditorResolver,
-            cellOutputResolver: ICellOutputResolver) {
-        this._model = model;
-        this._model.addObserver(this);
-        this._cellProgramResolver = cellProgramResolver;
-        this._cellEditorResolver = cellEditorResolver;
-        this._cellOutputResolver = cellOutputResolver;
-    }
 
     private _model: GatherModel;
-    private _cellProgramResolver: ICellProgramResolver;
-    private _cellEditorResolver: ICellEditorResolver;
-    private _cellOutputResolver: ICellOutputResolver;
+    private _elementFinder: NotebookElementFinder;
     private _defMarkers: DefMarker[] = [];
     private _defLineHandles: DefLineHandle[] = [];
     private _outputMarkers: OutputMarker[] = [];
     private _dependencyLineMarkers: DependencyLineMarker[] = [];
+
+    /**
+     * Construct a new marker manager.
+     */
+    constructor(model: GatherModel, notebook: NotebookPanel) {
+        this._model = model;
+        this._model.addObserver(this);
+        this._elementFinder = new NotebookElementFinder(notebook);
+
+        /*
+         * XXX(andrewhead): Sometimes in Chrome or Edge, "click" events get dropped when the click
+         * occurs on the cell. Mouseup doesn't, so we use that here.
+         */
+        notebook.content.node.addEventListener("mouseup", (event: MouseEvent) => {
+            this.handleClick(event);
+        });
+    }
 
     /**
      * Click-handler---pass on click event to markers.
@@ -135,11 +99,11 @@ export class MarkerManager implements IGatherObserver {
         if (eventType == GatherModelEvent.CELL_EXECUTED) {
             let cell = eventData as ICell;
             this.clearSelectablesForCell(cell);
-            let editor = this._cellEditorResolver.resolve(cell);
+            let editor = this._elementFinder.getEditor(cell);
             if (editor) {
                 this.highlightDefs(editor, cell);
             }
-            let outputElements = this._cellOutputResolver.resolve(cell);
+            let outputElements = this._elementFinder.getOutputs(cell);
             this.highlightOutputs(cell, outputElements);
         }
 
@@ -206,7 +170,7 @@ export class MarkerManager implements IGatherObserver {
             let defSelection = eventData as DefSelection;
             this._defMarkers.filter(marker => {
                 return defSelection.editorDef.def.location == marker.location &&
-                    defSelection.cell.id == marker.cell.id;
+                    defSelection.cell.persistentId == marker.cell.persistentId;
             }).forEach(marker => marker.deselect());
 
             let editorDef = defSelection.editorDef;
@@ -224,7 +188,7 @@ export class MarkerManager implements IGatherObserver {
             let outputSelection = eventData as OutputSelection;
             this._outputMarkers.filter(marker => {
                 return marker.outputIndex == outputSelection.outputIndex &&
-                    marker.cell.id == outputSelection.cell.id;
+                    marker.cell.persistentId == outputSelection.cell.persistentId;
             }).forEach(marker => marker.deselect());
         }
 
@@ -290,15 +254,19 @@ export class MarkerManager implements IGatherObserver {
      * Clear all def markers that belong to this editor.
      */
     clearSelectablesForCell(cell: ICell) {
-        this._model.removeEditorDefsForCell(cell.id);
-        this._model.deselectOutputsForCell(cell.id);
+        this._model.removeEditorDefsForCell(cell.persistentId);
+        this._model.deselectOutputsForCell(cell.persistentId);
     }
 
     /**
      * Highlight all of the definitions in an editor.
      */
     highlightDefs(editor: CodeMirror.Editor, cell: ICell) {
-        let cellProgram = this._cellProgramResolver.resolve(cell);
+        /**
+         * Fetch the cell program instead of recomputing it, as it can stall the interface if we
+         * analyze the code here.
+         */
+        let cellProgram = this._model.getCellProgram(cell);
         if (!cellProgram.hasError) {
             for (let ref of cellProgram.defs) {
                 if (ref.type == SymbolType.VARIABLE) {
@@ -329,7 +297,7 @@ export class MarkerManager implements IGatherObserver {
         slice.cellSlices.forEach(cellSlice => {
             let cell = cellSlice.cell;
             let sliceLocations = cellSlice.slice;
-            let editor = this._cellEditorResolver.resolveWithExecutionCount(cell);
+            let editor = this._elementFinder.getEditorWithExecutionCount(cell);
 
             if (editor) {
                 let numLines = 0;

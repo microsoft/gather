@@ -8,11 +8,17 @@ import { DataflowAnalyzer } from "./DataflowAnalysis";
  */
 export class CellExecution {
     constructor(
-        public cellId: string,
-        public executionCount: number,
-        public executionTime: Date,
-        public hasError: boolean
+        public readonly cell: ICell,
+        public readonly executionTime: Date
     ) { }
+
+    /**
+     * Update this method if at some point we only want to save some about a CellExecution when
+     * serializing it and saving history.
+     */
+    toJSON(): any {
+        return JSON.parse(JSON.stringify(this));
+    }
 }
 
 /**
@@ -25,18 +31,18 @@ export class SlicedExecution {
     ) { }
 
     merge(...slicedExecutions: SlicedExecution[]): SlicedExecution {
-        let cellSlices: { [ cellId: string ]: { [ executionCount: number ]: CellSlice }} = {};
+        let cellSlices: { [ cellPersistentId: string ]: { [ executionCount: number ]: CellSlice }} = {};
         let mergedCellSlices = [];
         for (let slicedExecution of slicedExecutions.concat(this)) {
             for (let cellSlice of slicedExecution.cellSlices) {
                 let cell = cellSlice.cell;
-                if (!cellSlices.hasOwnProperty(cell.id)) cellSlices[cell.id] = {};
-                if (!cellSlices[cell.id].hasOwnProperty(cell.executionCount)) {
+                if (!cellSlices.hasOwnProperty(cell.persistentId)) cellSlices[cell.persistentId] = {};
+                if (!cellSlices[cell.persistentId].hasOwnProperty(cell.executionCount)) {
                     let newCellSlice = new CellSlice(cell.copy(), new LocationSet(), cellSlice.executionTime);
-                    cellSlices[cell.id][cell.executionCount] = newCellSlice;
+                    cellSlices[cell.persistentId][cell.executionCount] = newCellSlice;
                     mergedCellSlices.push(newCellSlice);
                 }
-                let mergedCellSlice = cellSlices[cell.id][cell.executionCount];
+                let mergedCellSlice = cellSlices[cell.persistentId][cell.executionCount];
                 mergedCellSlice.slice = mergedCellSlice.slice.union(cellSlice.slice);
             }
         }
@@ -65,11 +71,20 @@ export class ExecutionLogSlicer {
     }
 
     /**
-     * Add a cell execution to the log.
+     * Log that a cell has just been executed.
      */
     public logExecution(cell: ICell) {
-        this._programBuilder.add(cell);
-        this._executionLog.push(new CellExecution(cell.id, cell.executionCount, new Date(), cell.hasError));
+        let cellExecution = new CellExecution(cell, new Date());
+        this.addExecutionToLog(cellExecution);
+    }
+
+    /**
+     * Use logExecution instead if a cell has just been run. This function is intended to be used
+     * only to initialize history when a notebook is reloaded.
+     */
+    public addExecutionToLog(cellExecution: CellExecution) {
+        this._programBuilder.add(cellExecution.cell);
+        this._executionLog.push(cellExecution);
     }
 
     /**
@@ -96,19 +111,19 @@ export class ExecutionLogSlicer {
     public sliceAllExecutions(cell: ICell, pSeedLocations?: LocationSet): SlicedExecution[] {
 
         // Make a map from cells to their execution times.
-        let cellExecutionTimes:  { [cellId: string]: { [executionCount: number]: Date } } = {};
+        let cellExecutionTimes:  { [cellPersistentId: string]: { [executionCount: number]: Date } } = {};
         for (let execution of this._executionLog) {
-            if (!cellExecutionTimes[execution.cellId]) cellExecutionTimes[execution.cellId] = {};
-            cellExecutionTimes[execution.cellId][execution.executionCount] = execution.executionTime;
+            if (!cellExecutionTimes[execution.cell.persistentId]) cellExecutionTimes[execution.cell.persistentId] = {};
+            cellExecutionTimes[execution.cell.persistentId][execution.cell.executionCount] = execution.executionTime;
         }
 
         return this._executionLog
-            .filter(execution => execution.cellId == cell.id)
-            .filter(execution => execution.executionCount != undefined)
+            .filter(execution => execution.cell.persistentId == cell.persistentId)
+            .filter(execution => execution.cell.executionCount != undefined)
             .map(execution => {
 
                 // Build the program up to that cell.
-                let program = this._programBuilder.buildTo(execution.cellId, execution.executionCount);
+                let program = this._programBuilder.buildTo(execution.cell.persistentId, execution.cell.executionCount);
                 if (program == null) return null;
 
                 // Set the seed locations for the slice.
@@ -124,7 +139,7 @@ export class ExecutionLogSlicer {
                 }
 
                 // Set seed locations were specified relative to the last cell's position in program.
-                let lastCellLines = program.cellToLineMap[execution.cellId][execution.executionCount];
+                let lastCellLines = program.cellToLineMap[execution.cell.persistentId][execution.cell.executionCount];
                 let lastCellStart = Math.min(...lastCellLines.items);
                 seedLocations = new LocationSet(
                     ...seedLocations.items.map(loc => {
@@ -146,7 +161,7 @@ export class ExecutionLogSlicer {
                 let cellOrder = new Array<ICell>();
                 sliceLocations.forEach(location => {
                     let sliceCell = program.lineToCellMap[location.first_line];
-                    let sliceCellLines = program.cellToLineMap[sliceCell.id][sliceCell.executionCount];
+                    let sliceCellLines = program.cellToLineMap[sliceCell.persistentId][sliceCell.executionCount];
                     let sliceCellStart = Math.min(...sliceCellLines.items);
                     if (cellOrder.indexOf(sliceCell) == -1) {
                         cellOrder.push(sliceCell);
@@ -157,25 +172,29 @@ export class ExecutionLogSlicer {
                         last_line: location.last_line - sliceCellStart + 1,
                         last_column: location.last_column
                     };
-                    if (!cellSliceLocations[sliceCell.id]) cellSliceLocations[sliceCell.id] = {};
-                    if (!cellSliceLocations[sliceCell.id][sliceCell.executionCount]) {
-                        cellSliceLocations[sliceCell.id][sliceCell.executionCount] = new LocationSet();
+                    if (!cellSliceLocations[sliceCell.persistentId]) cellSliceLocations[sliceCell.persistentId] = {};
+                    if (!cellSliceLocations[sliceCell.persistentId][sliceCell.executionCount]) {
+                        cellSliceLocations[sliceCell.persistentId][sliceCell.executionCount] = new LocationSet();
                     }
-                    cellSliceLocations[sliceCell.id][sliceCell.executionCount].add(adjustedLocation);
+                    cellSliceLocations[sliceCell.persistentId][sliceCell.executionCount].add(adjustedLocation);
                 });
 
                 let cellSlices = cellOrder.map((sliceCell): CellSlice => {
                     let executionTime = undefined;
-                    if (cellExecutionTimes[sliceCell.id] && cellExecutionTimes[sliceCell.id][sliceCell.executionCount]) {
-                        executionTime = cellExecutionTimes[sliceCell.id][sliceCell.executionCount];
+                    if (cellExecutionTimes[sliceCell.persistentId] && cellExecutionTimes[sliceCell.persistentId][sliceCell.executionCount]) {
+                        executionTime = cellExecutionTimes[sliceCell.persistentId][sliceCell.executionCount];
                     }
                     return new CellSlice(sliceCell,
-                        cellSliceLocations[sliceCell.id][sliceCell.executionCount],
+                        cellSliceLocations[sliceCell.persistentId][sliceCell.executionCount],
                         executionTime);
                 });
                 return new SlicedExecution(execution.executionTime, cellSlices);
             })
             .filter((s) => s != null && s != undefined);
+    }
+
+    get cellExecutions(): ReadonlyArray<CellExecution> {
+        return this._executionLog;
     }
 
     /**

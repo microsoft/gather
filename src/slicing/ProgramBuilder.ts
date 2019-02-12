@@ -85,7 +85,7 @@ export class ProgramBuilder {
                     // Sanity check that this is actually a node.
                     if (node.hasOwnProperty("type")) {
                         node.executionCount = cell.executionCount;
-                        node.cellId = cell.id;
+                        node.cellPersistentId = cell.persistentId;
                     }
                 }
                 // By querying for defs and uses right when a cell is added to the log, we
@@ -122,10 +122,10 @@ export class ProgramBuilder {
      * Build a program from the list of cells. Program will include the cells' contents in
      * execution order. It will omit cells that raised errors (syntax or runtime).
      */
-    buildTo(cellId: string, executionCount?: number): Program {
+    buildTo(cellPersistentId: string, executionCount?: number): Program {
 
         let cellVersions = this._cellPrograms
-            .filter(cp => cp.cell.id == cellId)
+            .filter(cp => cp.cell.persistentId == cellPersistentId)
             .map(cp => cp.cell);
         let lastCell: ICell;
         if (executionCount) {
@@ -166,11 +166,11 @@ export class ProgramBuilder {
             for (let l = 0; l < cellLength; l++) { cellLines.push(currentLine + l); }
             cellLines.forEach(l => {
                 lineToCellMap[l] = cell;
-                if (!cellToLineMap[cell.id]) cellToLineMap[cell.id] = {};
-                if (!cellToLineMap[cell.id][cell.executionCount]) {
-                    cellToLineMap[cell.id][cell.executionCount] = new NumberSet();
+                if (!cellToLineMap[cell.persistentId]) cellToLineMap[cell.persistentId] = {};
+                if (!cellToLineMap[cell.persistentId][cell.executionCount]) {
+                    cellToLineMap[cell.persistentId][cell.executionCount] = new NumberSet();
                 }
-                cellToLineMap[cell.id][cell.executionCount].add(l);
+                cellToLineMap[cell.persistentId][cell.executionCount].add(l);
             });
 
             // Accumulate the code text.
@@ -207,12 +207,12 @@ export class ProgramBuilder {
         let lastCell = this._cellPrograms
             .filter(cp => cp.cell.executionCount != null)
             .sort((cp1, cp2) => cp1.cell.executionCount - cp2.cell.executionCount).pop();
-        return this.buildTo(lastCell.cell.id);
+        return this.buildTo(lastCell.cell.persistentId);
     }
 
     getCellProgram(cell: ICell): CellProgram {
         let matchingPrograms = this._cellPrograms.filter(
-            (cp) => cp.cell.id == cell.id && cp.cell.executionCount == cell.executionCount);
+            (cp) => cp.cell.persistentId == cell.persistentId && cp.cell.executionCount == cell.executionCount);
         if (matchingPrograms.length >= 1) return matchingPrograms.pop();
         return null;
     }

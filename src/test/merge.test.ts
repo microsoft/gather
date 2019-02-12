@@ -9,12 +9,14 @@ describe('SlicedExecution', () => {
         let newCell = {
             is_cell: true,
             id: id,
+            persistentId: "persistent-id",
             executionCount: executionCount,
             text: codeLines.join('\n'),
             hasError: false,
             isCode: true,
             gathered: false,
-            copy: () => newCell
+            copy: () => newCell,
+            toJupyterJSON: () => {}
         };
         return newCell;
     }

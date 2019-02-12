@@ -13,7 +13,7 @@ import { GatherModel } from '../gather';
  */
 export function buildHistoryModel<TOutputModel>(
     gatherModel: GatherModel,
-    selectedCellId: string,
+    selectedCellPersistentId: string,
     executionVersions: SlicedExecution[],
     includeOutput?: boolean
 ): HistoryModel<TOutputModel> {
@@ -22,9 +22,9 @@ export function buildHistoryModel<TOutputModel>(
     // recent version, save a mapping from cells' IDs to their content, so we can look them up to
     // make comparisons between versions of cells.
     let lastestVersion = executionVersions[executionVersions.length - 1];
-    let latestCellVersions: { [cellId: string]: CellSlice } = {};
+    let latestCellVersions: { [cellPersistentId: string]: CellSlice } = {};
     lastestVersion.cellSlices.forEach(cellSlice => {
-        latestCellVersions[cellSlice.cell.id] = cellSlice;
+        latestCellVersions[cellSlice.cell.persistentId] = cellSlice;
     });
 
     // Compute diffs between each of the previous revisions and the current revision.
@@ -38,7 +38,7 @@ export function buildHistoryModel<TOutputModel>(
         executionVersion.cellSlices.forEach(function (cellSlice) {
 
             let cell = cellSlice.cell;
-            let recentCellVersion = latestCellVersions[cell.id];
+            let recentCellVersion = latestCellVersions[cell.persistentId];
             let latestText: string = "";
             if (recentCellVersion) {
                 latestText = recentCellVersion.textSlice;
@@ -48,7 +48,7 @@ export function buildHistoryModel<TOutputModel>(
             let diff = computeTextDiff(latestText, thisVersionText);
 
             let slicedCell: SlicedCellModel = new SlicedCellModel({
-                cellId: cell.id,
+                cellPersistentId: cell.persistentId,
                 executionCount: cell.executionCount,
                 sourceCode: diff.text,
                 diff: diff
@@ -60,7 +60,7 @@ export function buildHistoryModel<TOutputModel>(
         if (includeOutput) {
             let selectedCell: ICell = null;
             executionVersion.cellSlices.map(cs => cs.cell).forEach(function (cellModel) {
-                if (cellModel.id == selectedCellId) {
+                if (cellModel.persistentId == selectedCellPersistentId) {
                     selectedCell = cellModel;
                 }
             });

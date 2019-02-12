@@ -2,9 +2,10 @@ import { IGatherObserver, GatherModel, GatherModelEvent, GatherEventData, Gather
 import { ExecutionLogSlicer } from "../../slicing/ExecutionSlicer";
 import { DefSelection, OutputSelection } from "./selections";
 import { LocationSet } from "../../slicing/Slice";
-import { ICellClipboard } from "./clipboard";
-import { INotebookOpener, IScriptOpener } from "./opener";
 import { log } from "../../utils/log";
+import { NotebookOpener, ScriptOpener, Clipboard } from "../../lab/gather-actions";
+import { DocumentManager } from "@jupyterlab/docmanager";
+import { INotebookTracker } from "@jupyterlab/notebook";
 
 /**
  * Controller for updating the gather model.
@@ -13,13 +14,12 @@ export class GatherController implements IGatherObserver {
     /**
      * Constructor for gather controller.
      */
-    constructor(model: GatherModel, executionSlicer: ExecutionLogSlicer, clipboard: ICellClipboard,
-        notebookOpener?: INotebookOpener, scriptOpener?: IScriptOpener) {
+    constructor(model: GatherModel, documentManager: DocumentManager, notebooks: INotebookTracker) {
         model.addObserver(this);
-        this._executionSlicer = executionSlicer;
-        this._cellClipboard = clipboard;
-        this._notebookOpener = notebookOpener;
-        this._scriptOpener = scriptOpener;
+        this._executionSlicer = model.executionLog;
+        this._cellClipboard = Clipboard.getInstance();
+        this._notebookOpener = new NotebookOpener(documentManager, notebooks);
+        this._scriptOpener = new ScriptOpener(documentManager, notebooks);
     }
 
     /**
@@ -103,7 +103,7 @@ export class GatherController implements IGatherObserver {
     }
 
     private _executionSlicer: ExecutionLogSlicer;
-    private _cellClipboard: ICellClipboard;
-    private _notebookOpener: INotebookOpener;
-    private _scriptOpener: IScriptOpener;
+    private _cellClipboard: Clipboard;
+    private _notebookOpener: NotebookOpener;
+    private _scriptOpener: ScriptOpener;
 }
