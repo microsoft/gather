@@ -15,7 +15,7 @@
     "watch_nb_extension": "npx webpack -w",
     "install_nb_extension": "jupyter nbextension install dist && jupyter nbextension enable dist/gather",
     "prepack": "npm run clean && npm run build_parser && npm run build",
-    "clean": "rimraf lib",
+    "clean": "rm -rf lib",
     "watch": "tsc -w",
     "test": "mocha -r ts-node/register src/test/*.test.ts"
   },
