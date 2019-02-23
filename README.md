@@ -22,7 +22,17 @@ jupyter lab --watch           # launch Jupyter Lab, automatically re-load extens
 
 These setup instructions have been successfully completed with Node v9.5.0.
 
-### Upload the extension
+### Testing the extension
+
+#### Sharing a compiled version
+
+```bash
+npm pack  # output is <package-name>-<version>.tgz
+# Then, on the installer's computer
+jupyter labextension install <package-name>-<version>.tgz
+```
+
+#### Publishing to a private repository
 
 ```bash
 npm login
