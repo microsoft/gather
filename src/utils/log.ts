@@ -1,3 +1,7 @@
+import { ISettingRegistry } from "@jupyterlab/coreutils";
+import { JSONExt, JSONObject } from "@phosphor/coreutils";
+import * as $ from "jquery";
+
 /**
  * Interface for calling Ajax. 
  */
@@ -14,7 +18,8 @@ export interface AjaxCaller {
 /**
  * Utility for calling Jupyter server using AJAX.
  */
-let _ajaxCaller: AjaxCaller = undefined;
+// let _ajaxCaller: AjaxCaller = undefined;
+let _settingRegistry: ISettingRegistry;
 let _showedLogUninitializedError = false;
 
 /**
@@ -22,8 +27,9 @@ let _showedLogUninitializedError = false;
  * logger is that notebook requires requests with XSRF tokens. The right Ajax caller is the one
  * that's built into Jupyter notebook or lab that passes these tokens.
  */
-export function initLogger(ajaxCaller: AjaxCaller) {
-    _ajaxCaller = ajaxCaller;
+export function initLogger(settingRegistry: ISettingRegistry) {
+    // _ajaxCaller = ajaxCaller;
+    _settingRegistry = settingRegistry;
 }
 
 let _statePollers: IStatePoller[] = [];
@@ -54,6 +60,9 @@ export function log(eventName: string, data?: any) {
 
     data = data || {};
     
+    let _ajaxCaller = $;
+    let LOG_ENDPOINT = 'https://clarence.eecs.berkeley.edu';
+
     if (_ajaxCaller == undefined) {
         if (_showedLogUninitializedError == false) {
             console.info("Logger not initialized, skipping logging");
@@ -66,29 +75,39 @@ export function log(eventName: string, data?: any) {
     let postData: any = {
         timestamp: new Date().toISOString(),
         event: eventName,
-        data: data
+        data: data,
+        userEmail: undefined,
     };
+    
+    if (_settingRegistry != undefined || _settingRegistry != null) {
+        _settingRegistry.get('gather:plugin', 'gatheringConfig').then((data) => {
+            if (JSONExt.isObject(data.composite)) {
+                let dataCompositeObject = data.composite as JSONObject;
+                postData.userEmail = dataCompositeObject['userEmail'];
 
-    // Poll for additional data from each state poller.
-    for (let poller of _statePollers) {
-        let pollData = poller.poll();
-        for (let k in pollData) {
-            if (pollData.hasOwnProperty(k)) {
-                postData[k] = pollData[k];
+                // Poll for additional data from each state poller.
+                for (let poller of _statePollers) {
+                    let pollData = poller.poll();
+                    for (let k in pollData) {
+                        if (pollData.hasOwnProperty(k)) {
+                            postData[k] = pollData[k];
+                        }
+                    }
+                }
+
+                // Submit data to logger endpoint.
+                _ajaxCaller.ajax(LOG_ENDPOINT + "/save", {
+                    // If there is any sensitive data to be logged, it should first be cleaned through a
+                    // `toJSON` method defined on a class, or manually before passing it into this method.
+                    // Earlier, we used the replacer argument to JSON.stringify, but it takes too much time
+                    // to apply replacers to every value in the resulting JSON.
+                    data: JSON.stringify(postData),
+                    method: "POST",
+                    error: (_: any, textStatus: string, errorThrown: string) => {
+                        console.error("Failed to log", textStatus, errorThrown);
+                    }
+                });
             }
-        }
+        });
     }
-
-    // Submit data to logger endpoint.
-    _ajaxCaller.ajax("/log", {
-        // If there is any sensitive data to be logged, it should first be cleaned through a
-        // `toJSON` method defined on a class, or manually before passing it into this method.
-        // Earlier, we used the replacer argument to JSON.stringify, but it takes too much time
-        // to apply replacers to every value in the resulting JSON.
-        data: JSON.stringify(postData),
-        method: "POST",
-        error: (_: any, textStatus: string, errorThrown: string) => {
-            console.error("Failed to log", textStatus, errorThrown);
-        }
-    });
 }

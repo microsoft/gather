@@ -22,6 +22,13 @@ jupyter lab --watch           # launch Jupyter Lab, automatically re-load extens
 
 These setup instructions have been successfully completed with Node v9.5.0.
 
+### Upload the extension
+
+```bash
+npm login
+npm publish --access=restricted  # make this public eventually
+```
+
 ### Pre-alpha Jupyter notebook version
 
 This project was initially developed as a Jupyter notebook extension. It is not being maintained, as it requires access to the internal API, including parts that change across minor versions. Still, if you want to build and install the notebook version, run these commands:

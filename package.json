@@ -1,7 +1,7 @@
 {
-  "name": "gathering",
+  "name": "@andrewhead/gather",
   "version": "0.2.0",
-  "description": "Add live programming to Jupyter cells",
+  "description": "Tools for cleaning and recovering code in Jupyter Lab",
   "author": "",
   "main": "lib/lab/index.js",
   "keywords": [
@@ -20,11 +20,13 @@
     "test": "mocha -r ts-node/register src/test/*.test.ts"
   },
   "files": [
+    "schema/*.json",
     "lib/**/*.{d.ts,eot,gif,html,jpg,js,js.map,json,png,svg,woff2,ttf}",
     "style/**/*.{css,eot,gif,html,jpg,json,png,svg,woff2,ttf}"
   ],
   "jupyterlab": {
-    "extension": true
+    "extension": true,
+    "schemaDir": "schema"
   },
   "dependencies": {
     "@jupyterlab/application": "^0.19.1",

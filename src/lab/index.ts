@@ -11,7 +11,7 @@ import { MarkerManager } from '../packages/cell';
 import { GatherController, GatherModel, GatherState } from '../packages/gather';
 import { DataflowAnalyzer } from '../slicing/DataflowAnalysis';
 import { ExecutionLogSlicer } from '../slicing/ExecutionSlicer';
-import { log } from '../utils/log';
+import { log, initLogger } from '../utils/log';
 import { ExecutionLogger } from './execution-logger';
 import { GatherModelRegistry, getGatherModelForActiveNotebook } from './gather-registry';
 import { NotifactionExtension as NotificationExtension } from './notification';
@@ -20,12 +20,13 @@ import { ResultsHighlighter } from './results';
 import '../../style/index.css';
 import '../../style/lab-vars.css';
 import { Clipboard } from './gather-actions';
+import { ISettingRegistry } from '@jupyterlab/coreutils';
 
 
 const extension: JupyterLabPlugin<void> = {
     activate: activateExtension,
     id: 'gather:gatherPlugin',
-    requires: [ICommandPalette, INotebookTracker, IDocumentManager],
+    requires: [ICommandPalette, INotebookTracker, IDocumentManager, ISettingRegistry],
     autoStart: true
 };
 
@@ -85,7 +86,8 @@ function saveHistoryOnNotebookSave(notebook: NotebookPanel, gatherModel: GatherM
     });
 }
 
-function activateExtension(app: JupyterLab, palette: ICommandPalette, notebooks: INotebookTracker, documentManager: IDocumentManager) {
+function activateExtension(app: JupyterLab, palette: ICommandPalette, notebooks: INotebookTracker,
+    documentManager: IDocumentManager, settingRegistry: ISettingRegistry) {
 
     console.log('Activating code gathering tools...');
 
@@ -163,6 +165,9 @@ function activateExtension(app: JupyterLab, palette: ICommandPalette, notebooks:
     });
     */
 
+    // settingRegistry.set("gather:plugin", "gatheringConfig", { email: "andrewhead@berkeley.edu" });
+
+    initLogger(settingRegistry);
     console.log('Code gathering tools have been activated.');
 }
 

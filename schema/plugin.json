@@ -1,0 +1,23 @@
+{
+  "jupyter.lab.setting-icon-label": "Gather",
+  "title": "Code Gathering",
+  "description": "Settings for gathering code",
+  "definitions": {
+    "gatheringConfig": {
+      "userEmail": {
+        "type": ["string", "null", "undefined"]
+      }
+    }
+  },
+  "properties": {
+    "gatheringConfig": {
+      "title": "Code Gathering Configuration",
+      "description": "Settings for gathering cdoe",
+      "default": {
+        "userEmail": null
+      }
+    }
+  },
+  "additionalProperties": false,
+  "type": "object"
+}
