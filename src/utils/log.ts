@@ -95,13 +95,16 @@ export function log(eventName: string, data?: any) {
                     }
                 }
 
+                // If there is any sensitive data to be logged, it should first be cleaned through a
+                // `toJSON` method defined on a class, or manually before passing it into this method.
+                // Earlier, we used the replacer argument to JSON.stringify, but it takes too much time
+                // to apply replacers to every value in the resulting JSON.
+                postData.data = JSON.stringify(postData.data);
+
                 // Submit data to logger endpoint.
                 _ajaxCaller.ajax(LOG_ENDPOINT + "/save", {
-                    // If there is any sensitive data to be logged, it should first be cleaned through a
-                    // `toJSON` method defined on a class, or manually before passing it into this method.
-                    // Earlier, we used the replacer argument to JSON.stringify, but it takes too much time
-                    // to apply replacers to every value in the resulting JSON.
-                    data: JSON.stringify(postData),
+
+                    data: JSON.parse(JSON.stringify(postData)),
                     method: "POST",
                     error: (_: any, textStatus: string, errorThrown: string) => {
                         console.error("Failed to log", textStatus, errorThrown);

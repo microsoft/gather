@@ -1,6 +1,6 @@
 {
-  "name": "@andrewhead/gather",
-  "version": "0.2.0",
+  "name": "gather",
+  "version": "0.2.1",
   "description": "Tools for cleaning and recovering code in Jupyter Lab",
   "author": "",
   "main": "lib/lab/index.js",
