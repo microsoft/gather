@@ -35,10 +35,15 @@ export interface ICell {
     readonly is_cell: boolean;
 
     /**
-     * Create a deep copy of the cell. Copies will have all the same properties, except for the
-     * persistent ID, which should be entirely new.
+     * Create a deep copy of the cell.
      */
-    copy: () => ICell;
+    deepCopy: () => ICell;
+
+    /**
+     * Create a new cell from this cell. The new cell will have null execution counts, and a new
+     * ID and persistent ID.
+     */
+    copyToNewCell: () => ICell;
 
     /**
      * Serialize this ICell to JSON that can be stored in a notebook file, or which can be used to
@@ -61,7 +66,7 @@ export abstract class AbstractCell implements ICell {
     abstract text: string;
     abstract gathered: boolean;
     abstract outputs: nbformat.IOutput[];
-    abstract copy(): AbstractCell;
+    abstract deepCopy(): AbstractCell;
 
     /**
      * This method is called by the logger to sanitize cell data before logging it. This method
@@ -77,6 +82,21 @@ export abstract class AbstractCell implements ICell {
             hasError: this.hasError,
             gathered: this.gathered,
         };
+    }
+
+    copyToNewCell(): ICell {
+        let clonedOutputs = this.outputs.map((output) => {
+            let clone = JSON.parse(JSON.stringify(output)) as nbformat.IOutput;
+            if (nbformat.isExecuteResult(clone)) {
+                clone.execution_count = undefined;
+            }
+            return clone;
+        });
+        return new SimpleCell({
+            text: this.text,
+            hasError: this.hasError,
+            outputs: clonedOutputs
+        });
     }
 
     serialize(): nbformat.ICodeCell {
@@ -96,21 +116,23 @@ export abstract class AbstractCell implements ICell {
 
 export class SimpleCell extends AbstractCell {
 
-    constructor(id: string, executionCount: number,
-            hasError: boolean, text: string, outputs: nbformat.IOutput[], persistentId?: string) {
+    constructor(cellData: {
+        id?: string, persistentId?: string, executionCount?: number, hasError?: boolean,
+        text?: string, outputs?: nbformat.IOutput[]
+    }) {
         super();
         this.is_cell = true;
-        this.id = id;
-        this.persistentId = persistentId ? persistentId : UUID.uuid4.toString();
-        this.executionCount = executionCount;
-        this.hasError = hasError;
-        this.text = text;
-        this.outputs = outputs;
+        this.id = cellData.id || UUID.uuid4();
+        this.persistentId = cellData.persistentId || UUID.uuid4();
+        this.executionCount = cellData.executionCount || undefined;
+        this.hasError = cellData.hasError || false;
+        this.text = cellData.text || "";
+        this.outputs = cellData.outputs || [];
         this.gathered = false;
     }
 
-    copy(): SimpleCell {
-        return new SimpleCell(this.id, this.executionCount, this.hasError, this.text, this.outputs);
+    deepCopy(): AbstractCell {
+        return new SimpleCell(this);
     }
 
     readonly is_cell: boolean;

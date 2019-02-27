@@ -5,14 +5,7 @@ import { nbformat } from "@jupyterlab/coreutils";
 import { AbstractCell } from "../packages/cell";
 
 /**
- * Create a new cell with the same ID and content.
- */
-export function copyICodeCellModel(cell: ICodeCellModel): ICodeCellModel {
-    return new CodeCellModel({ id: cell.id, cell: cell.toJSON() });
-}
-
-/**
- * Implementation of SliceableCell for Jupyter Lab. Wrapper around the ICodeCellModel.
+ * Abstract interface to data of a Jupyter Lab code cell.
  */
 export class LabCell extends AbstractCell {
 
@@ -78,9 +71,8 @@ export class LabCell extends AbstractCell {
         return this._model.metadata.get("gathered") as boolean;
     }
 
-    copy(): LabCell {
-        let clonedModel = copyICodeCellModel(this._model);
-        return new LabCell(clonedModel);
+    deepCopy(): LabCell {
+        return new LabCell(new CodeCellModel({ id: this.id, cell: this.toJSON() }));
     }
 
     serialize(): any {

@@ -1,7 +1,6 @@
-import { NumberSet, range } from "./Set";
+import { NumberSet, range, Set } from "./Set";
 import { ControlFlowGraph } from "./ControlFlowAnalysis";
 import { ILocation, parse, IModule } from "../parsers/python/python_parser";
-import { Set } from "./Set";
 import { DataflowAnalyzer } from "./DataflowAnalysis";
 
 export enum DataflowDirection { Forward, Backward };

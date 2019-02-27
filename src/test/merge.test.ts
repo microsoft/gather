@@ -1,23 +1,12 @@
 import { expect } from "chai";
 import { LocationSet } from "../slicing/Slice";
 import { SlicedExecution } from "../slicing/ExecutionSlicer";
-import { ICell, CellSlice } from "../packages/cell";
+import { ICell, CellSlice, SimpleCell } from "../packages/cell";
 
 describe('SlicedExecution', () => {
 
-    function cell(id: string, executionCount: number, ...codeLines: string[]): ICell {
-        return {
-            is_cell: true,
-            id: id,
-            persistentId: "persistent-id",
-            executionCount: executionCount,
-            text: codeLines.join('\n'),
-            hasError: false,
-            outputs: [],
-            gathered: false,
-            copy: () => null,
-            serialize: () => null
-        };
+    function cell(persistentId: string, executionCount: number, ...codeLines: string[]): ICell {
+        return new SimpleCell({ executionCount, text: codeLines.join("\n"), persistentId });
     }
 
     function cellSlice(cell: ICell, slice: LocationSet): CellSlice {
@@ -54,8 +43,8 @@ describe('SlicedExecution', () => {
                     new LocationSet(location(1, 0, 1, 5))
                 ));
             let merged = slice1.merge(slice2);
-            expect(merged.cellSlices[0].cell.id).to.equal("1");
-            expect(merged.cellSlices[1].cell.id).to.equal("2");
+            expect(merged.cellSlices[0].cell.persistentId).to.equal("1");
+            expect(merged.cellSlices[1].cell.persistentId).to.equal("2");
         });
 
         it('will not include the same locations from the same cell twice', () => {

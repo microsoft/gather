@@ -145,12 +145,17 @@ function getCellsJsonForSlice(slice: SlicedExecution, outputSelections?: OutputS
         .map((cellSlice) => {
             let slicedCell = cellSlice.cell;
             if (SHOULD_SLICE_CELLS) {
-                slicedCell = slicedCell.copy();
+                slicedCell = slicedCell.deepCopy();
                 slicedCell.text = cellSlice.textSliceLines;
             }
             let cellJson = slicedCell.serialize();
             // This new cell hasn't been executed yet. So don't mark it as having been executed.
             cellJson.execution_count = null;
+            for (let output of cellJson.outputs) {
+                if (nbformat.isExecuteResult(output)) {
+                    output.execution_count = null;
+                }
+            }
             // Add a flag to distinguish gathered cells from other cells.
             if (!cellJson.hasOwnProperty("metadata")) {
                 cellJson.metadata = {};

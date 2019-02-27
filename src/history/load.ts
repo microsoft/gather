@@ -107,6 +107,6 @@ function _loadExecutionFromJson(executionJson: JSONObject): CellExecution {
     /**
      * TODO(andrewhead): Update with Kunal's code for serializing and deserializing outputs.
      */
-    let cell = new SimpleCell(id, executionCount, hasError, text, [], persistentId);
+    let cell = new SimpleCell({ id, executionCount, hasError, text, persistentId });
     return new CellExecution(cell, executionTime);
 }

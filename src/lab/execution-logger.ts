@@ -1,7 +1,7 @@
 import { GatherModel } from "../packages/gather";
 import { IObservableList } from "@jupyterlab/observables";
 import { ICellModel, CodeCellModel } from "@jupyterlab/cells";
-import { LabCell, copyICodeCellModel } from "./LabCell";
+import { LabCell } from "./LabCell";
 import { NotebookPanel } from "@jupyterlab/notebook";
 
 export class ExecutionLogger {
@@ -20,8 +20,7 @@ export class ExecutionLogger {
         if (cellModel.type !== 'code') { return; }
         cellModel.stateChanged.connect((changedCell, cellStateChange) => {
             if (changedCell instanceof CodeCellModel && cellStateChange.name === "executionCount" && cellStateChange.newValue !== undefined && cellStateChange.newValue !== null) {
-                let cellClone = copyICodeCellModel(changedCell);
-                const cell = new LabCell(cellClone);
+                let cell = new LabCell(changedCell).deepCopy();
                 this._gatherModel.executionLog.logExecution(cell);
                 this._gatherModel.lastExecutedCell = cell;
             }
