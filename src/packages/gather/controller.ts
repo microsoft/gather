@@ -39,7 +39,7 @@ export class GatherController implements IGatherObserver {
                 } else if (newState == GatherState.GATHER_TO_NOTEBOOK) {
                     log("Gathering to notebook", { slice: mergedSlice });
                     if (this._notebookOpener !== undefined) {
-                        this._notebookOpener.openNotebookForSlice(mergedSlice);
+                        this._notebookOpener.openNotebookForSlice(mergedSlice, [...model.selectedOutputs]);
                         model.resetChosenSlices();
                     }
                 } else if (newState == GatherState.GATHER_TO_SCRIPT) {

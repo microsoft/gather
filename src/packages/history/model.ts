@@ -3,29 +3,29 @@ import { IRevisionModel } from "../revision";
 /**
  * The definition of a model object for a code history.
  */
-export interface IHistoryModel<TOutputModel> {
-    readonly revisions: ReadonlyArray<IRevisionModel<TOutputModel>>;
+export interface IHistoryModel {
+    readonly revisions: ReadonlyArray<IRevisionModel>;
 }
 
 /**
  * An implementation of the history model.
  */
-export class HistoryModel<TOutputModel> implements IHistoryModel<TOutputModel> {
+export class HistoryModel implements IHistoryModel {
     /**
      * Construct a history model
      */
-    constructor(options: HistoryModel.IOptions<TOutputModel>) {
+    constructor(options: HistoryModel.IOptions) {
         this._revisions = options.revisions;
     }
 
     /**
      * Get the versions from the history.
      */
-    get revisions(): ReadonlyArray<IRevisionModel<TOutputModel>> {
+    get revisions(): ReadonlyArray<IRevisionModel> {
         return this._revisions;
     }
 
-    private _revisions: Array<IRevisionModel<TOutputModel>> = null;
+    private _revisions: Array<IRevisionModel> = null;
 }
 
 /**
@@ -35,10 +35,10 @@ export namespace HistoryModel {
     /**
      * The options used to initialize a `HistoryModel`.
      */
-    export interface IOptions<TOutputModel> {
+    export interface IOptions {
         /**
          * Versions of the code.
          */
-        revisions?: Array<IRevisionModel<TOutputModel>>;
+        revisions?: Array<IRevisionModel>;
     }
 }

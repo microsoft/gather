@@ -106,7 +106,7 @@ export class NotebookOpener {
         this._notebooks = notebooks;
     }
 
-    openNotebookForSlice(slice: SlicedExecution) {
+    openNotebookForSlice(slice: SlicedExecution, outputSelections?: OutputSelection[]) {
         /*
          * TODO(andrewhead): give the document a context-sensitive name, say the name of the result.
          */
@@ -118,7 +118,7 @@ export class NotebookOpener {
                 let notebookJson = notebookModel.toJSON() as nbformat.INotebookContent;
                 notebookJson.cells = []
                 if (slice) {
-                    let cellsJson = getCellsJsonForSlice(slice, []);
+                    let cellsJson = getCellsJsonForSlice(slice, outputSelections);
                     for (let cell of cellsJson) {
                         notebookJson.cells.push(cell);
                     }
@@ -148,7 +148,7 @@ function getCellsJsonForSlice(slice: SlicedExecution, outputSelections?: OutputS
                 slicedCell = slicedCell.copy();
                 slicedCell.text = cellSlice.textSliceLines;
             }
-            let cellJson = slicedCell.toJupyterJSON();
+            let cellJson = slicedCell.serialize();
             // This new cell hasn't been executed yet. So don't mark it as having been executed.
             cellJson.execution_count = null;
             // Add a flag to distinguish gathered cells from other cells.

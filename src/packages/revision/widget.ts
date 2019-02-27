@@ -5,6 +5,7 @@ import { CodeVersion } from '../codeversion';
 import { GatherState } from '../gather';
 import { log } from '../../utils/log';
 import { getRelativeTime } from '../../utils/date';
+import { nbformat } from '@jupyterlab/coreutils';
 
 
 // HTML element classes for rendered revisions
@@ -17,25 +18,25 @@ const REVISION_BUTTON_CLASS         = 'jp-Revision-button';
 const REVISION_CELLS_CLASS          = 'jp-Revision-cells';
 
 
-export interface IOutputRenderer<TOutputModel> {
-    render(outputModel: TOutputModel): HTMLElement;
+export interface IOutputRenderer {
+    render(outputModel: nbformat.IOutput): HTMLElement;
 }
 
 
 export namespace Revision {
-    export interface IOptions<TOutputModel> {
-        model: IRevisionModel<TOutputModel>;
-        outputRenderer: IOutputRenderer<TOutputModel>;
+    export interface IOptions {
+        model: IRevisionModel;
+        outputRenderer: IOutputRenderer;
         now: Date; // the current time, which should be the same for all revisions
     }
 }
 
 
-export class Revision<TOutputModel> extends Widget {
+export class Revision extends Widget {
 
-    readonly model: IRevisionModel<TOutputModel>;
+    readonly model: IRevisionModel;
 
-    constructor(options: Revision.IOptions<TOutputModel>) {
+    constructor(options: Revision.IOptions) {
         super();
         this.addClass(REVISION_CLASS);
         let model = (this.model = options.model);
@@ -74,8 +75,8 @@ export class Revision<TOutputModel> extends Widget {
             model: model.source,
         }));
 
-        if (model.output) {
-            let outputElement = outputRenderer.render(model.output);
+        if (model.output && model.output.length >= 1) {
+            let outputElement = outputRenderer.render(model.output[0]);
             if (outputElement) {
                 cellsLayout.addWidget(new Widget({
                     node: outputElement

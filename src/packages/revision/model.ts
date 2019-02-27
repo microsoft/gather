@@ -1,11 +1,12 @@
 import { ICodeVersionModel } from '../codeversion/model';
 import { SlicedExecution } from '../../slicing/ExecutionSlicer';
 import { GatherModel } from '../gather';
+import { nbformat } from '@jupyterlab/coreutils';
 
 /**
  * The definition of a model object for a code version.
  */
-export interface IRevisionModel<TOutputModel> {
+export interface IRevisionModel {
     /**
      * A unique index for this code version---lower indexes were are for earlier versions.
      */
@@ -29,7 +30,7 @@ export interface IRevisionModel<TOutputModel> {
     /**
      * The result of the computation.
      */
-    readonly output: TOutputModel;
+    readonly output: nbformat.IOutput[];
 
     /**
      * Whether this revision is the latest revision.
@@ -45,11 +46,11 @@ export interface IRevisionModel<TOutputModel> {
 /**
  * An implementation of the code version model.
  */
-export class RevisionModel<TOutputModel> implements IRevisionModel<TOutputModel> {
+export class RevisionModel implements IRevisionModel {
     /**
      * Construct a code version model.
      */
-    constructor(options: RevisionModel.IOptions<TOutputModel>) {
+    constructor(options: RevisionModel.IOptions) {
         this.versionIndex = options.versionIndex;
         this._source = options.source;
         this._slice = options.slice;
@@ -86,7 +87,7 @@ export class RevisionModel<TOutputModel> implements IRevisionModel<TOutputModel>
     /**
      * Get the result of this computation.
      */
-    get output(): TOutputModel {
+    get output(): nbformat.IOutput[] {
         return this._output;
     }
 
@@ -100,7 +101,7 @@ export class RevisionModel<TOutputModel> implements IRevisionModel<TOutputModel>
     private _source: ICodeVersionModel;
     private _slice: SlicedExecution;
     private _gatherModel: GatherModel;
-    private _output: TOutputModel;
+    private _output: nbformat.IOutput[];
     private _timeCreated: Date;
 }
 
@@ -111,7 +112,7 @@ export namespace RevisionModel {
     /**
      * The options used to initialize a `CodeVerionModel`.
      */
-    export interface IOptions<TOutputModel> {
+    export interface IOptions {
         /**
          * A slice of the source code for this revision.
          */
@@ -135,7 +136,7 @@ export namespace RevisionModel {
         /**
          * The display data for the result at this version.
          */
-        output?: TOutputModel;
+        output?: nbformat.IOutput[];
 
         /**
          * Whether this revision is the latest revision.

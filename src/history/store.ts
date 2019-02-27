@@ -34,7 +34,6 @@ export function storeHistory(notebookModel: INotebookModel, executionLog: Execut
         cellJson.persistentId = cell.persistentId;
         cellJson.executionCount = cell.executionCount;
         cellJson.hasError = cell.hasError;
-        cellJson.isCode = cell.isCode;
         cellJson.text = cell.text;
 
         let cellExecutionJson = new Object(null) as CellExecutionJson;

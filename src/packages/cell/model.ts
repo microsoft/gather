@@ -1,27 +1,50 @@
 import { LocationSet } from "../../slicing/Slice";
+import { nbformat } from "@jupyterlab/coreutils";
+import { UUID } from "@phosphor/coreutils";
 
 /**
- * Generic interface for accessing cell data.
+ * Generic interface for accessing data about a code cell.
  */
 export interface ICell {
-    is_cell: boolean;
-    id: string;
+
     /**
-     * TODO(andrewhead): make sure that when a cell is copied, it doesn't have the same
-     * persistent ID.
+     * The ID assigned to a cell by Jupyter Lab. This ID may change each time the notebook is open,
+     * due to the implementation of Jupyter Lab.
      */
-    persistentId: string;
+    readonly id: string;
+
+    /**
+     * A persistent ID for this cell, that will stay the same even as the notebook is closed and
+     * re-opened. In general, all gathering functionality should refer to cells using this ID.
+     */
+    readonly persistentId: string;
+    
+    /**
+     * Whether this cell was created by gathering code.
+     */
+    gathered: boolean;
+
     executionCount: number;
     hasError: boolean;
-    isCode: boolean;
     text: string;
-    gathered: boolean;
-    copy: () => ICell; // deep copy if holding a model.
+    outputs: nbformat.IOutput[];
+
     /**
-     * Produce JSON that can be read to make a new Jupyter notebook cell.
-     * TODO(andrewhead): return JSON with cell JSON static type.
+     * Flag used for type checking.
      */
-    toJupyterJSON: () => any;
+    readonly is_cell: boolean;
+
+    /**
+     * Create a deep copy of the cell. Copies will have all the same properties, except for the
+     * persistent ID, which should be entirely new.
+     */
+    copy: () => ICell;
+
+    /**
+     * Serialize this ICell to JSON that can be stored in a notebook file, or which can be used to
+     * create a new Jupyter cell.
+     */
+    serialize: () => nbformat.ICodeCell;
 }
 
 /**
@@ -37,10 +60,12 @@ export abstract class AbstractCell implements ICell {
     abstract isCode: boolean;
     abstract text: string;
     abstract gathered: boolean;
+    abstract outputs: nbformat.IOutput[];
     abstract copy(): AbstractCell;
 
     /**
-     * Output descriptive (unsensitive) data about this cell. No code!
+     * This method is called by the logger to sanitize cell data before logging it. This method
+     * should elide any sensitive data, like the cell's text.
      */
     toJSON(): any {
         return {
@@ -54,12 +79,13 @@ export abstract class AbstractCell implements ICell {
         };
     }
 
-    toJupyterJSON(): any {
+    serialize(): nbformat.ICodeCell {
         return {
             id: this.id,
             execution_count: this.executionCount,
             source: this.text,
             cell_type: "code",
+            outputs: this.outputs,
             metadata: {
                 gathered: this.gathered,
                 persistent_id: this.persistentId,
@@ -70,60 +96,36 @@ export abstract class AbstractCell implements ICell {
 
 export class SimpleCell extends AbstractCell {
 
-    constructor(id: string, persistentId: string, executionCount: number,
-            hasError: boolean, isCode: boolean, text: string) {
+    constructor(id: string, executionCount: number,
+            hasError: boolean, text: string, outputs: nbformat.IOutput[], persistentId?: string) {
         super();
         this.is_cell = true;
         this.id = id;
-        this.persistentId = persistentId;
+        this.persistentId = persistentId ? persistentId : UUID.uuid4.toString();
         this.executionCount = executionCount;
         this.hasError = hasError;
-        this.isCode = isCode;
         this.text = text;
+        this.outputs = outputs;
         this.gathered = false;
     }
 
     copy(): SimpleCell {
-        return new SimpleCell(this.id, this.persistentId, this.executionCount, this.hasError, this.isCode, this.text);
+        return new SimpleCell(this.id, this.executionCount, this.hasError, this.text, this.outputs);
     }
 
-    public readonly is_cell: boolean;
-    public readonly id: string;
-    public readonly persistentId: string;
-    public readonly executionCount: number;
-    public readonly hasError: boolean;
-    public readonly isCode: boolean;
-    public readonly text: string;
-    public readonly gathered: boolean;
+    readonly is_cell: boolean;
+    readonly id: string;
+    readonly persistentId: string;
+    readonly executionCount: number;
+    readonly hasError: boolean;
+    readonly isCode: boolean;
+    readonly text: string;
+    readonly outputs: nbformat.IOutput[];
+    readonly gathered: boolean;
 }
 
 export function instanceOfICell(object: any): object is ICell {
     return object && (typeof object == "object") && "is_cell" in object;
-}
-
-/**
- * Cell interface with output data.
- */
-export interface IOutputterCell<TOutputModel> extends ICell {
-    is_outputter_cell: boolean;
-    output: TOutputModel;
-}
-
-/**
- * Type checker for IOutputterCell.
- */
-export function instanceOfIOutputterCell<TOutputModel>(object: any): object is IOutputterCell<TOutputModel> {
-    return object && (typeof object == "object") && "is_outputter_cell" in object;
-}
-
-/**
- * Abstract class for a cell with output data.
- */
-export abstract class AbstractOutputterCell<TOutputModel>
-    extends AbstractCell implements IOutputterCell<TOutputModel> {
-
-    readonly is_outputter_cell: boolean = true;
-    abstract output: TOutputModel;
 }
 
 /**

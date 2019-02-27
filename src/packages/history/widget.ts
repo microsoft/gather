@@ -19,12 +19,12 @@ const OLDER_VERSIONS_CONTENTS_CLASS = 'jp-HistoryViewer-olderversions-revisions'
 /**
  * A widget for showing the history of a result and how it was produced.
  */
-export class HistoryViewer<TOutputModel> extends Widget {
+export class HistoryViewer extends Widget {
 
     /**
      * Construct a new history viewer.
      */
-    constructor(options: HistoryViewer.IOptions<TOutputModel>) {
+    constructor(options: HistoryViewer.IOptions) {
         super();
 
         this.addClass(HISTORY_VIEWER_CLASS);
@@ -74,7 +74,7 @@ export class HistoryViewer<TOutputModel> extends Widget {
     /**
      * Get the model used by the history viewer.
      */
-    get model(): IHistoryModel<TOutputModel> {
+    get model(): IHistoryModel {
         return this._model;
     }
 
@@ -94,7 +94,7 @@ export class HistoryViewer<TOutputModel> extends Widget {
         super.dispose();
     }
 
-    private _model: IHistoryModel<TOutputModel> = null;
+    private _model: IHistoryModel = null;
 
 }
 
@@ -105,15 +105,15 @@ export namespace HistoryViewer {
     /**
      * An options object for initializing a history viewer widget.
      */
-    export interface IOptions<TOutputModel> {
+    export interface IOptions {
         /**
          * The model used by the history viewer.
          */
-        model: IHistoryModel<TOutputModel>;
+        model: IHistoryModel;
 
         /**
          * The renderer for output models.
          */
-        outputRenderer: IOutputRenderer<TOutputModel>;
+        outputRenderer: IOutputRenderer;
     }
 }

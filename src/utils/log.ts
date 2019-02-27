@@ -2,33 +2,12 @@ import { ISettingRegistry } from "@jupyterlab/coreutils";
 import { JSONExt, JSONObject } from "@phosphor/coreutils";
 import * as $ from "jquery";
 
-/**
- * Interface for calling Ajax. 
- */
-export interface AjaxCaller {
-    ajax: (
-        url: string,
-        settings: {
-            data: string,
-            method: string,
-            error: (_: any, textStatus: string, errorThrown: string) => void
-        }) => void;
-}
-
-/**
- * Utility for calling Jupyter server using AJAX.
- */
-// let _ajaxCaller: AjaxCaller = undefined;
 let _settingRegistry: ISettingRegistry;
-let _showedLogUninitializedError = false;
 
 /**
- * Initialize logger with Ajax method. The reason we can't just use the default jQuery AJAX
- * logger is that notebook requires requests with XSRF tokens. The right Ajax caller is the one
- * that's built into Jupyter notebook or lab that passes these tokens.
+ * Initialize logger with the settings registry, so that the logger can access the user's ID.
  */
 export function initLogger(settingRegistry: ISettingRegistry) {
-    // _ajaxCaller = ajaxCaller;
     _settingRegistry = settingRegistry;
 }
 
@@ -52,24 +31,18 @@ export function registerPollers(...pollers: IStatePoller[]) {
 }
 
 /**
- * Log pretty much any data. Fail silently if the request can't be completed (i.e. if the plugin
- * for logging is down). Must initialize logger with `initLogger` before calling this method.
- * Call this after a batch of operations instead of each item, as calls can take a while.
+ * Log pretty much any data. Fail silently if the request can't be completed (i.e. if the user's
+ * computer is not connnected to the internet). Must initialize logger with `initLogger` before
+ * calling this method. Call this after a batch of operations instead of each item, as calls
+ * can take a while.
+ * TODO(andrewhead): save events to a localstorage backlog if the request failed, and attempt to
+ * log the event when connected to the internet again.
  */
 export function log(eventName: string, data?: any) {
 
     data = data || {};
     
-    let _ajaxCaller = $;
     let LOG_ENDPOINT = 'https://clarence.eecs.berkeley.edu';
-
-    if (_ajaxCaller == undefined) {
-        if (_showedLogUninitializedError == false) {
-            console.info("Logger not initialized, skipping logging");
-            _showedLogUninitializedError = true;
-        }
-        return;
-    }
     
     // Prepare log data.
     let postData: any = {
@@ -102,9 +75,9 @@ export function log(eventName: string, data?: any) {
                 postData.data = JSON.stringify(postData.data);
 
                 // Submit data to logger endpoint.
-                _ajaxCaller.ajax(LOG_ENDPOINT + "/save", {
+                $.ajax(LOG_ENDPOINT + "/save", {
 
-                    data: JSON.parse(JSON.stringify(postData)),
+                    data: postData,
                     method: "POST",
                     error: (_: any, textStatus: string, errorThrown: string) => {
                         console.error("Failed to log", textStatus, errorThrown);

@@ -18,10 +18,10 @@ describe('CellSlice', () => {
             ].join("\n"),
             hasError: false,
             executionCount: 1,
-            isCode: true,
+            outputs: [],
             gathered: false,
             copy: () => null,
-            toJupyterJSON: () => null
+            serialize: () => null
         }, new LocationSet(
             { first_line: 1, first_column: 0, last_line: 1, last_column: 5 },
             { first_line: 2, first_column: 4, last_line: 3, last_column: 4 }
@@ -47,10 +47,10 @@ describe('CellSlice', () => {
             ].join("\n"),
             hasError: false,
             executionCount: 1,
-            isCode: true,
+            outputs: [],
             gathered: false,
             copy: () => null,
-            toJupyterJSON: () => null
+            serialize: () => null
         }, new LocationSet(
             { first_line: 1, first_column: 0, last_line: 1, last_column: 5 },
             { first_line: 2, first_column: 4, last_line: 3, last_column: 4 }

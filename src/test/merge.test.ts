@@ -6,19 +6,18 @@ import { ICell, CellSlice } from "../packages/cell";
 describe('SlicedExecution', () => {
 
     function cell(id: string, executionCount: number, ...codeLines: string[]): ICell {
-        let newCell = {
+        return {
             is_cell: true,
             id: id,
             persistentId: "persistent-id",
             executionCount: executionCount,
             text: codeLines.join('\n'),
             hasError: false,
-            isCode: true,
+            outputs: [],
             gathered: false,
-            copy: () => newCell,
-            toJupyterJSON: () => {}
+            copy: () => null,
+            serialize: () => null
         };
-        return newCell;
     }
 
     function cellSlice(cell: ICell, slice: LocationSet): CellSlice {

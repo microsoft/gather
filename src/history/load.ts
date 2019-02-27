@@ -93,18 +93,20 @@ function _loadExecutionFromJson(executionJson: JSONObject): CellExecution {
     let persistentId = _getString(cellJson, 'persistentId');
     let executionCount = _getNumber(cellJson, 'executionCount');
     let hasError = _getBoolean(cellJson, 'hasError');
-    let isCode = _getBoolean(cellJson, 'isCode');
     let text = _getString(cellJson, 'text');
 
     let executionTimeString = _getString(executionJson, "executionTime");
     let executionTime = new Date(executionTimeString);
 
     if (id == null || executionCount == null || hasError == null ||
-        isCode == null || text == null || executionTime == null) {
+        text == null || executionTime == null) {
         log("Cell could not be loaded, as it's missing a critical field.");
         return null;
     }
 
-    let cell = new SimpleCell(id, persistentId, executionCount, hasError, isCode, text);
+    /**
+     * TODO(andrewhead): Update with Kunal's code for serializing and deserializing outputs.
+     */
+    let cell = new SimpleCell(id, executionCount, hasError, text, [], persistentId);
     return new CellExecution(cell, executionTime);
 }

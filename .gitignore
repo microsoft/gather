@@ -19,6 +19,7 @@ python3.js
 # Build files
 dist/
 lib/
+gather-*.tgz
 
 # Notebooks
 notebooks/
