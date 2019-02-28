@@ -1,7 +1,8 @@
 import { expect } from "chai";
-import { LocationSet } from "../slicing/Slice";
-import { SlicedExecution } from "../slicing/ExecutionSlicer";
-import { ICell, CellSlice, SimpleCell } from "../packages/cell";
+import { SlicedExecution } from "../analysis/slice/log-slicer";
+import { LocationSet } from "../analysis/slice/slice";
+import { ICell, SimpleCell } from "../model/cell";
+import { CellSlice } from "../model/cellslice";
 
 describe('SlicedExecution', () => {
 

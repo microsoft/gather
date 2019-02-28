@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import { computeTextDiff } from "../packages/history/diff";
+import { computeTextDiff } from "../widgets/history/diff";
 
 describe('textdiff', () => {
 

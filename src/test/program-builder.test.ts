@@ -1,6 +1,6 @@
 import { expect } from "chai";
-import { ProgramBuilder } from "../slicing/ProgramBuilder";
-import { ICell, SimpleCell } from '../packages/cell';
+import { ProgramBuilder } from "../analysis/slice/program-builder";
+import { ICell, SimpleCell } from '../model/cell';
 
 
 describe('program builder', () => {

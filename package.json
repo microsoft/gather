@@ -13,14 +13,14 @@
   "homepage": "https://microsoft.github.io/gather/",
   "scripts": {
     "build": "npm run build:parser && tsc",
-    "build:parser": "node ./node_modules/jison/lib/cli.js --outfile src/parsers/python/python3.js src/parsers/python/python3.jison",
+    "build:parser": "node ./node_modules/jison/lib/cli.js --outfile src/analysis/parse/python/python3.js src/analysis/parse/python/python3.jison",
     "watch": "tsc -w",
     "prepack": "npm run build",
     "test": "karma start src/test/karma.conf.js",
     "test:debug": "karma start src/test/karma.debug.conf.js",
     "clean": "rm -rf lib/"
   },
-  "main": "lib/lab/index.js",
+  "main": "lib/main/main.js",
   "jupyterlab": {
     "extension": true,
     "schemaDir": "schema"

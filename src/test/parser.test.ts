@@ -1,6 +1,5 @@
-// import * as python3 from '../parsers/python/python3';
-import { parse, walk, IDict } from '../parsers/python/python_parser';
 import { expect } from 'chai';
+import { IDict, parse, walk } from '../analysis/parse/python/python-parser';
 
 describe('python parser', () => {
 

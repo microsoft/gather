@@ -1,10 +1,9 @@
-import { DataflowAnalyzer, Ref, SymbolType, RefSet, IDataflow, ReferenceType } from "../slicing/DataflowAnalysis";
-import { parse } from '../parsers/python/python_parser';
-import { ControlFlowGraph } from '../slicing/ControlFlowAnalysis';
 import { expect } from "chai";
-import { Set, StringSet } from "../slicing/Set";
-import { SlicerConfig, FunctionConfig } from "../slicing/SlicerConfig";
-import { ISyntaxNode } from "../parsers/python/python_parser";
+import { ISyntaxNode, parse } from '../analysis/parse/python/python-parser';
+import { ControlFlowGraph } from '../analysis/slice/control-flow';
+import { DataflowAnalyzer, IDataflow, Ref, ReferenceType, RefSet, SymbolType } from "../analysis/slice/data-flow";
+import { Set, StringSet } from "../analysis/slice/set";
+import { FunctionConfig, SlicerConfig } from "../analysis/slice/slice-config";
 
 
 // High-level tests on dataflow as a sanity check.

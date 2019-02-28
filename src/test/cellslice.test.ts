@@ -1,6 +1,7 @@
 import { expect } from 'chai';
-import { CellSlice, SimpleCell } from '../packages/cell';
-import { LocationSet } from '../slicing/Slice';
+import { LocationSet } from '../analysis/slice/slice';
+import { SimpleCell } from '../model/cell';
+import { CellSlice } from '../model/cellslice';
 
 describe('CellSlice', () => {
 
