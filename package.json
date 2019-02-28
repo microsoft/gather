@@ -1,7 +1,6 @@
 {
   "name": "gather",
   "version": "0.2.2",
-  "description": "Spit shine for computational notebooks",
   "keywords": [
     "jupyter",
     "jupyterlab"
@@ -18,8 +17,10 @@
     "watch": "tsc -w",
     "prepack": "npm run build",
     "test": "karma start src/test/karma.conf.js",
-    "test:debug": "karma start src/test/karma.debug.conf.js"
+    "test:debug": "karma start src/test/karma.debug.conf.js",
+    "clean": "rm -rf lib/"
   },
+  "main": "lib/lab/index.js",
   "jupyterlab": {
     "extension": true,
     "schemaDir": "schema"
