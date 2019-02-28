@@ -16,7 +16,7 @@ const NOTIFICATION_MS = 5000;
 export class NotificationWidget extends Widget {
 
     constructor(tag?: string) {
-        super({ node: document.createElement(tag || 'p') });
+        super({ node: document.createElement(tag || 'span') });
         this.addClass(TOOLBAR_NOTIFACTION_CLASS);
     }
 

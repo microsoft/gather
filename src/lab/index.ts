@@ -21,6 +21,8 @@ import '../../style/index.css';
 import '../../style/lab-vars.css';
 import { Clipboard } from './gather-actions';
 import { ISettingRegistry } from '@jupyterlab/coreutils';
+import { initToolbar } from './toolbar';
+import { Widget } from '@phosphor/widgets';
 
 
 const extension: JupyterLabPlugin<void> = {
@@ -35,7 +37,7 @@ const extension: JupyterLabPlugin<void> = {
  * TODO(andrewhead): have an execution stamp that includes the kernel that executed a cell... (requires insulation in program builder)
  * TODO(andrewhead): can we run the analysis on the backend with a web-worker (specifically, def-use?)
  */
-class CodeGatheringExtension implements DocumentRegistry.IWidgetExtension<NotebookPanel, INotebookModel> {
+export class CodeGatheringExtension implements DocumentRegistry.IWidgetExtension<NotebookPanel, INotebookModel> {
 
     constructor(documentManager: DocumentManager, notebooks: INotebookTracker, 
             gatherModelRegistry: GatherModelRegistry) {
@@ -45,7 +47,6 @@ class CodeGatheringExtension implements DocumentRegistry.IWidgetExtension<Notebo
     }
 
     createNew(notebook: NotebookPanel, notebookContext: DocumentRegistry.IContext<INotebookModel>): IDisposable {
-
         /*
          * For the metadata to be available, first wait for the context to be "ready."" 
          */
@@ -59,6 +60,7 @@ class CodeGatheringExtension implements DocumentRegistry.IWidgetExtension<Notebo
              * Initialize reactive UI before loading the execution log from storage. This lets us
              * update the UI automatically as we populate the log.
              */
+            this._toolbarWidgets = initToolbar(notebook, gatherModel, this);
             let markerManager = new MarkerManager(gatherModel, notebook);
             new ResultsHighlighter(gatherModel, notebook, markerManager);
             new GatherController(gatherModel, this._documentManager, this._notebooks);
@@ -66,13 +68,49 @@ class CodeGatheringExtension implements DocumentRegistry.IWidgetExtension<Notebo
             this._gatherModelRegistry.addGatherModel(notebookModel, gatherModel);
             new ExecutionLogger(notebook, gatherModel);
             saveHistoryOnNotebookSave(notebook, gatherModel);
-
             loadHistory(notebookContext.model, gatherModel);
         });
 
-        return new DisposableDelegate(() => { });
+        return new DisposableDelegate(() => {
+            this._toolbarWidgets.forEach((button) => button.dispose());
+        });
     }
 
+    gatherToClipboard() {
+        let gatherModel = getGatherModelForActiveNotebook(this._notebooks, this._gatherModelRegistry);
+        if (gatherModel == null) return;
+        log("Button: Clicked gather to notebook with selections", {
+            selectedDefs: gatherModel.selectedDefs,
+            selectedOutputs: gatherModel.selectedOutputs });
+        gatherModel.addChosenSlices(...gatherModel.selectedSlices.map(sel => sel.slice));
+        gatherModel.requestStateChange(GatherState.GATHER_TO_CLIPBOARD);
+    }
+
+    gatherToNotebook() {
+        let gatherModel = getGatherModelForActiveNotebook(this._notebooks, this._gatherModelRegistry);
+        if (gatherModel == null) return;
+        if (gatherModel.selectedSlices.length >= 1) {
+            log("Button: Clicked gather to notebook with selections", {
+                selectedDefs: gatherModel.selectedDefs,
+                selectedOutputs: gatherModel.selectedOutputs });
+            gatherModel.addChosenSlices(...gatherModel.selectedSlices.map(sel => sel.slice));
+            gatherModel.requestStateChange(GatherState.GATHER_TO_NOTEBOOK);
+        }
+    }
+
+    gatherToScript() {
+        let gatherModel = getGatherModelForActiveNotebook(this._notebooks, this._gatherModelRegistry);
+        if (gatherModel == null) return;
+        if (gatherModel.selectedSlices.length >= 1) {
+            log("Button: Clicked gather to script with selections", {
+                selectedDefs: gatherModel.selectedDefs,
+                selectedOutputs: gatherModel.selectedOutputs });
+            gatherModel.addChosenSlices(...gatherModel.selectedSlices.map(sel => sel.slice));
+            gatherModel.requestStateChange(GatherState.GATHER_TO_SCRIPT);
+        }
+    }
+
+    private _toolbarWidgets: Widget[];
     private _documentManager: DocumentManager;
     private _notebooks: INotebookTracker;
     private _gatherModelRegistry: GatherModelRegistry;
@@ -98,7 +136,8 @@ function activateExtension(app: JupyterLab, palette: ICommandPalette, notebooks:
     });
 
     let gatherModelRegistry = new GatherModelRegistry();
-    app.docRegistry.addWidgetExtension('Notebook', new CodeGatheringExtension(documentManager, notebooks, gatherModelRegistry));
+    let codeGatheringExtension = new CodeGatheringExtension(documentManager, notebooks, gatherModelRegistry);
+    app.docRegistry.addWidgetExtension('Notebook', codeGatheringExtension);
 
     function addCommand(command: string, label: string, execute: (options?: JSONObject) => void) {
         app.commands.addCommand(command, { label, execute });
@@ -106,40 +145,18 @@ function activateExtension(app: JupyterLab, palette: ICommandPalette, notebooks:
     }
 
     addCommand('gather:gatherToClipboard', 'Gather this result to the clipboard', () => {
-        let gatherModel = getGatherModelForActiveNotebook(notebooks, gatherModelRegistry);
-        if (gatherModel == null) return;
-        log("Button: Clicked gather to notebook with selections", {
-            selectedDefs: gatherModel.selectedDefs,
-            selectedOutputs: gatherModel.selectedOutputs });
-        gatherModel.addChosenSlices(...gatherModel.selectedSlices.map(sel => sel.slice));
-        gatherModel.requestStateChange(GatherState.GATHER_TO_CLIPBOARD);
+        codeGatheringExtension.gatherToClipboard();
     });
 
     addCommand('gather:gatherToNotebook', 'Gather this result into a new notebook', () => {
-        let gatherModel = getGatherModelForActiveNotebook(notebooks, gatherModelRegistry);
-        if (gatherModel == null) return;
-        if (gatherModel.selectedSlices.length >= 1) {
-            log("Button: Clicked gather to notebook with selections", {
-                selectedDefs: gatherModel.selectedDefs,
-                selectedOutputs: gatherModel.selectedOutputs });
-            gatherModel.addChosenSlices(...gatherModel.selectedSlices.map(sel => sel.slice));
-            gatherModel.requestStateChange(GatherState.GATHER_TO_NOTEBOOK);
-        }
+        codeGatheringExtension.gatherToNotebook();
     });
 
     addCommand('gather:gatherToScript', 'Gather this result into a new script', () => {
-        let gatherModel = getGatherModelForActiveNotebook(notebooks, gatherModelRegistry);
-        if (gatherModel == null) return;
-        if (gatherModel.selectedSlices.length >= 1) {
-            log("Button: Clicked gather to script with selections", {
-                selectedDefs: gatherModel.selectedDefs,
-                selectedOutputs: gatherModel.selectedOutputs });
-            gatherModel.addChosenSlices(...gatherModel.selectedSlices.map(sel => sel.slice));
-            gatherModel.requestStateChange(GatherState.GATHER_TO_SCRIPT);
-        }
+        codeGatheringExtension.gatherToScript();
     });
 
-    // TODO: re-enable this feature for Jupyter Lab.
+    // TODO: re-enable this as an optional feature.
     /*
     addCommand('gather:gatherFromHistory', 'Compare previous versions of this result', () => {
 
