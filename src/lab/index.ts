@@ -16,11 +16,14 @@ import { ExecutionLogger } from './execution-logger';
 import { GatherModelRegistry, getGatherModelForActiveNotebook } from './gather-registry';
 import { NotifactionExtension as NotificationExtension } from './notification';
 import { ResultsHighlighter } from './results';
-
+//import {Widget} from '@phoshpor/widgets';
+import { Widget } from '@phosphor/widgets';
 import '../../style/index.css';
 import '../../style/lab-vars.css';
 import { Clipboard } from './gather-actions';
-
+import {DisplayData} from '../packages/displaydata'
+import {nbformat} from "@jupyterlab/coreutils"
+import { RenderMimeRegistry, standardRendererFactories as initialFactories } from '@jupyterlab/rendermime';
 
 const extension: JupyterLabPlugin<void> = {
     activate: activateExtension,
@@ -89,6 +92,8 @@ function activateExtension(app: JupyterLab, palette: ICommandPalette, notebooks:
 
     console.log('Activating code gathering tools...');
 
+  
+
     const notificationExtension = new NotificationExtension();
     app.docRegistry.addWidgetExtension('Notebook', notificationExtension);
     Clipboard.getInstance().copied.connect(() => {
@@ -97,6 +102,8 @@ function activateExtension(app: JupyterLab, palette: ICommandPalette, notebooks:
 
     let gatherModelRegistry = new GatherModelRegistry();
     app.docRegistry.addWidgetExtension('Notebook', new CodeGatheringExtension(documentManager, notebooks, gatherModelRegistry));
+
+
 
     function addCommand(command: string, label: string, execute: (options?: JSONObject) => void) {
         app.commands.addCommand(command, { label, execute });
@@ -135,6 +142,73 @@ function activateExtension(app: JupyterLab, palette: ICommandPalette, notebooks:
             gatherModel.addChosenSlices(...gatherModel.selectedSlices.map(sel => sel.slice));
             gatherModel.requestStateChange(GatherState.GATHER_TO_SCRIPT);
         }
+    });
+
+    console.log("h1")
+    addCommand('gather:graveyard', 'View Graveyward', () => {
+        let gatherModel = getGatherModelForActiveNotebook(notebooks, gatherModelRegistry);
+        if (gatherModel == null) return;
+
+        let widget: Widget = new Widget();
+        widget.id = 'graveyard-jupyterlab';
+        widget.title.label = 'Graveyard';
+        widget.title.closable = true;
+        let history = gatherModel.executionLog.cellExecutions;
+        for (var i=0; i<history.length;i++){
+            let cellOutput = history[i].cell.output;
+            if(cellOutput) {
+                console.log(cellOutput, cellOutput.length)
+                for (var x=0; x<cellOutput.length;x++) {
+                    let convertedCellOutput = (cellOutput[x] as nbformat.IOutput);
+                  
+                    let outputWidget = new DisplayData({
+                        model:convertedCellOutput,
+                        rendermime: new RenderMimeRegistry({initialFactories})
+                    });
+                    //let outputWidget = new DisplayData(outputWidgetOptions);
+
+                    outputWidget.id = "output" + x.toString + i.toString
+
+                    outputWidget.title.label="graveyard-jupyterlab"
+                    outputWidget.title.label ="graveyward"
+                    outputWidget.title.closable = true;
+                    app.shell.addToMainArea(outputWidget)
+                    app.shell.activateById(outputWidget.id);
+
+
+
+
+                }
+            }
+
+
+        }
+ 
+
+        console.log("We're in the graveyard right now!")
+
+        /*let widget: Widget = new Widget();
+        widget.id = 'graveyard-jupyterlab';
+        widget.title.label = 'Graveyard';
+        widget.title.closable = true;
+
+        let img = document.createElement('img');
+        widget.node.appendChild(img);
+
+        // Fetch info about a random comic
+        fetch('https:////egszlpbmle.execute-api.us-east-1.amazonaws.com/prod').then(response => {
+          return response.json();
+        }).then(data => {
+          img.src = data.img;
+          img.alt = data.title;
+          img.title = data.alt;
+        });
+        if (!widget.isAttached) {
+        // Attach the widget to the main work area if it's not there
+            app.shell.addToMainArea(widget);
+        }
+        // Activate the widget
+        app.shell.activateById(widget.id);*/
     });
 
     // TODO: re-enable this feature for Jupyter Lab.

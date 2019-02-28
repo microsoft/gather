@@ -2,6 +2,7 @@ import { expect } from "chai";
 import { LocationSet } from "../slicing/Slice";
 import { SlicedExecution } from "../slicing/ExecutionSlicer";
 import { ICell, CellSlice } from "../packages/cell";
+import {nbformat} from "@jupyterlab/coreutils"
 
 describe('SlicedExecution', () => {
 
@@ -11,6 +12,7 @@ describe('SlicedExecution', () => {
             id: id,
             persistentId: "persistent-id",
             executionCount: executionCount,
+            output:new Array <nbformat.IOutput>(),
             text: codeLines.join('\n'),
             hasError: false,
             isCode: true,

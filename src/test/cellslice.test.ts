@@ -9,6 +9,7 @@ describe('CellSlice', () => {
             is_cell: true,
             id: "id",
             persistentId: "persistent-id",
+            output:[],
             text: [
                 "a = 1",
                 "b = 2",
@@ -38,6 +39,7 @@ describe('CellSlice', () => {
             is_cell: true,
             id: "id",
             persistentId: "persistent-id",
+            output:[],
             text: [
                 "a = 1",
                 "b = 2",

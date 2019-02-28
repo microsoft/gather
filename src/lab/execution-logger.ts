@@ -22,7 +22,11 @@ export class ExecutionLogger {
             if (changedCell instanceof CodeCellModel && cellStateChange.name === "executionCount" && cellStateChange.newValue !== undefined && cellStateChange.newValue !== null) {
                 let cellClone = copyICodeCellModel(changedCell);
                 const cell = new LabCell(cellClone);
+
+                console.log(cell)
+                
                 this._gatherModel.executionLog.logExecution(cell);
+
                 this._gatherModel.lastExecutedCell = cell;
             }
         });

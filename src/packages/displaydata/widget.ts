@@ -2,7 +2,7 @@ import { RenderMimeRegistry, OutputModel } from '@jupyterlab/rendermime';
 import { PanelLayout } from '@phosphor/widgets';
 import { Widget } from '@phosphor/widgets';
 import { nbformat } from '@jupyterlab/coreutils';
-
+//import { IOutputModel } from '@jupyterlab/rendermime';
 /**
  * The class name added to display data widgets
  */
@@ -17,8 +17,20 @@ export class DisplayData extends Widget {
      */
     constructor(options: DisplayData.IOptions) {
         super();
+
+        //create output model with ioutputmodel options
+
         this.addClass(REVISION_CLASS);
-        let model = (this.model = options.model);
+
+        let outputModel = new OutputModel({
+            value: options.model,
+            trusted:true
+        })
+          
+        //assign model to result of above and remove if statement below
+        //let model = (this.model = options.model);
+        let model = outputModel;
+        console.log(model)
         let rendermime = (this.rendermime = options.rendermime);
 
         let layout = (this.layout = new PanelLayout());
@@ -26,12 +38,13 @@ export class DisplayData extends Widget {
         // Code borrowed from OutputArea extension.
         // TODO(andrewhead): support other types of display data.
         // TODO(andrewhead): change second argument (preferSafe) based on display data field.
-        if (nbformat.isExecuteResult(model) || nbformat.isDisplayData(model)) {
-            let mimeType = rendermime.preferredMimeType(model.data, "ensure");
-            let output = rendermime.createRenderer(mimeType);
-            output.renderModel(new OutputModel({ value: model }));
-            layout.addWidget(output);
-        }
+        //if (nbformat.isExecuteResult(model) || nbformat.isDisplayData(model)) {
+
+        let mimeType = rendermime.preferredMimeType(model.data, "ensure");
+        let output = rendermime.createRenderer(mimeType);
+        output.renderModel(model);
+        layout.addWidget(output);
+        //}
     }
 
     /**

@@ -7,7 +7,7 @@ describe('program builder', () => {
 
     function createCell(id: string, executionCount: number, ...codeLines: string[]): ICell {
         let text = codeLines.join("\n");
-        return { is_cell: true, id, executionCount, persistentId: "persistent-id", text: text,
+        return { is_cell: true, id, executionCount, persistentId: "persistent-id", output:[], text: text,
             hasError: false, isCode: true, gathered: false, copy: () => null, toJupyterJSON: () => {} };
     }
 

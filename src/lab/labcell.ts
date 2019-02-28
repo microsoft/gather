@@ -1,8 +1,8 @@
 import { AbstractOutputterCell } from "../packages/cell";
 import { ICodeCellModel, CodeCellModel } from "@jupyterlab/cells";
-import { IOutputModel } from "@jupyterlab/rendermime";
+//import { IOutputModel } from "@jupyterlab/rendermime";
 import { UUID } from "@phosphor/coreutils";
-
+import {nbformat} from "@jupyterlab/coreutils"
 /**
  * Create a new cell with the same ID and content.
  */
@@ -13,7 +13,7 @@ export function copyICodeCellModel(cell: ICodeCellModel): ICodeCellModel {
 /**
  * Implementation of SliceableCell for Jupyter Lab. Wrapper around the ICodeCellModel.
  */
-export class LabCell extends AbstractOutputterCell<IOutputModel[]> {
+export class LabCell extends AbstractOutputterCell {
 
     constructor(model: ICodeCellModel) {
         super();
@@ -59,11 +59,11 @@ export class LabCell extends AbstractOutputterCell<IOutputModel[]> {
         return this.output.some(o => o.type === 'error');
     }
 
-    get output(): IOutputModel[] {
+    get output(): nbformat.IOutput[] {
         let outputs = [];
         if (this._model.outputs) {
             for (let i = 0; i < this._model.outputs.length; i++) {
-                outputs.push(this._model.outputs.get(i));
+                outputs.push(this._model.outputs.get(i).toJSON());
             }
             return outputs;
         }

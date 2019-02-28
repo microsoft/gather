@@ -11,12 +11,12 @@ import { GatherModel } from '../gather';
 /**
  * Build a history model of how a cell was computed across notebook snapshots.
  */
-export function buildHistoryModel<TOutputModel>(
+export function buildHistoryModel(
     gatherModel: GatherModel,
     selectedCellPersistentId: string,
     executionVersions: SlicedExecution[],
     includeOutput?: boolean
-): HistoryModel<TOutputModel> {
+): HistoryModel<any> {
 
     // All cells in past revisions will be compared to those in the current revision. For the most
     // recent version, save a mapping from cells' IDs to their content, so we can look them up to
@@ -28,7 +28,7 @@ export function buildHistoryModel<TOutputModel>(
     });
 
     // Compute diffs between each of the previous revisions and the current revision.
-    let revisions = new Array<RevisionModel<TOutputModel>>();
+    let revisions = new Array();
     executionVersions.forEach(function (executionVersion, versionIndex) {
 
         // Then difference the code in each cell.
@@ -56,7 +56,7 @@ export function buildHistoryModel<TOutputModel>(
             slicedCellModels.push(slicedCell);
         })
 
-        let output: TOutputModel = null;
+        let output = null;
         if (includeOutput) {
             let selectedCell: ICell = null;
             executionVersion.cellSlices.map(cs => cs.cell).forEach(function (cellModel) {
@@ -65,7 +65,7 @@ export function buildHistoryModel<TOutputModel>(
                 }
             });
             if (selectedCell && instanceOfIOutputterCell(selectedCell)) {
-                let selectedOutputterCell = selectedCell as IOutputterCell<TOutputModel>;
+                let selectedOutputterCell = selectedCell as IOutputterCell;
                 if (selectedCell.output) {
                     output = selectedOutputterCell.output;
                 }
@@ -77,7 +77,7 @@ export function buildHistoryModel<TOutputModel>(
             cells: slicedCellModels,
             isLatest: isLatestVersion
         });
-        let revisionModel = new RevisionModel<TOutputModel>({
+        let revisionModel = new RevisionModel({
             versionIndex: versionIndex + 1,  // Version index should start at 1
             source: codeVersionModel,
             slice: executionVersion,

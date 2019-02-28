@@ -4,6 +4,7 @@ import { log } from "util";
 import { SimpleCell } from "../packages/cell";
 import { CellExecution } from "../slicing/ExecutionSlicer";
 import { GatherModel } from "../packages/gather";
+import {nbformat} from "@jupyterlab/coreutils"
 
 /**
  * Key for accessing execution history in Jupyter notebook metadata.
@@ -49,6 +50,9 @@ function _tryLoadHistory(notebookModel: INotebookModel, gatherModel: GatherModel
             log("Unexpected cell execution format. Loading history aborted.");
             return;
         }
+
+
+
         gatherModel.executionLog.addExecutionToLog(cellExecution);
         gatherModel.lastExecutedCell = cellExecution.cell;
     }
@@ -83,6 +87,10 @@ function _loadExecutionFromJson(executionJson: JSONObject): CellExecution {
         return json[key] as boolean;
     }
 
+    function _getIOutput(json: JSONObject, key: string):nbformat.IOutput[] {
+        return json[key] as nbformat.IOutput[];
+    }
+
     if (!executionJson.hasOwnProperty('cell') || !JSONExt.isObject(executionJson['cell'])) {
         log("Unexpected cell data format: cell is not an object");
         return null;
@@ -95,6 +103,9 @@ function _loadExecutionFromJson(executionJson: JSONObject): CellExecution {
     let hasError = _getBoolean(cellJson, 'hasError');
     let isCode = _getBoolean(cellJson, 'isCode');
     let text = _getString(cellJson, 'text');
+    let output = _getIOutput(cellJson, 'output');
+
+    
 
     let executionTimeString = _getString(executionJson, "executionTime");
     let executionTime = new Date(executionTimeString);
@@ -105,6 +116,7 @@ function _loadExecutionFromJson(executionJson: JSONObject): CellExecution {
         return null;
     }
 
-    let cell = new SimpleCell(id, persistentId, executionCount, hasError, isCode, text);
+    let cell = new SimpleCell(id, persistentId, output, executionCount, hasError, isCode, text);
+    console.log("cell to load", cell)
     return new CellExecution(cell, executionTime);
 }

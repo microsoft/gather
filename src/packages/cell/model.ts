@@ -1,5 +1,6 @@
 import { LocationSet } from "../../slicing/Slice";
 
+import {nbformat} from "@jupyterlab/coreutils"
 /**
  * Generic interface for accessing cell data.
  */
@@ -11,6 +12,10 @@ export interface ICell {
      * persistent ID.
      */
     persistentId: string;
+
+    /**Kunal - Output*/
+    output: nbformat.IOutput[];
+
     executionCount: number;
     hasError: boolean;
     isCode: boolean;
@@ -32,6 +37,7 @@ export abstract class AbstractCell implements ICell {
     abstract is_cell: boolean;
     abstract id: string;
     abstract persistentId: string;
+    abstract output: nbformat.IOutput[];
     abstract executionCount: number;
     abstract hasError: boolean;
     abstract isCode: boolean;
@@ -46,6 +52,7 @@ export abstract class AbstractCell implements ICell {
         return {
             id: this.id,
             persistentId: this.persistentId,
+            output: this.output,
             executionCount: this.executionCount,
             lineCount: this.text.split("\n").length,
             isCode: this.isCode,
@@ -63,6 +70,7 @@ export abstract class AbstractCell implements ICell {
             metadata: {
                 gathered: this.gathered,
                 persistent_id: this.persistentId,
+                output:this.output
             }
         }
     }
@@ -70,26 +78,29 @@ export abstract class AbstractCell implements ICell {
 
 export class SimpleCell extends AbstractCell {
 
-    constructor(id: string, persistentId: string, executionCount: number,
+    constructor(id: string, persistentId: string, output: nbformat.IOutput[], executionCount: number,
             hasError: boolean, isCode: boolean, text: string) {
         super();
         this.is_cell = true;
         this.id = id;
         this.persistentId = persistentId;
+        this.output = output;
         this.executionCount = executionCount;
         this.hasError = hasError;
         this.isCode = isCode;
         this.text = text;
         this.gathered = false;
+
     }
 
     copy(): SimpleCell {
-        return new SimpleCell(this.id, this.persistentId, this.executionCount, this.hasError, this.isCode, this.text);
+        return new SimpleCell(this.id, this.persistentId, this.output, this.executionCount, this.hasError, this.isCode, this.text);
     }
 
     public readonly is_cell: boolean;
     public readonly id: string;
     public readonly persistentId: string;
+    public readonly output: nbformat.IOutput[];
     public readonly executionCount: number;
     public readonly hasError: boolean;
     public readonly isCode: boolean;
@@ -104,26 +115,26 @@ export function instanceOfICell(object: any): object is ICell {
 /**
  * Cell interface with output data.
  */
-export interface IOutputterCell<TOutputModel> extends ICell {
+export interface IOutputterCell extends ICell {
     is_outputter_cell: boolean;
-    output: TOutputModel;
+    output: nbformat.IOutput[];
 }
 
 /**
  * Type checker for IOutputterCell.
  */
-export function instanceOfIOutputterCell<TOutputModel>(object: any): object is IOutputterCell<TOutputModel> {
+export function instanceOfIOutputterCell(object: any): object is IOutputterCell {
     return object && (typeof object == "object") && "is_outputter_cell" in object;
 }
 
 /**
  * Abstract class for a cell with output data.
  */
-export abstract class AbstractOutputterCell<TOutputModel>
-    extends AbstractCell implements IOutputterCell<TOutputModel> {
+export abstract class AbstractOutputterCell
+    extends AbstractCell implements IOutputterCell {
 
     readonly is_outputter_cell: boolean = true;
-    abstract output: TOutputModel;
+    abstract output: nbformat.IOutput[];
 }
 
 /**
