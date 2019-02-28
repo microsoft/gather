@@ -72,7 +72,7 @@ export class LabCell extends AbstractCell {
     }
 
     deepCopy(): LabCell {
-        return new LabCell(new CodeCellModel({ id: this.id, cell: this.toJSON() }));
+        return new LabCell(new CodeCellModel({ id: this.id, cell: this.model.toJSON() }));
     }
 
     serialize(): any {
