@@ -9,6 +9,9 @@ Download the extension with one command:
 jupyter labextension install gather
 ```
 
+If you are seeing installation errors, make sure that npm
+and Jupyter Lab are up-to-date.
+
 Read the docs [here](https://microsoft.github.io/gather).
 And read our academic paper on the design of the tool
 [here](https://people.eecs.berkeley.edu/~andrewhead/pdf/notebooks.pdf).
@@ -46,6 +49,10 @@ should see the results of running the tests. The process
 will continue to live after the tests finish running---it
 will recompile and re-run the tests whenever the test code
 changes. Type Ctrl+C to abort the command at any time.
+
+Note that running tests with this command may interfere with
+you opening Chrome browsers. If that happens, cancel the
+command, open Chrome, and then restart the command.
 
 To debug the tests, call:
 

@@ -13,7 +13,7 @@ import { ExecutionLogSlicer } from '../analysis/slice/log-slicer';
 import { GatherController, GatherModel, GatherState, SliceSelection } from '../model';
 import { GatherModelRegistry, getGatherModelForActiveNotebook } from '../model/gather-registry';
 import { NotifactionExtension as NotificationExtension } from '../overlay/notification';
-import { ResultsHighlighter } from '../overlay/result-highlighter';
+import { CellChangeListener } from '../overlay/cell-listener';
 import { initToolbar } from '../overlay/toolbar';
 import { MarkerManager } from '../overlay/variable-markers';
 import { loadHistory as loadHistory } from '../persistence/load';
@@ -21,6 +21,7 @@ import { storeHistory } from '../persistence/store';
 import { initLogger, log } from '../util/log';
 import { ExecutionLogger } from './execution-logger';
 import { Clipboard } from './gather-actions';
+import { RevisionBrowser } from '../overlay/revision-browser';
 
 
 const extension: JupyterLabPlugin<void> = {
@@ -37,8 +38,9 @@ const extension: JupyterLabPlugin<void> = {
  */
 export class CodeGatheringExtension implements DocumentRegistry.IWidgetExtension<NotebookPanel, INotebookModel> {
 
-    constructor(documentManager: DocumentManager, notebooks: INotebookTracker, 
+    constructor(app: JupyterLab, documentManager: DocumentManager, notebooks: INotebookTracker, 
             gatherModelRegistry: GatherModelRegistry) {
+        this._app = app;
         this._documentManager = documentManager;
         this._notebooks = notebooks;
         this._gatherModelRegistry = gatherModelRegistry;
@@ -59,10 +61,10 @@ export class CodeGatheringExtension implements DocumentRegistry.IWidgetExtension
              * update the UI automatically as we populate the log.
              */
             this._toolbarWidgets = initToolbar(notebook, gatherModel, this);
-            let markerManager = new MarkerManager(gatherModel, notebook);
-            new ResultsHighlighter(gatherModel, notebook, markerManager);
+            new MarkerManager(gatherModel, notebook);
+            new CellChangeListener(gatherModel, notebook);
             new GatherController(gatherModel, this._documentManager, this._notebooks);
-            
+
             this._gatherModelRegistry.addGatherModel(notebookModel, gatherModel);
             new ExecutionLogger(notebook, gatherModel);
             saveHistoryOnNotebookSave(notebook, gatherModel);
@@ -108,7 +110,15 @@ export class CodeGatheringExtension implements DocumentRegistry.IWidgetExtension
         }
     }
 
+    gatherRevisions() {
+        let gatherModel = getGatherModelForActiveNotebook(this._notebooks, this._gatherModelRegistry);
+        let revisionBrowser = new RevisionBrowser(gatherModel);
+        this._app.shell.addToMainArea(revisionBrowser);
+        this._app.shell.activateById(revisionBrowser.id);
+    }
+
     private _toolbarWidgets: Widget[];
+    private _app: JupyterLab;
     private _documentManager: DocumentManager;
     private _notebooks: INotebookTracker;
     private _gatherModelRegistry: GatherModelRegistry;
@@ -130,11 +140,11 @@ function activateExtension(app: JupyterLab, palette: ICommandPalette, notebooks:
     const notificationExtension = new NotificationExtension();
     app.docRegistry.addWidgetExtension('Notebook', notificationExtension);
     Clipboard.getInstance().copied.connect(() => {
-        notificationExtension.showMessage("Copied cells to clipboard.");
+        notificationExtension.showMessage("Copied cells to clipboard. Type 'V' to paste.");
     });
 
     let gatherModelRegistry = new GatherModelRegistry();
-    let codeGatheringExtension = new CodeGatheringExtension(documentManager, notebooks, gatherModelRegistry);
+    let codeGatheringExtension = new CodeGatheringExtension(app, documentManager, notebooks, gatherModelRegistry);
     app.docRegistry.addWidgetExtension('Notebook', codeGatheringExtension);
 
     function addCommand(command: string, label: string, execute: (options?: JSONObject) => void) {
@@ -154,36 +164,12 @@ function activateExtension(app: JupyterLab, palette: ICommandPalette, notebooks:
         codeGatheringExtension.gatherToScript();
     });
 
-    // TODO: re-enable this as an optional feature.
-    /*
     addCommand('gather:gatherFromHistory', 'Compare previous versions of this result', () => {
-
-        const panel = notebooks.currentWidget;
-        if (panel && panel.content && panel.content.activeCell.model.type === 'code') {
-            const activeCell = panel.content.activeCell;
-            let slicer = executionLogger.executionSlicer;
-            let cellModel = activeCell.model as ICodeCellModel;
-            let slicedExecutions = slicer.sliceAllExecutions(new LabCell(cellModel));
-            // TODO: Update this with a real gather-model and real output renderer.
-            let historyModel = buildHistoryModel<IOutputModel>(new GatherModel(), activeCell.model.id, slicedExecutions);
-
-            let widget = new HistoryViewer({
-                model: historyModel,
-                outputRenderer: { render: () => null }
-            });
-
-            if (!widget.isAttached) {
-                app.shell.addToMainArea(widget);
-            }
-            app.shell.activateById(widget.id);
-        }
+        codeGatheringExtension.gatherRevisions();
     });
-    */
-
-    // settingRegistry.set("gather:plugin", "gatheringConfig", { email: "andrewhead@berkeley.edu" });
 
     initLogger(settingRegistry);
-    console.log('Code gathering tools have been activated.');
+    console.log('Gathering tools have been activated.');
 }
 
 export default extension;

@@ -35,7 +35,7 @@ export class GatherController implements IGatherObserver {
                 let mergedSlice = slices[0].merge(...slices.slice(1));
                 if (newState == GatherState.GATHER_TO_CLIPBOARD) {
                     log("Gathering to clipboard", { slice: mergedSlice });
-                    this._cellClipboard.copy(mergedSlice);
+                    this._cellClipboard.copy(mergedSlice, [...model.selectedOutputs]);
                 } else if (newState == GatherState.GATHER_TO_NOTEBOOK) {
                     log("Gathering to notebook", { slice: mergedSlice });
                     if (this._notebookOpener !== undefined) {

@@ -33,7 +33,7 @@ export function initToolbar(notebook: NotebookPanel, gatherModel: GatherModel,
         let labelLayout = gatherLabelWidget.layout = new PanelLayout();
         let gatherLabel = new Widget({ node: document.createElement("span") });
         gatherLabel.addClass('jp-GatherLabel');
-        gatherLabel.node.textContent = "Gather to";
+        gatherLabel.node.textContent = "Gather to:";
         labelLayout.addWidget(gatherLabel);
         notebook.toolbar.insertItem(insertIndex, "gatherLabel", gatherLabelWidget);
         return gatherLabelWidget;
@@ -55,6 +55,11 @@ export function initToolbar(notebook: NotebookPanel, gatherModel: GatherModel,
     let buttons = [
         new GatherToClipboardButton(gatherModel, codeGatheringExtension.gatherToClipboard.bind(codeGatheringExtension)),
         new GatherToNotebookButton(gatherModel, codeGatheringExtension.gatherToNotebook.bind(codeGatheringExtension)),
+        /*
+         * The following line adds a button for gathering code to a script.
+         */
+        // new GatherToScriptButton(gatherModel, codeGatheringExtension.gatherToScript.bind(codeGatheringExtension)),
+        new GatherRevisionsButton(gatherModel, codeGatheringExtension.gatherRevisions.bind(codeGatheringExtension)),
         new ClearButton(gatherModel)
     ];
     for (let button of buttons) {
@@ -124,9 +129,9 @@ export class GatherToClipboardButton extends GatherButton {
     constructor(gatherModel: GatherModel, callback: () => void) {
         super("gatherToClipboard", gatherModel, {
             className: "jp-Toolbar-gathertoclipboardbutton", 
-            iconClassName: "jp-CopyIcon jp-Icon jp-Icon-16",
-            tooltip: "Gather code to clipboard",
-            label: "Clipboard",
+            iconClassName: "jp-CellsIcon jp-Icon jp-Icon-16",
+            tooltip: "Gather cells code to clipboard",
+            label: "Cells",
             onClick: () => { this.onClick() }
         });
         this._callback = callback;
@@ -168,6 +173,77 @@ export class GatherToNotebookButton extends GatherButton {
         } else {
             log("Button: Clicked gather to clipboard without selections");
             window.alert("Before you gather, click on one of the blue variable names, or one of the outputs with a blue border.");
+        }
+    }
+
+    private _callback: () => void;
+}
+
+/**
+ * A button to gather code to a new notebook.
+ */
+export class GatherToScriptButton extends GatherButton {
+
+    constructor(gatherModel: GatherModel, callback: () => void) {
+        super("gatherToScript", gatherModel, {
+            className: "jp-Toolbar-gathertoscriptbutton", 
+            iconClassName: "jp-TextEditorIcon jp-Icon jp-Icon-16",
+            tooltip: "Gather code to new script",
+            label: "Script",
+            onClick: () => { this.onClick() }
+        });
+        this._callback = callback;
+    }
+
+    onClick() {
+        if (this._gatherModel.selectedSlices.length >= 1) {
+            log("Button: Clicked gather to script");
+            this._callback();
+        } else {
+            log("Button: Clicked gather to script without selections");
+            window.alert("Before you gather, click on one of the blue variable names, or one of the outputs with a blue border.");
+        }
+    }
+
+    private _callback: () => void;
+}
+
+/**
+ * A button to gather code to a new notebook.
+ */
+export class GatherRevisionsButton extends GatherButton {
+
+    constructor(gatherModel: GatherModel, callback: () => void) {
+        super("gatherRevisions", gatherModel, {
+            className: "jp-Toolbar-gatherrevisionsbutton", 
+            iconClassName: "jp-HistoryIcon jp-Icon jp-Icon-16",
+            tooltip: "Gather revisions of this cell",
+            label: "Version Browser",
+            onClick: () => { this.onClick() }
+        });
+        this._callback = callback;
+    }
+
+    protected _updateDisabled() {
+        if (this._gatherModel.selectedSlices.length == 1) {
+            this.addClass(HIGHLIGHTED_BUTTON_CLASS);
+            this.removeClass(this.DISABLED_CLASS_NAME);
+        } else {
+            this.removeClass(HIGHLIGHTED_BUTTON_CLASS);
+            this.addClass(this.DISABLED_CLASS_NAME);
+        }
+    }
+
+    onClick() {
+        if (this._gatherModel.selectedSlices.length == 1) {
+            log("Button: Clicked gather to history with a selection");
+            this._callback();
+        } else if (this._gatherModel.selectedSlices.length == 0) {
+            log("Button: Clicked gather to history without any selections");
+            window.alert("Before bringing up a history, first click on one of the blue variables, or one of the outputs with a blue border.");
+        } else if (this._gatherModel.selectedSlices.length > 1) {
+            log("Button: Clicked gather to history with too many selections");
+            window.alert("You cannot bring up a history if more than one blue variable name or output has been selected. Make sure only one variable or output is selectedß");
         }
     }
 

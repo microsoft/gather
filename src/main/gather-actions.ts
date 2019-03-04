@@ -34,14 +34,10 @@ export class Clipboard {
         return this._copied;
     }
 
-    /**
-     * TODO(andrewhead): selected outputs should be passed as arguments to this function too.
-     */
-    copy(slice: SlicedExecution) {
+    copy(slice: SlicedExecution, outputSelections?: OutputSelection[]) {
         const JUPYTER_CELL_MIME = 'application/vnd.jupyter.cells';
         if (slice) {
-            // let cellJson = sliceToCellJson(slice, this._gatherModel.selectedOutputs.concat());
-            let cellJson = getCellsJsonForSlice(slice, []);
+            let cellJson = getCellsJsonForSlice(slice, outputSelections);
             const clipboard = JupyterClipboard.getInstance();
             clipboard.clear();
             clipboard.setData(JUPYTER_CELL_MIME, cellJson);
@@ -75,9 +71,6 @@ export class ScriptOpener {
     }
 
     openScriptForSlice(slice: SlicedExecution) {
-        /*
-         * TODO(andrewhead): give the document a context-sensitive name, say the name of the result.
-         */
         this._documentManager.newUntitled({ ext: 'py' }).then(model => {
             let kernelSpec = _createKernelSpecForCurrentWidget(this._notebooks);
             let editor = this._documentManager.open(model.path, undefined, kernelSpec) as IDocumentWidget<FileEditor>;
@@ -107,9 +100,6 @@ export class NotebookOpener {
     }
 
     openNotebookForSlice(slice: SlicedExecution, outputSelections?: OutputSelection[]) {
-        /*
-         * TODO(andrewhead): give the document a context-sensitive name, say the name of the result.
-         */
         this._documentManager.newUntitled({ ext: 'ipynb' }).then(model => {
             let kernelSpec = _createKernelSpecForCurrentWidget(this._notebooks);
             const widget = this._documentManager.open(model.path, undefined, kernelSpec) as NotebookPanel;

@@ -53,12 +53,16 @@ span.jp-GatherLabel {
   background-image: var(--jp-icon-book);
 }
 
-.jp-CopyIcon {
-  background-image: var(--jp-icon-copy);
+.jp-CellsIcon {
+  background-image: url('icons/cells.svg');
 }
 
 .jp-CloseIcon {
   background-image: var(--jp-icon-close);
+}
+
+.jp-HistoryIcon {
+  background-image: url('icons/history.svg');
 }
 
 /**
@@ -155,36 +159,26 @@ div.CodeMirror-linebackground.jp-InputArea-editor-dependencyline {
 .jp-HistoryViewer {
   width: 100%;
   height: 100%;
+  overflow-x: scroll;
+  white-space: nowrap;
   margin: auto;
 }
 
-.jp-HistoryViewer .jp-HistoryViewer-referenceversion,
-.jp-HistoryViewer .jp-HistoryViewer-olderversions {
+.jp-HistoryViewer .jp-Revision {
   display: inline-block;
   vertical-align: top;
 }
 
 .jp-HistoryViewer-referenceversion {
   max-width: 500px;
-  height: 98%;
-  padding-right: 50px;
 }
 
 .jp-HistoryViewer-olderversions {
-  height: 99%;
-  width: 65%;
-  overflow-y: hidden;
-}
-
-.jp-HistoryViewer-olderversions-revisions {
-  height: 99%;
-  display: flex;
-  flex-flow: row;
-  white-space: nowrap;
-  overflow-x: auto;
+  max-width: 500px;
 }
 
 .jp-Revision {
+  display: inline-block;
   height: 99%;
   vertical-align: top;
   background-color: #eee;
@@ -206,15 +200,6 @@ div.CodeMirror-linebackground.jp-InputArea-editor-dependencyline {
   flex-flow: column;
 }
 
-.jp-HistoryViewer-referenceversion .jp-Revision {
-  margin-left: 30px;
-}
-
-.jp-HistoryViewer-olderversions .jp-Revision {
-  max-width: 500px;
-  margin-right: 20px;
-}
-
 .jp-HistoryViewer-referenceversion .jp-Revision-header {
   font-weight: bold;
 }
@@ -222,7 +207,6 @@ div.CodeMirror-linebackground.jp-InputArea-editor-dependencyline {
 .jp-Revision-header {
   flex: 0 0 auto;
   background-color: white;
-  /* border: 1px solid black; */
   font-size: medium;
   padding-left: 1ex;
   padding-right: 1ex;
@@ -284,7 +268,6 @@ div.CodeMirror-linebackground.jp-InputArea-editor-dependencyline {
 
 .jp-DiffedCell-editor-aftertext.jp-DiffedCell-editor-changedtext {
   font-weight: bold;
-  /* background-color: #ffe189; */
 }
 
 .jp-DiffedCell-editor-beforebackground {
@@ -292,7 +275,6 @@ div.CodeMirror-linebackground.jp-InputArea-editor-dependencyline {
 }
 
 .jp-DiffedCell-editor-beforetext {
-  /* background-color: #d8f7ff; */
   font-style: italic;
   color: #6d6d6d;
 }
@@ -304,6 +286,10 @@ div.CodeMirror-linebackground.jp-InputArea-editor-dependencyline {
 }
 
 /* Revision cell outputs */
+.jp-Notebook-revisionbrowser {
+  background-color: #eee;
+}
+
 .jp-Notebook-revisionbrowser-output div.output_area {
   max-height: 5000px;
   overflow-y: auto;
@@ -314,19 +300,7 @@ div.CodeMirror-linebackground.jp-InputArea-editor-dependencyline {
   width: 100%;
   max-width: 100%;
   overflow-x: auto;
-  /* border-right: 1px solid black; */
-  /* border-left: 1px solid black; */
 }
-
-/*
-.jp-Notebook-revisionbrowser-output div.output_area:last-child div.output_subarea {
-  border-bottom: 1px solid black;
-}
-
-.jp-Notebook-revisionbrowser-output div.output_area:first-child div.output_subarea {
-  border-top: 1px solid black;
-}
-*/
 
 .jp-Notebook-revisionbrowser-output .output_area:first-child {
   margin-left: 1em;

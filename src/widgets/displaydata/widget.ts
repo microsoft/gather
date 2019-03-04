@@ -24,8 +24,10 @@ export class DisplayData extends Widget {
         let layout = (this.layout = new PanelLayout());
 
         // Code borrowed from OutputArea extension.
-        // TODO(andrewhead): support other types of display data.
-        // TODO(andrewhead): change second argument (preferSafe) based on display data field.
+        /*
+         * TODO(andrewhead): support other types of display data.
+         * TODO(andrewhead): change second argument (preferSafe) based on display data field.
+         */
         if (nbformat.isExecuteResult(model) || nbformat.isDisplayData(model)) {
             let mimeType = rendermime.preferredMimeType(model.data, "ensure");
             let output = rendermime.createRenderer(mimeType);

@@ -43,10 +43,10 @@ export function buildHistoryModel(
             let recentCellVersion = latestCellVersions[cell.persistentId];
             let latestText: string = "";
             if (recentCellVersion) {
-                latestText = recentCellVersion.textSlice;
+                latestText = recentCellVersion.textSliceLines;
             }
 
-            let thisVersionText: string = cellSlice.textSlice;
+            let thisVersionText: string = cellSlice.textSliceLines;
             let diff = computeTextDiff(latestText, thisVersionText);
 
             let slicedCell: SlicedCellModel = new SlicedCellModel({

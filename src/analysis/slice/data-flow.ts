@@ -436,7 +436,6 @@ class CallNamesListener implements ast.IWalkListener {
         this._statement = statement;
     }
 
-    // TODO: Include the level of each name...
     onEnterNode(node: ast.ISyntaxNode, type: string, ancestors: ast.ISyntaxNode[]) {
         if (type == ast.CALL) {
             let callNode = node as ast.ICall;
@@ -530,7 +529,6 @@ class TargetsDefListener implements ast.IWalkListener {
         this._statement = statement;
     }
 
-    // TODO: Include the level of each name...
     onEnterNode(node: ast.ISyntaxNode, type: string, ancestors: ast.ISyntaxNode[]) {
         if (type == ast.NAME) {
             let level = ReferenceType.DEFINITION;
