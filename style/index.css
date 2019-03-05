@@ -228,10 +228,6 @@ div.CodeMirror-linebackground.jp-InputArea-editor-dependencyline {
   width: 100%;
 }
 
-.jp-CellArea:not(:last-child) {
-  margin-bottom: 0.5em;
-}
-
 .jp-SlicedCell .jp-SlicedCell-editor {
   border: 1px solid #cfcfcf;
   background-color: #f7f7f7;

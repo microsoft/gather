@@ -60,8 +60,8 @@ export class Revision extends Widget {
         let buttons = new Widget({ node: document.createElement("div") });
         buttons.addClass(REVISION_BUTTONS_CLASS);
         const panelLayout = buttons.layout = new PanelLayout();
-        panelLayout.addWidget(this.createButton("Open in notebook", GatherState.GATHER_TO_NOTEBOOK));
-        panelLayout.addWidget(this.createButton("Copy to clipboard", GatherState.GATHER_TO_CLIPBOARD));
+        panelLayout.addWidget(this.createButton("Open in notebook", "jp-BookIcon", GatherState.GATHER_TO_NOTEBOOK));
+        panelLayout.addWidget(this.createButton("Copy to clipboard", "jp-CellsIcon", GatherState.GATHER_TO_CLIPBOARD));
         nbLayout.addWidget(buttons);
 
         // Add the revision's code
@@ -102,16 +102,24 @@ export class Revision extends Widget {
         }
     }
 
-    private createButton(label: string, gatherState: GatherState) {
+    private createButton(label: string, iconClass: string, gatherState: GatherState) {
+        
         let button = new Widget({ node: document.createElement("button") });
         button.addClass(REVISION_BUTTON_CLASS);
-        let notebookLabel = document.createElement("i");
-        notebookLabel.classList.add("fa-book", "fa");
-        let notebookText = document.createElement("span");
-        notebookText.classList.add(REVISION_BUTTON_LABEL_CLASS);
-        notebookText.textContent = label;
-        notebookLabel.appendChild(notebookText);
-        button.node.appendChild(notebookLabel);
+        button.layout = new PanelLayout();
+        
+        let iconSpan = new Widget({ node: document.createElement("span") });
+        iconSpan.addClass(iconClass);
+        iconSpan.addClass("jp-Icon");
+        iconSpan.addClass("jp-Icon-16");
+        
+        let labelSpan = new Widget({ node: document.createElement("span") });
+        labelSpan.addClass(REVISION_BUTTON_LABEL_CLASS);
+        labelSpan.node.textContent = label;
+        
+        (button.layout as PanelLayout).addWidget(iconSpan);
+        (button.layout as PanelLayout).addWidget(labelSpan);
+
         button.node.onclick = () => {
             log("Revision browser: " + label, {
                 slice: this.model.slice,

@@ -12,16 +12,16 @@ import { DataflowAnalyzer } from '../analysis/slice/data-flow';
 import { ExecutionLogSlicer } from '../analysis/slice/log-slicer';
 import { GatherController, GatherModel, GatherState, SliceSelection } from '../model';
 import { GatherModelRegistry, getGatherModelForActiveNotebook } from '../model/gather-registry';
-import { NotifactionExtension as NotificationExtension } from '../overlay/notification';
 import { CellChangeListener } from '../overlay/cell-listener';
+import { MarkerManager } from '../overlay/gather-markers';
+import { NotifactionExtension as NotificationExtension } from '../overlay/notification';
+import { RevisionBrowser } from '../overlay/revision-browser';
 import { initToolbar } from '../overlay/toolbar';
-import { MarkerManager } from '../overlay/variable-markers';
 import { loadHistory as loadHistory } from '../persistence/load';
 import { storeHistory } from '../persistence/store';
 import { initLogger, log } from '../util/log';
 import { ExecutionLogger } from './execution-logger';
 import { Clipboard } from './gather-actions';
-import { RevisionBrowser } from '../overlay/revision-browser';
 
 
 const extension: JupyterLabPlugin<void> = {
