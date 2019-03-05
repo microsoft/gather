@@ -1,13 +1,13 @@
 import { expect } from "chai";
 import { ProgramBuilder } from "../analysis/slice/program-builder";
-import { ICell, SimpleCell } from '../model/cell';
+import { ICell, LogCell } from '../model/cell';
 
 
 describe('program builder', () => {
 
     function createCell(persistentId: string, executionCount: number, ...codeLines: string[]): ICell {
         let text = codeLines.join("\n");
-        return new SimpleCell({ executionCount, persistentId, text });
+        return new LogCell({ executionCount, persistentId, text });
     }
 
     let programBuilder: ProgramBuilder;

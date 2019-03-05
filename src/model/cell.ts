@@ -25,10 +25,24 @@ export interface ICell {
      */
     gathered: boolean;
 
-    executionCount: number;
-    hasError: boolean;
+    /**
+     * Whether this cell's text has been changed since its last execution. Undefined behavior when
+     * a cell has never been executed.
+     */
+    readonly dirty: boolean;
+
+    /**
+     * The cell's current text.
+     */
     text: string;
+
+    executionCount: number;
     outputs: nbformat.IOutput[];
+
+    /**
+     * Whether analysis or execution of this cell has yielded an error.
+     */
+    hasError: boolean;
 
     /**
      * Flag used for type checking.
@@ -53,6 +67,10 @@ export interface ICell {
     serialize: () => nbformat.ICodeCell;
 }
 
+export function instanceOfICell(object: any): object is ICell {
+    return object && (typeof object == "object") && "is_cell" in object;
+}
+
 /**
  * Abstract class for accessing cell data.
  */
@@ -68,6 +86,16 @@ export abstract class AbstractCell implements ICell {
     abstract gathered: boolean;
     abstract outputs: nbformat.IOutput[];
     abstract deepCopy(): AbstractCell;
+
+    /**
+     * The cell's text when it was executed, i.e., when the execution count was last changed.
+     * This will be undefined if the cell has never been executed.
+     */
+    abstract lastExecutedText: string;
+
+    get dirty(): boolean {
+        return this.text !== this.lastExecutedText;
+    }
 
     /**
      * This method is called by the logger to sanitize cell data before logging it. This method
@@ -93,7 +121,7 @@ export abstract class AbstractCell implements ICell {
             }
             return clone;
         });
-        return new SimpleCell({
+        return new LogCell({
             text: this.text,
             hasError: this.hasError,
             outputs: clonedOutputs
@@ -115,7 +143,10 @@ export abstract class AbstractCell implements ICell {
     }
 }
 
-export class SimpleCell extends AbstractCell {
+/**
+ * Static cell data. Provides an interfaces to cell data loaded from a log.
+ */
+export class LogCell extends AbstractCell {
 
     constructor(cellData: {
         id?: string, persistentId?: string, executionCount?: number, hasError?: boolean,
@@ -128,12 +159,13 @@ export class SimpleCell extends AbstractCell {
         this.executionCount = cellData.executionCount || undefined;
         this.hasError = cellData.hasError || false;
         this.text = cellData.text || "";
+        this.lastExecutedText = this.text;
         this.outputs = cellData.outputs || [];
         this.gathered = false;
     }
 
     deepCopy(): AbstractCell {
-        return new SimpleCell(this);
+        return new LogCell(this);
     }
 
     readonly is_cell: boolean;
@@ -143,16 +175,14 @@ export class SimpleCell extends AbstractCell {
     readonly hasError: boolean;
     readonly isCode: boolean;
     readonly text: string;
+    readonly lastExecutedText: string;
     readonly outputs: nbformat.IOutput[];
     readonly gathered: boolean;
 }
 
-export function instanceOfICell(object: any): object is ICell {
-    return object && (typeof object == "object") && "is_cell" in object;
-}
-
 /**
- * Abstract interface to data of a Jupyter Lab code cell.
+ * Wrapper around a code cell model created by Jupyter Lab. Provides a consistent interface to
+ * lab data to other cells that have been loaded from a log.
  */
 export class LabCell extends AbstractCell {
 
@@ -182,6 +212,14 @@ export class LabCell extends AbstractCell {
 
     set text(text: string) {
         this._model.value.text = text;
+    }
+
+    get lastExecutedText(): string {
+        return this._model.metadata.get('last_executed_text') as string;
+    }
+
+    set lastExecutedText(text: string) {
+        this._model.metadata.set('last_executed_text', text);
     }
 
     get executionCount(): number {

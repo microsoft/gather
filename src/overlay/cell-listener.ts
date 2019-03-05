@@ -1,4 +1,4 @@
-import { CodeCellModel, ICellModel } from "@jupyterlab/cells";
+import { CodeCellModel, ICellModel, ICodeCellModel } from "@jupyterlab/cells";
 import { NotebookPanel } from "@jupyterlab/notebook";
 import { IObservableList } from "@jupyterlab/observables";
 import { GatherModel } from "../model";
@@ -11,14 +11,16 @@ export class CellChangeListener {
 
     private _gatherModel: GatherModel;
 
-    constructor(gatherModel: GatherModel, panel: NotebookPanel) {
+    constructor(gatherModel: GatherModel, notebookPanel: NotebookPanel) {
         this._gatherModel = gatherModel;
+        this.registerCurrentCells(notebookPanel);
+        notebookPanel.content.model.cells.changed.connect((_, change) => this.registerAddedCells(change), this);
+    }
 
-        for (let i = 0; i < panel.content.model.cells.length; i++) {
-            this.registerCell(panel.content.model.cells.get(i));
+    private registerCurrentCells(notebookPanel: NotebookPanel) {
+        for (let i = 0; i < notebookPanel.content.model.cells.length; i++) {
+            this.registerCell(notebookPanel.content.model.cells.get(i));
         }
-
-        panel.content.model.cells.changed.connect((_, change) => this.registerAddedCells(change), this);
     }
 
     private registerCell(cell: ICellModel) {
@@ -27,6 +29,13 @@ export class CellChangeListener {
          * A cell will be considered edited whenever any of its contents changed, including
          * execution count, metadata, outputs, text, etc.
          */
+        cell.stateChanged.connect((changedCell, cellStateChange) => {
+            if (cellStateChange.name === "executionCount" && cellStateChange.newValue !== undefined && cellStateChange.newValue !== null) {
+                let labCell = new LabCell(changedCell as ICodeCellModel);
+                labCell.lastExecutedText = labCell.text;
+                this._gatherModel.lastExecutedCell = labCell;
+            }
+        });
         cell.contentChanged.connect((changedCell, _) => {
             if (changedCell instanceof CodeCellModel) {
                 this._gatherModel.lastEditedCell = new LabCell(changedCell);

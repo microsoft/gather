@@ -1,13 +1,13 @@
 import { expect } from "chai";
 import { SlicedExecution } from "../analysis/slice/log-slicer";
 import { LocationSet } from "../analysis/slice/slice";
-import { ICell, SimpleCell } from "../model/cell";
+import { ICell, LogCell } from "../model/cell";
 import { CellSlice } from "../model/cellslice";
 
 describe('SlicedExecution', () => {
 
     function cell(persistentId: string, executionCount: number, ...codeLines: string[]): ICell {
-        return new SimpleCell({ executionCount, text: codeLines.join("\n"), persistentId });
+        return new LogCell({ executionCount, text: codeLines.join("\n"), persistentId });
     }
 
     function cellSlice(cell: ICell, slice: LocationSet): CellSlice {

@@ -3,13 +3,14 @@
  */
 import { NotebookPanel } from "@jupyterlab/notebook";
 import { LineHandle } from "codemirror";
-import { ICell } from "../model/cell";
+import { ICell, LabCell } from "../model/cell";
 import { ILocation, ISyntaxNode } from "../analysis/parse/python/python-parser";
 import { Ref, SymbolType } from "../analysis/slice/data-flow";
 import { SlicedExecution } from "../analysis/slice/log-slicer";
 import { log } from "../util/log";
 import { CellOutput, DefSelection, EditorDef, GatherEventData, GatherModel, GatherModelEvent, IGatherObserver, OutputSelection } from "../model";
 import { NotebookElementFinder } from "./element-finder";
+import { ICodeCellModel } from "@jupyterlab/cells";
 
 /**
  * Class for a highlighted, clickable output.
@@ -37,9 +38,14 @@ const DEFINITION_SELECTED_CLASS = "jp-InputArea-editor-nametext-selected";
 const DEFINITION_LINE_SELECTED_CLASS = "jp-InputArea-editor-nameline-selected";
 
 /**
- * Class for a data dependency.
+ * Class for a line with a data dependency.
  */
 const DEPENDENCY_CLASS = "jp-InputArea-editor-dependencyline";
+
+/**
+ * Class for a line with a data dependency in a dirty cell.
+ */
+const DIRTY_DEPENDENCY_CLASS = "jp-InputArea-editor-dirtydependencyline";
 
 /**
  * Clear existing selections in the window.
@@ -96,7 +102,7 @@ export class MarkerManager implements IGatherObserver {
     onModelChange(eventType: GatherModelEvent, eventData: GatherEventData, model: GatherModel) {
 
         // When a cell is executed, search for definitions and output.
-        if (eventType == GatherModelEvent.CELL_EXECUTED) {
+        if (eventType == GatherModelEvent.CELL_EXECUTION_LOGGED) {
             let cell = eventData as ICell;
             this.clearSelectablesForCell(cell);
             let editor = this._elementFinder.getEditor(cell);
@@ -110,6 +116,7 @@ export class MarkerManager implements IGatherObserver {
         // When a cell is deleted or edited, delete all of its def markers.
         if (eventType == GatherModelEvent.CELL_DELETED || eventType == GatherModelEvent.CELL_EDITED) {
             let cell = eventData as ICell;
+            this._updateDependenceHighlightsForCell(cell);
             this.clearSelectablesForCell(cell);
         }
 
@@ -295,18 +302,21 @@ export class MarkerManager implements IGatherObserver {
     highlightDependencies(slice: SlicedExecution) {
         let defLines: number[] = [];
         slice.cellSlices.forEach(cellSlice => {
-            let cell = cellSlice.cell;
+            let loggedCell = cellSlice.cell;
             let sliceLocations = cellSlice.slice;
-            let editor = this._elementFinder.getEditorWithExecutionCount(cell);
+            let liveCellWidget = this._elementFinder.getCell(loggedCell.persistentId, loggedCell.executionCount);
+            let editor = this._elementFinder.getEditorWithExecutionCount(loggedCell);
 
-            if (editor) {
+            if (liveCellWidget && editor) {
+                let liveCell = new LabCell(liveCellWidget.model as ICodeCellModel);
                 let numLines = 0;
                 // Batch the highlight operations for each cell to spend less time updating cell height.
                 editor.operation(() => {
                     sliceLocations.items.forEach((loc:ILocation) => {
                         for (let lineNumber = loc.first_line - 1; lineNumber <= loc.last_line -1; lineNumber++) {
                             numLines += 1;
-                            let lineHandle = editor.addLineClass(lineNumber, "background", DEPENDENCY_CLASS);
+                            let styleClass = liveCell.dirty ? DIRTY_DEPENDENCY_CLASS : DEPENDENCY_CLASS;
+                            let lineHandle = editor.addLineClass(lineNumber, "background", styleClass);
                             this._dependencyLineMarkers.push({ editor: editor, lineHandle: lineHandle });
                         }
                     });
@@ -317,10 +327,28 @@ export class MarkerManager implements IGatherObserver {
         log("Added lines for defs (may be overlapping)", { defLines });
     }
 
+    private _clearDependencyMarkersForLine(editor: CodeMirror.Editor, lineHandle: CodeMirror.LineHandle) {
+        editor.removeLineClass(lineHandle, "background", DEPENDENCY_CLASS);
+        editor.removeLineClass(lineHandle, "background", DIRTY_DEPENDENCY_CLASS);
+    }
+
+    private _updateDependenceHighlightsForCell(cell: ICell) {
+        let editor = this._elementFinder.getEditorWithExecutionCount(cell);
+        let liveCellWidget = this._elementFinder.getCell(cell.persistentId, cell.executionCount);
+        let liveCell = new LabCell(liveCellWidget.model as ICodeCellModel);
+        this._dependencyLineMarkers
+            .filter((marker) => marker.editor == editor)
+            .forEach((marker) => {
+                this._clearDependencyMarkersForLine(marker.editor, marker.lineHandle);
+                let styleClass = liveCell.dirty ? DIRTY_DEPENDENCY_CLASS : DEPENDENCY_CLASS;
+                marker.editor.addLineClass(marker.lineHandle, "background", styleClass);
+            });
+    }
+
     private _clearDependencyLineMarkers() {
         log("Cleared all dependency line markers");
         this._dependencyLineMarkers.forEach(marker => {
-            marker.editor.removeLineClass(marker.lineHandle, "background", DEPENDENCY_CLASS);
+            this._clearDependencyMarkersForLine(marker.editor, marker.lineHandle);
         })
         this._dependencyLineMarkers = [];
     }

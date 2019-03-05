@@ -2,7 +2,7 @@ import { INotebookModel } from "@jupyterlab/notebook";
 import { JSONArray, JSONExt, JSONObject } from "@phosphor/coreutils";
 import { log } from "util";
 import { CellExecution } from "../analysis/slice/log-slicer";
-import { SimpleCell } from "../model/cell";
+import { LogCell } from "../model/cell";
 import { GatherModel } from "../model";
 
 /**
@@ -50,7 +50,6 @@ function _tryLoadHistory(notebookModel: INotebookModel, gatherModel: GatherModel
             return;
         }
         gatherModel.executionLog.addExecutionToLog(cellExecution);
-        gatherModel.lastExecutedCell = cellExecution.cell;
     }
 }
 
@@ -107,6 +106,6 @@ function _loadExecutionFromJson(executionJson: JSONObject): CellExecution {
     /**
      * TODO(andrewhead): Update with Kunal's code for serializing and deserializing outputs.
      */
-    let cell = new SimpleCell({ id, executionCount, hasError, text, persistentId });
+    let cell = new LogCell({ id, executionCount, hasError, text, persistentId });
     return new CellExecution(cell, executionTime);
 }

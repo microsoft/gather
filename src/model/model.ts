@@ -22,6 +22,7 @@ export enum GatherState {
 export enum GatherModelEvent {
     STATE_CHANGED,
     CELL_EXECUTED,
+    CELL_EXECUTION_LOGGED,
     CELL_DELETED,
     CELL_EDITED,
     EDITOR_DEF_FOUND,
@@ -56,6 +57,9 @@ export class GatherModel {
 
     constructor(executionLog: ExecutionLogSlicer) {
         this._executionLog = executionLog;
+        this._executionLog.executionLogged.connect((_, cellExecution) => {
+            this.notifyObservers(GatherModelEvent.CELL_EXECUTION_LOGGED, cellExecution.cell);
+        });
     }
 
     /**
@@ -75,7 +79,7 @@ export class GatherModel {
     }
 
     /**
-     * Get execution history for this notebook.
+     * Get exeuction history for the notebook.
      */
     get executionLog(): ExecutionLogSlicer {
         return this._executionLog;

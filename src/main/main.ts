@@ -52,12 +52,17 @@ export class CodeGatheringExtension implements DocumentRegistry.IWidgetExtension
          */
         notebookContext.ready.then(() => {
 
+            /*
+             * The order of operations here is key. First, create a model that contains a log of
+             * executed cells and the state of the gather UI.
+             */
             let notebookModel = notebookContext.model;
             let executionLog = new ExecutionLogSlicer(new DataflowAnalyzer());
             let gatherModel = new GatherModel(executionLog);
+            new ExecutionLogger(gatherModel);
 
             /*
-             * Initialize reactive UI before loading the execution log from storage. This lets us
+             * Then,Initialize reactive UI before loading the execution log from storage. This lets us
              * update the UI automatically as we populate the log.
              */
             this._toolbarWidgets = initToolbar(notebook, gatherModel, this);
@@ -65,8 +70,10 @@ export class CodeGatheringExtension implements DocumentRegistry.IWidgetExtension
             new CellChangeListener(gatherModel, notebook);
             new GatherController(gatherModel, this._documentManager, this._notebooks);
 
+            /**
+             * Then, load the execution log from the notebook's metadata.
+             */
             this._gatherModelRegistry.addGatherModel(notebookModel, gatherModel);
-            new ExecutionLogger(notebook, gatherModel);
             saveHistoryOnNotebookSave(notebook, gatherModel);
             loadHistory(notebookContext.model, gatherModel);
         });

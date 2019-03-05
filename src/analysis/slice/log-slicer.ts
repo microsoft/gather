@@ -1,3 +1,4 @@
+import { Signal } from "@phosphor/signaling";
 import { ICell } from "../../model/cell";
 import { CellSlice } from "../../model/cellslice";
 import { DataflowAnalyzer } from "./data-flow";
@@ -64,6 +65,11 @@ export class ExecutionLogSlicer {
     private _dataflowAnalyzer: DataflowAnalyzer;
     
     /**
+     * Signal emitted when a cell's execution has been completely processed.
+     */
+    readonly executionLogged = new Signal<this, CellExecution>(this);
+
+    /**
      * Construct a new execution log slicer.
      */
     constructor(dataflowAnalyzer: DataflowAnalyzer) {
@@ -72,7 +78,8 @@ export class ExecutionLogSlicer {
     }
 
     /**
-     * Log that a cell has just been executed.
+     * Log that a cell has just been executed. The execution time for this cell will be stored
+     * as the moment at which this method is called.
      */
     public logExecution(cell: ICell) {
         let cellExecution = new CellExecution(cell, new Date());
@@ -80,12 +87,15 @@ export class ExecutionLogSlicer {
     }
 
     /**
-     * Use logExecution instead if a cell has just been run. This function is intended to be used
-     * only to initialize history when a notebook is reloaded.
+     * Use logExecution instead if a cell has just been run to annotate it with the current time
+     * as the execution time. This function is intended to be used only to initialize history
+     * when a notebook is reloaded. However, any method that eventually calls this method will
+     * notify all observers that this cell has been executed.
      */
     public addExecutionToLog(cellExecution: CellExecution) {
         this._programBuilder.add(cellExecution.cell);
         this._executionLog.push(cellExecution);
+        this.executionLogged.emit(cellExecution);
     }
 
     /**

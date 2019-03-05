@@ -6,7 +6,7 @@ import { FileEditor } from "@jupyterlab/fileeditor";
 import { INotebookTracker, NotebookPanel } from "@jupyterlab/notebook";
 import { Kernel } from "@jupyterlab/services";
 import { JSONObject } from "@phosphor/coreutils";
-import { ISignal, Signal } from "@phosphor/signaling";
+import { Signal } from "@phosphor/signaling";
 import { SlicedExecution } from "../analysis/slice/log-slicer";
 import { OutputSelection } from "../model";
 
@@ -30,23 +30,24 @@ export class Clipboard {
         return this.INSTANCE;
     }
 
-    get copied(): ISignal<this, SlicedExecution> {
-        return this._copied;
-    }
-
     copy(slice: SlicedExecution, outputSelections?: OutputSelection[]) {
         const JUPYTER_CELL_MIME = 'application/vnd.jupyter.cells';
         if (slice) {
+            // let cellJson = sliceToCellJson(slice, this._gatherModel.selectedOutputs.concat());
             let cellJson = getCellsJsonForSlice(slice, outputSelections);
             const clipboard = JupyterClipboard.getInstance();
             clipboard.clear();
             clipboard.setData(JUPYTER_CELL_MIME, cellJson);
-            this._copied.emit(slice);
+            this.copied.emit(slice);
         }
     }
 
     private static INSTANCE = new Clipboard();
-    private _copied = new Signal<this, SlicedExecution>(this)
+
+    /**
+     * Signal emitted when a slice is copied to the clipbaord.
+     */
+    readonly copied = new Signal<this, SlicedExecution>(this);
 }
 
 /**

@@ -1,12 +1,12 @@
 import { expect } from 'chai';
 import { LocationSet } from '../analysis/slice/slice';
-import { SimpleCell } from '../model/cell';
+import { LogCell } from '../model/cell';
 import { CellSlice } from '../model/cellslice';
 
 describe('CellSlice', () => {
 
     it('yields a text slice based on a set of locations', () => {
-        let cellSlice = new CellSlice(new SimpleCell({
+        let cellSlice = new CellSlice(new LogCell({
             text: [
                 "a = 1",
                 "b = 2",
@@ -27,7 +27,7 @@ describe('CellSlice', () => {
     });
 
     it('yields entire lines if requested', () => {
-        let cellSlice = new CellSlice(new SimpleCell({
+        let cellSlice = new CellSlice(new LogCell({
             text: [
                 "a = 1",
                 "b = 2",

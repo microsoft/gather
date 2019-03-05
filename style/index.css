@@ -92,9 +92,12 @@ span.jp-GatherLabel {
   font-weight: bold;
 }
 
+div.CodeMirror-linebackground.jp-InputArea-editor-dirtydependencyline {
+  background-color: #f7d3cf;
+}
+
 div.CodeMirror-linebackground.jp-InputArea-editor-dependencyline {
-  /* background-color: var(--brand-color4); */
-  background-color: #f4eafc;
+  background-color: #e6d4f4;
 }
 
 /**
