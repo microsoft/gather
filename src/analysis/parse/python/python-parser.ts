@@ -79,8 +79,7 @@ export interface ILocation {
 
 export interface ILocatable {
     location: ILocation;
-    cellPersistentId?: string;
-    executionCount?: number;
+    cellExecutionEventId?: string;
 }
 
 export const MODULE = 'module';

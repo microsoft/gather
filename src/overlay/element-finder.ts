@@ -1,8 +1,8 @@
-import { Cell, CodeCell, isCodeCellModel } from "@jupyterlab/cells";
+import { ICell, LabCell } from "../model/cell";
+import { Cell, isCodeCellModel } from "@jupyterlab/cells";
 import { CodeMirrorEditor } from "@jupyterlab/codemirror";
 import { NotebookPanel } from "@jupyterlab/notebook";
 import CodeMirror from "codemirror";
-import { ICell, LabCell } from "../model/cell";
 
 /**
  * Finds the HTML elements in a notebook corresponding to a cell. Useful for looking up HTML
@@ -14,27 +14,19 @@ export class NotebookElementFinder {
         this._notebook = notebook;
     }
 
-    getCellWithPersistentId(persistentId: string): Cell | null {
-        for (let cell of this._notebook.content.widgets) {
-            if (isCodeCellModel(cell.model)) {
-                let labCell = new LabCell(cell.model);
-                if (labCell.persistentId == persistentId) {
-                    return cell;
+    /**
+     * Look up cells in the notebook using the ID of the execution event that executed it last.
+     * This is the only way to make sure we get the right cell if a cell has been executed
+     * with the same exeuction count twice in two separate notebook sessions.
+     */
+    getCellWidget(cell: ICell): Cell | null {
+        for (let cellWidget of this._notebook.content.widgets) {
+            if (isCodeCellModel(cellWidget.model)) {
+                let labCell = new LabCell(cellWidget.model);
+                if (labCell.executionEventId == cell.executionEventId) {
+                    return cellWidget;
                 }
             }
-        }
-        return null;
-    }
-
-    /**
-     * Get a cell from the notebook.
-     * (Don't call this right after a cell execution event, as it takes a while for the
-     * execution count to update in an executed cell).
-     */
-    getCell(persistentId: string, executionCount?: number): Cell | null {
-        let cell = this.getCellWithPersistentId(persistentId);
-        if (cell != null && (cell as CodeCell).model.executionCount == executionCount) {
-            return cell;
         }
         return null;
     }
@@ -43,12 +35,7 @@ export class NotebookElementFinder {
      * Get the element for the code editor for a cell.
      */
     getEditor(cell: ICell): CodeMirror.Editor | null {
-        let widget = this.getCellWithPersistentId(cell.persistentId);
-        return this._getEditor(widget);
-    }
-
-    getEditorWithExecutionCount(cell: ICell): CodeMirror.Editor | null {
-        let widget = this.getCell(cell.persistentId, cell.executionCount);
+        let widget = this.getCellWidget(cell);
         return this._getEditor(widget);
     }
 
@@ -63,7 +50,7 @@ export class NotebookElementFinder {
      * Finds HTML elements for cell outputs in a notebook.
      */
     getOutputs(cell: ICell): HTMLElement[] {
-        let cellWidget = this.getCell(cell.persistentId, cell.executionCount);
+        let cellWidget = this.getCellWidget(cell);
         let outputElements: HTMLElement[] = [];
         if (cellWidget == null) {
             return outputElements;

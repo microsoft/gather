@@ -3,6 +3,7 @@ import { NotebookPanel } from "@jupyterlab/notebook";
 import { IObservableList } from "@jupyterlab/observables";
 import { GatherModel } from "../model";
 import { LabCell } from "../model/cell";
+import { UUID } from "@phosphor/coreutils";
 
 /**
  * Listens to cell executions and edits.
@@ -13,7 +14,6 @@ export class CellChangeListener {
 
     constructor(gatherModel: GatherModel, notebook: NotebookPanel) {
         this._gatherModel = gatherModel;
-        this._notebook = notebook;
         this._registerCurrentCells(notebook);
         notebook.content.model.cells.changed.connect((_, change) => this._registerAddedCells(change), this);
     }
@@ -29,10 +29,7 @@ export class CellChangeListener {
      */
     private _annotateCellWithExecutionInformation(cell: LabCell) {
         cell.lastExecutedText = cell.text;
-        cell.kernelId = this._notebook.session.kernel.model.id;
-        this._notebook.session.kernel.requestHistory({ output: false, raw: true, hist_access_type: 'tail' }).then((res) => {
-            console.log("Gotta reply");
-        });
+        cell.executionEventId = UUID.uuid4();
     }
 
     private _registerCell(cell: ICellModel) {
@@ -71,6 +68,4 @@ export class CellChangeListener {
             }
         }
     }
-
-    private _notebook: NotebookPanel;
 }

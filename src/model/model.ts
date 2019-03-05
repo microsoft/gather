@@ -163,10 +163,10 @@ export class GatherModel {
     /**
      * Remove the editor def from the list of editor definitions.
      */
-    removeEditorDefsForCell(cellPersistentId: string) {
+    removeEditorDefsForCell(cellExecutionEventId: string) {
         for (let i = this._editorDefs.length - 1; i >= 0; i--) {
             let editorDef = this._editorDefs[i];
-            if (editorDef.cell.persistentId == cellPersistentId) {
+            if (editorDef.cell.executionEventId == cellExecutionEventId) {
                 this._editorDefs.splice(i, 1);
                 this.notifyObservers(GatherModelEvent.EDITOR_DEF_REMOVED, editorDef);
             }
@@ -353,10 +353,10 @@ export class GatherModel {
     /**
      * Deselect all outputs.
      */
-    deselectOutputsForCell(cellPersistentId: string) {
+    deselectOutputsForCell(cellExecutionEventId: string) {
         for (let i = this._selectedOutputs.length - 1; i >= 0; i--) {
             let output = this._selectedOutputs[i];
-            if (output.cell.persistentId == cellPersistentId) {
+            if (output.cell.executionEventId == cellExecutionEventId) {
                 this._selectedOutputs.splice(i, 1);
                 this.notifyObservers(GatherModelEvent.OUTPUT_DESELECTED, output);
             }

@@ -158,7 +158,7 @@ function getCellsJsonForSlice(slice: SlicedExecution, outputSelections?: OutputS
             if (originalOutputs) {
                 for (let i = 0; i < originalOutputs.length; i++) {
                     let output = originalOutputs[i];
-                    if (outputSelections.some(s => s.cell.persistentId == slicedCell.persistentId && s.outputIndex == i)) {
+                    if (outputSelections.some(s => s.cell.executionEventId == slicedCell.executionEventId && s.outputIndex == i)) {
                         cellJson.outputs.push(output);
                     }
                 }

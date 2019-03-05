@@ -177,7 +177,7 @@ export class MarkerManager implements IGatherObserver {
             let defSelection = eventData as DefSelection;
             this._defMarkers.filter(marker => {
                 return defSelection.editorDef.def.location == marker.location &&
-                    defSelection.cell.persistentId == marker.cell.persistentId;
+                    defSelection.cell.executionEventId == marker.cell.executionEventId;
             }).forEach(marker => marker.deselect());
 
             let editorDef = defSelection.editorDef;
@@ -195,7 +195,7 @@ export class MarkerManager implements IGatherObserver {
             let outputSelection = eventData as OutputSelection;
             this._outputMarkers.filter(marker => {
                 return marker.outputIndex == outputSelection.outputIndex &&
-                    marker.cell.persistentId == outputSelection.cell.persistentId;
+                    marker.cell.executionEventId == outputSelection.cell.executionEventId;
             }).forEach(marker => marker.deselect());
         }
 
@@ -261,8 +261,8 @@ export class MarkerManager implements IGatherObserver {
      * Clear all def markers that belong to this editor.
      */
     clearSelectablesForCell(cell: ICell) {
-        this._model.removeEditorDefsForCell(cell.persistentId);
-        this._model.deselectOutputsForCell(cell.persistentId);
+        this._model.removeEditorDefsForCell(cell.executionEventId);
+        this._model.deselectOutputsForCell(cell.executionEventId);
     }
 
     /**
@@ -304,8 +304,8 @@ export class MarkerManager implements IGatherObserver {
         slice.cellSlices.forEach(cellSlice => {
             let loggedCell = cellSlice.cell;
             let sliceLocations = cellSlice.slice;
-            let liveCellWidget = this._elementFinder.getCell(loggedCell.persistentId, loggedCell.executionCount);
-            let editor = this._elementFinder.getEditorWithExecutionCount(loggedCell);
+            let liveCellWidget = this._elementFinder.getCellWidget(loggedCell);
+            let editor = this._elementFinder.getEditor(loggedCell);
 
             if (liveCellWidget && editor) {
                 let liveCell = new LabCell(liveCellWidget.model as ICodeCellModel);
@@ -333,8 +333,8 @@ export class MarkerManager implements IGatherObserver {
     }
 
     private _updateDependenceHighlightsForCell(cell: ICell) {
-        let editor = this._elementFinder.getEditorWithExecutionCount(cell);
-        let liveCellWidget = this._elementFinder.getCell(cell.persistentId, cell.executionCount);
+        let editor = this._elementFinder.getEditor(cell);
+        let liveCellWidget = this._elementFinder.getCellWidget(cell);
         let liveCell = new LabCell(liveCellWidget.model as ICodeCellModel);
         this._dependencyLineMarkers
             .filter((marker) => marker.editor == editor)

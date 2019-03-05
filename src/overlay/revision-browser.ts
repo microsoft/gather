@@ -61,24 +61,24 @@ export class RevisionBrowser extends Widget {
         let defSelections = model.selectedDefs;
         let outputSelections = model.selectedOutputs;
         let slices;
-        let cellPersistentId;
+        let cellExecutionEventId;
         if (defSelections.length > 0) {
             slices = model.getSelectedDefSlices(defSelections[0]);
-            cellPersistentId = defSelections[0].cell.persistentId;
+            cellExecutionEventId = defSelections[0].cell.executionEventId;
         } else if (outputSelections.length > 0) {
             slices = model.getSelectedOutputSlices(outputSelections[0]);
-            cellPersistentId = outputSelections[0].cell.persistentId;
+            cellExecutionEventId = outputSelections[0].cell.executionEventId;
         }
         log("Bringing up the revision browser for selection", {
-            cellPersistendId: cellPersistentId, slices,
+            cellPersistendId: cellExecutionEventId, slices,
             selectedDefs: model.selectedDefs,
             selectedOutputs: model.selectedOutputs
         });
-        if (slices && cellPersistentId) {
+        if (slices && cellExecutionEventId) {
             // Only show output if the selection was output.
             let includeOutput = model.selectedOutputs.length >= 1;
             let historyModel = buildHistoryModel(
-                model, cellPersistentId, slices, includeOutput);
+                model, cellExecutionEventId, slices, includeOutput);
             let historyViewer = new HistoryViewer({
                 model: historyModel,
                 outputRenderer: this._outputRenderer

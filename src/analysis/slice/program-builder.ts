@@ -7,8 +7,8 @@ import { NumberSet } from "./set";
 /**
  * Maps to find out what line numbers over a program correspond to what cells.
  */
-export type CellToLineMap = { [cellId: string]: { [executionCount: number]: NumberSet } };
-export type LineToCellMap = { [line: number]: ICell };
+export type CellToLineMap = { [ cellExecutionEventId: string ]: NumberSet };
+export type LineToCellMap = { [ line: number ]: ICell };
 
 /**
  * A program built from cells.
@@ -84,8 +84,7 @@ export class ProgramBuilder {
                 for (let node of ast.walk(tree)) {
                     // Sanity check that this is actually a node.
                     if (node.hasOwnProperty("type")) {
-                        node.executionCount = cell.executionCount;
-                        node.cellPersistentId = cell.persistentId;
+                        node.cellExecutionEventId = cell.executionEventId;
                     }
                 }
                 // By querying for defs and uses right when a cell is added to the log, we
@@ -120,23 +119,34 @@ export class ProgramBuilder {
 
     /**
      * Build a program from the list of cells. Program will include the cells' contents in
-     * execution order. It will omit cells that raised errors (syntax or runtime).
+     * the order they were added to the log. It will omit cells that raised errors (syntax or
+     * runtime, except for the last cell).
      */
-    buildTo(cellPersistentId: string, kernelId: string, executionCount: number): Program {
+    buildTo(cellExecutionEventId: string): Program {
 
-        let cellVersions = this._cellPrograms
-            .filter(cp => cp.cell.persistentId == cellPersistentId)
-            .map(cp => cp.cell);
-        let lastCell = cellVersions
-            .filter(cell => cell.executionCount == executionCount)
-            .filter(cell => cell.kernelId !== undefined && cell.kernelId === kernelId)[0];
-        if (!lastCell) return null;
+        let addingPrograms = false;
+        let lastExecutionCountSeen;
+        let cellPrograms = new Array<CellProgram>();
 
-        let sortedCellPrograms = this._cellPrograms
-            .filter(cp => cp.cell.kernelId !== undefined && cp.cell.kernelId === kernelId)
-            .filter(cp => cp.cell == lastCell || !cp.hasError)  // can have error only if it's the last cell
-            .filter(cp => cp.cell.executionCount != null && cp.cell.executionCount <= lastCell.executionCount)
-            .sort((cp1, cp2) => cp1.cell.executionCount - cp2.cell.executionCount);
+        for (let i = this._cellPrograms.length - 1; i >= 0; i--) {
+            let cellProgram = this._cellPrograms[i];
+            let cell = cellProgram.cell;
+            if (!addingPrograms && cell.executionEventId === cellExecutionEventId) {
+                addingPrograms = true;
+                lastExecutionCountSeen = cell.executionCount;
+                cellPrograms.unshift(cellProgram);
+                continue;
+            }
+            if (addingPrograms) {
+                if (cell.executionCount >= lastExecutionCountSeen) {
+                    break;
+                }
+                if (!cellProgram.hasError) {
+                    cellPrograms.unshift(cellProgram);
+                }
+                lastExecutionCountSeen = cell.executionCount;
+            }
+        }
 
         let code = "";
         let currentLine = 1;
@@ -150,7 +160,7 @@ export class ProgramBuilder {
             location: undefined
         };
 
-        sortedCellPrograms.forEach(cp => {
+        cellPrograms.forEach(cp => {
 
             let cell = cp.cell;
             let cellCode = cell.text;
@@ -162,11 +172,8 @@ export class ProgramBuilder {
             for (let l = 0; l < cellLength; l++) { cellLines.push(currentLine + l); }
             cellLines.forEach(l => {
                 lineToCellMap[l] = cell;
-                if (!cellToLineMap[cell.persistentId]) cellToLineMap[cell.persistentId] = {};
-                if (!cellToLineMap[cell.persistentId][cell.executionCount]) {
-                    cellToLineMap[cell.persistentId][cell.executionCount] = new NumberSet();
-                }
-                cellToLineMap[cell.persistentId][cell.executionCount].add(l);
+                if (!cellToLineMap[cell.executionEventId]) cellToLineMap[cell.executionEventId] = new NumberSet();
+                cellToLineMap[cell.executionEventId].add(l);
             });
 
             // Accumulate the code text.
@@ -199,11 +206,10 @@ export class ProgramBuilder {
         return new Program(code, tree, cellToLineMap, lineToCellMap);
     }
 
+
     getCellProgram(cell: ICell): CellProgram {
         let matchingPrograms = this._cellPrograms.filter(
-            (cp) => cp.cell.persistentId == cell.persistentId &&
-                cp.cell.executionCount == cell.executionCount &&
-                cp.cell.kernelId !== undefined && cp.cell.kernelId === cell.kernelId);
+            (cp) => cp.cell.executionEventId == cell.executionEventId);
         if (matchingPrograms.length >= 1) return matchingPrograms.pop();
         return null;
     }

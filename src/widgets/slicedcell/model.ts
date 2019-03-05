@@ -7,9 +7,9 @@ import { Diff } from '../history/diff';
  */
 export interface ISlicedCellModel extends CodeEditor.IModel {
     /**
-     * A unique ID for a cell.
+     * A unique ID for a logged cell, computed at the moment of execution.
      */
-    readonly cellPersistentId: string;
+    readonly cellExecutionEventId: string;
 
     /**
      * The execution count for the cell.
@@ -38,7 +38,7 @@ export class SlicedCellModel extends CodeEditor.Model implements ISlicedCellMode
     constructor(options: SlicedCellModel.IOptions) {
         super({ modelDB: options.modelDB });
 
-        this._cellPersistentId = options.cellPersistentId;
+        this._cellExecutionEventId = options.executionEventId;
         this._executionCount = options.executionCount;
         this._sourceCode = options.sourceCode;
         this._diff = options.diff;
@@ -50,8 +50,8 @@ export class SlicedCellModel extends CodeEditor.Model implements ISlicedCellMode
     /**
      * Get the cell ID.
      */
-    get cellPersistentId(): string {
-        return this._cellPersistentId;
+    get cellExecutionEventId(): string {
+        return this._cellExecutionEventId;
     }
 
     /**
@@ -76,7 +76,7 @@ export class SlicedCellModel extends CodeEditor.Model implements ISlicedCellMode
         return this._diff;
     }
 
-    private _cellPersistentId: string;
+    private _cellExecutionEventId: string;
     private _executionCount: number;
     private _sourceCode: string;
     private _diff:Diff;
@@ -93,7 +93,7 @@ export namespace SlicedCellModel {
         /**
          * A unique ID for a cell.
          */
-        cellPersistentId: string;
+        executionEventId: string;
 
         /**
          * The execution count for the cell.

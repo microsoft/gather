@@ -13,12 +13,6 @@ export interface ICell {
      * due to the implementation of Jupyter Lab.
      */
     readonly id: string;
-
-    /**
-     * A persistent ID for this cell, that will stay the same even as the notebook is closed and
-     * re-opened. In general, all gathering functionality should refer to cells using this ID.
-     */
-    readonly persistentId: string;
     
     /**
      * Whether this cell was created by gathering code.
@@ -36,14 +30,16 @@ export interface ICell {
      */
     text: string;
 
-    /**
-     * ID of the session that was last used to execute this cell. Note that unfortunately these
-     * session IDs reset whenever someone opens a new notebook---let's keep an eye out for ways
-     * to tie together sessions ID that should be merged.
-     */
-    kernelId: string;
-
     executionCount: number;
+
+    /**
+     * A unique ID generated each time a cell is executed. This lets us disambiguate between two
+     * runs of a cell that have the same ID *and* execution count, if the kernel was restarted.
+     * This ID should also be programmed to be *persistent*, so that even after a notebook is
+     * reloaded, the cell in the same position will still have this ID.
+     */
+    readonly executionEventId: string;
+
     outputs: nbformat.IOutput[];
 
     /**
@@ -85,9 +81,8 @@ export abstract class AbstractCell implements ICell {
 
     abstract is_cell: boolean;
     abstract id: string;
-    abstract persistentId: string;
     abstract executionCount: number;
-    abstract kernelId: string;
+    abstract executionEventId: string;
     abstract hasError: boolean;
     abstract isCode: boolean;
     abstract text: string;
@@ -112,7 +107,6 @@ export abstract class AbstractCell implements ICell {
     toJSON(): any {
         return {
             id: this.id,
-            persistentId: this.persistentId,
             executionCount: this.executionCount,
             lineCount: this.text.split("\n").length,
             isCode: this.isCode,
@@ -145,7 +139,7 @@ export abstract class AbstractCell implements ICell {
             outputs: this.outputs,
             metadata: {
                 gathered: this.gathered,
-                persistent_id: this.persistentId,
+                execution_event_id: this.executionEventId,
             }
         }
     }
@@ -157,15 +151,14 @@ export abstract class AbstractCell implements ICell {
 export class LogCell extends AbstractCell {
 
     constructor(data: {
-        id?: string, persistentId?: string, executionCount?: number, kernelId?: string,
+        id?: string, executionCount?: number, executionEventId?: string,
         hasError?: boolean, text?: string, outputs?: nbformat.IOutput[]
     }) {
         super();
         this.is_cell = true;
         this.id = data.id || UUID.uuid4();
-        this.persistentId = data.persistentId || UUID.uuid4();
         this.executionCount = data.executionCount || undefined;
-        this.kernelId = data.kernelId;
+        this.executionEventId = data.executionEventId || UUID.uuid4();
         this.hasError = data.hasError || false;
         this.text = data.text || "";
         this.lastExecutedText = this.text;
@@ -179,9 +172,8 @@ export class LogCell extends AbstractCell {
 
     readonly is_cell: boolean;
     readonly id: string;
-    readonly persistentId: string;
     readonly executionCount: number;
-    readonly kernelId: string;
+    readonly executionEventId: string;
     readonly hasError: boolean;
     readonly isCode: boolean;
     readonly text: string;
@@ -209,11 +201,12 @@ export class LabCell extends AbstractCell {
         return this._model.id;
     }
 
-    get persistentId(): string {
-        if (!this._model.metadata.has("persistent_id")) {
-            this._model.metadata.set("persistent_id", UUID.uuid4());
-        }
-        return this._model.metadata.get("persistent_id") as string;
+    get executionEventId(): string {
+        return this._model.metadata.get("execution_event_id") as string;
+    }
+
+    set executionEventId(id: string) {
+        this._model.metadata.set('execution_event_id', id);
     }
 
     get text(): string {
@@ -230,14 +223,6 @@ export class LabCell extends AbstractCell {
 
     set lastExecutedText(text: string) {
         this._model.metadata.set('last_executed_text', text);
-    }
-
-    get kernelId(): string {
-        return this._model.metadata.get('kernel_id') as string;
-    }
-
-    set kernelId(kernelId: string) {
-        this._model.metadata.set('kernel_id', kernelId);
     }
 
     get executionCount(): number {

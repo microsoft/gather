@@ -15,13 +15,12 @@ export class DataflowAnalyzer {
     }
 
     private _statementLocationKey(statement: ast.ISyntaxNode) {
-        if (statement.cellPersistentId != undefined && statement.executionCount != undefined) {
+        if (statement.cellExecutionEventId != undefined) {
             return statement.location.first_line + "," +
                     statement.location.first_column + "," + 
                     statement.location.last_line + "," + 
                     statement.location.last_column + "," +
-                    statement.cellPersistentId + "," +
-                    statement.executionCount;
+                    statement.cellExecutionEventId;
         }
         return null;
     }

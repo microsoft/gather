@@ -10,9 +10,8 @@ interface CellExecutionJson extends JSONObject {
 
 interface CellJson extends JSONObject {
     id: string;
-    persistentId: string;
+    executionEventId: string;
     executionCount: number;
-    kernelId: string;
     hasError: boolean;
     isCode: boolean;
     text: string;
@@ -32,9 +31,8 @@ export function storeHistory(notebookModel: INotebookModel, executionLog: Execut
         let cell = cellExecution.cell;
         let cellJson = new Object(null) as CellJson;
         cellJson.id = cell.id;
-        cellJson.persistentId = cell.persistentId;
+        cellJson.executionEventId = cell.executionEventId;
         cellJson.executionCount = cell.executionCount;
-        cellJson.kernelId = cell.kernelId;
         cellJson.hasError = cell.hasError;
         cellJson.text = cell.text;
 

@@ -37,18 +37,17 @@ export class SlicedExecution {
     ) { }
 
     merge(...slicedExecutions: SlicedExecution[]): SlicedExecution {
-        let cellSlices: { [ cellPersistentId: string ]: { [ executionCount: number ]: CellSlice }} = {};
+        let cellSlices: { [ cellExecutionEventId: string ]: CellSlice } = {};
         let mergedCellSlices = [];
         for (let slicedExecution of slicedExecutions.concat(this)) {
             for (let cellSlice of slicedExecution.cellSlices) {
                 let cell = cellSlice.cell;
-                if (!cellSlices.hasOwnProperty(cell.persistentId)) cellSlices[cell.persistentId] = {};
-                if (!cellSlices[cell.persistentId].hasOwnProperty(cell.executionCount)) {
+                if (!cellSlices[cell.executionEventId]) {
                     let newCellSlice = new CellSlice(cell.deepCopy(), new LocationSet(), cellSlice.executionTime);
-                    cellSlices[cell.persistentId][cell.executionCount] = newCellSlice;
+                    cellSlices[cell.executionEventId] = newCellSlice;
                     mergedCellSlices.push(newCellSlice);
                 }
-                let mergedCellSlice = cellSlices[cell.persistentId][cell.executionCount];
+                let mergedCellSlice = cellSlices[cell.executionEventId];
                 mergedCellSlice.slice = mergedCellSlice.slice.union(cellSlice.slice);
             }
         }
@@ -126,19 +125,18 @@ export class ExecutionLogSlicer {
     public sliceAllExecutions(cell: ICell, pSeedLocations?: LocationSet): SlicedExecution[] {
 
         // Make a map from cells to their execution times.
-        let cellExecutionTimes:  { [cellPersistentId: string]: { [executionCount: number]: Date } } = {};
+        let cellExecutionTimes:  { [cellExecutionEventId: string]: Date } = {};
         for (let execution of this._executionLog) {
-            if (!cellExecutionTimes[execution.cell.persistentId]) cellExecutionTimes[execution.cell.persistentId] = {};
-            cellExecutionTimes[execution.cell.persistentId][execution.cell.executionCount] = execution.executionTime;
+            cellExecutionTimes[execution.cell.executionEventId] = execution.executionTime;
         }
 
         return this._executionLog
-            .filter(execution => execution.cell.persistentId == cell.persistentId)
+            .filter(execution => execution.cell.executionEventId == cell.executionEventId)
             .filter(execution => execution.cell.executionCount != undefined)
             .map(execution => {
 
                 // Build the program up to that cell.
-                let program = this._programBuilder.buildTo(execution.cell.persistentId, execution.cell.kernelId, execution.cell.executionCount);
+                let program = this._programBuilder.buildTo(execution.cell.executionEventId);
                 if (program == null) return null;
 
                 // Set the seed locations for the slice.
@@ -154,7 +152,7 @@ export class ExecutionLogSlicer {
                 }
 
                 // Set seed locations were specified relative to the last cell's position in program.
-                let lastCellLines = program.cellToLineMap[execution.cell.persistentId][execution.cell.executionCount];
+                let lastCellLines = program.cellToLineMap[execution.cell.executionEventId];
                 let lastCellStart = Math.min(...lastCellLines.items);
                 seedLocations = new LocationSet(
                     ...seedLocations.items.map(loc => {
@@ -172,11 +170,11 @@ export class ExecutionLogSlicer {
                 .sort((loc1, loc2) => loc1.first_line - loc2.first_line);
 
                 // Get the relative offsets of slice lines in each cell.
-                let cellSliceLocations: { [cellId: string]: { [executionCount: number]: LocationSet } } = {};
+                let cellSliceLocations: { [ executionEventId: string ]: LocationSet } = {};
                 let cellOrder = new Array<ICell>();
                 sliceLocations.forEach(location => {
                     let sliceCell = program.lineToCellMap[location.first_line];
-                    let sliceCellLines = program.cellToLineMap[sliceCell.persistentId][sliceCell.executionCount];
+                    let sliceCellLines = program.cellToLineMap[sliceCell.executionEventId];
                     let sliceCellStart = Math.min(...sliceCellLines.items);
                     if (cellOrder.indexOf(sliceCell) == -1) {
                         cellOrder.push(sliceCell);
@@ -187,20 +185,19 @@ export class ExecutionLogSlicer {
                         last_line: location.last_line - sliceCellStart + 1,
                         last_column: location.last_column
                     };
-                    if (!cellSliceLocations[sliceCell.persistentId]) cellSliceLocations[sliceCell.persistentId] = {};
-                    if (!cellSliceLocations[sliceCell.persistentId][sliceCell.executionCount]) {
-                        cellSliceLocations[sliceCell.persistentId][sliceCell.executionCount] = new LocationSet();
-                    }
-                    cellSliceLocations[sliceCell.persistentId][sliceCell.executionCount].add(adjustedLocation);
+                    if (!cellSliceLocations[sliceCell.executionEventId]) {
+                        cellSliceLocations[sliceCell.executionEventId] = new LocationSet();
+                    } 
+                    cellSliceLocations[sliceCell.executionEventId].add(adjustedLocation);
                 });
 
                 let cellSlices = cellOrder.map((sliceCell): CellSlice => {
                     let executionTime = undefined;
-                    if (cellExecutionTimes[sliceCell.persistentId] && cellExecutionTimes[sliceCell.persistentId][sliceCell.executionCount]) {
-                        executionTime = cellExecutionTimes[sliceCell.persistentId][sliceCell.executionCount];
+                    if (cellExecutionTimes[sliceCell.executionEventId]) {
+                        executionTime = cellExecutionTimes[sliceCell.executionEventId];
                     }
                     return new CellSlice(sliceCell,
-                        cellSliceLocations[sliceCell.persistentId][sliceCell.executionCount],
+                        cellSliceLocations[sliceCell.executionEventId],
                         executionTime);
                 });
                 return new SlicedExecution(execution.executionTime, cellSlices);
