@@ -274,7 +274,7 @@ export class MarkerManager implements IGatherObserver {
          * analyze the code here.
          */
         let cellProgram = this._model.getCellProgram(cell);
-        if (!cellProgram.hasError) {
+        if (cellProgram !== null && !cellProgram.hasError) {
             for (let ref of cellProgram.defs) {
                 if (ref.type == SymbolType.VARIABLE) {
                     this._model.addEditorDef({ def: ref, editor: editor, cell: cell });

@@ -9,10 +9,14 @@ import { LocationSet, slice } from "./slice";
  * A record of when a cell was executed.
  */
 export class CellExecution {
-    constructor(
-        public readonly cell: ICell,
-        public readonly executionTime: Date
-    ) { }
+    
+    readonly cell: ICell;
+    readonly executionTime: Date;
+
+    constructor(cell: ICell, executionTime: Date) {
+        this.cell = cell;
+        this.executionTime = executionTime;
+    }
 
     /**
      * Update this method if at some point we only want to save some about a CellExecution when
@@ -134,7 +138,7 @@ export class ExecutionLogSlicer {
             .map(execution => {
 
                 // Build the program up to that cell.
-                let program = this._programBuilder.buildTo(execution.cell.persistentId, execution.cell.executionCount);
+                let program = this._programBuilder.buildTo(execution.cell.persistentId, execution.cell.kernelId, execution.cell.executionCount);
                 if (program == null) return null;
 
                 // Set the seed locations for the slice.

@@ -36,6 +36,13 @@ export interface ICell {
      */
     text: string;
 
+    /**
+     * ID of the session that was last used to execute this cell. Note that unfortunately these
+     * session IDs reset whenever someone opens a new notebook---let's keep an eye out for ways
+     * to tie together sessions ID that should be merged.
+     */
+    kernelId: string;
+
     executionCount: number;
     outputs: nbformat.IOutput[];
 
@@ -80,6 +87,7 @@ export abstract class AbstractCell implements ICell {
     abstract id: string;
     abstract persistentId: string;
     abstract executionCount: number;
+    abstract kernelId: string;
     abstract hasError: boolean;
     abstract isCode: boolean;
     abstract text: string;
@@ -148,19 +156,20 @@ export abstract class AbstractCell implements ICell {
  */
 export class LogCell extends AbstractCell {
 
-    constructor(cellData: {
-        id?: string, persistentId?: string, executionCount?: number, hasError?: boolean,
-        text?: string, outputs?: nbformat.IOutput[]
+    constructor(data: {
+        id?: string, persistentId?: string, executionCount?: number, kernelId?: string,
+        hasError?: boolean, text?: string, outputs?: nbformat.IOutput[]
     }) {
         super();
         this.is_cell = true;
-        this.id = cellData.id || UUID.uuid4();
-        this.persistentId = cellData.persistentId || UUID.uuid4();
-        this.executionCount = cellData.executionCount || undefined;
-        this.hasError = cellData.hasError || false;
-        this.text = cellData.text || "";
+        this.id = data.id || UUID.uuid4();
+        this.persistentId = data.persistentId || UUID.uuid4();
+        this.executionCount = data.executionCount || undefined;
+        this.kernelId = data.kernelId;
+        this.hasError = data.hasError || false;
+        this.text = data.text || "";
         this.lastExecutedText = this.text;
-        this.outputs = cellData.outputs || [];
+        this.outputs = data.outputs || [];
         this.gathered = false;
     }
 
@@ -172,6 +181,7 @@ export class LogCell extends AbstractCell {
     readonly id: string;
     readonly persistentId: string;
     readonly executionCount: number;
+    readonly kernelId: string;
     readonly hasError: boolean;
     readonly isCode: boolean;
     readonly text: string;
@@ -220,6 +230,14 @@ export class LabCell extends AbstractCell {
 
     set lastExecutedText(text: string) {
         this._model.metadata.set('last_executed_text', text);
+    }
+
+    get kernelId(): string {
+        return this._model.metadata.get('kernel_id') as string;
+    }
+
+    set kernelId(kernelId: string) {
+        this._model.metadata.set('kernel_id', kernelId);
     }
 
     get executionCount(): number {

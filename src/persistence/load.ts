@@ -91,6 +91,7 @@ function _loadExecutionFromJson(executionJson: JSONObject): CellExecution {
     let id = _getString(cellJson, 'id');
     let persistentId = _getString(cellJson, 'persistentId');
     let executionCount = _getNumber(cellJson, 'executionCount');
+    let kernelId = _getString(cellJson, 'kernelId');
     let hasError = _getBoolean(cellJson, 'hasError');
     let text = _getString(cellJson, 'text');
 
@@ -98,7 +99,7 @@ function _loadExecutionFromJson(executionJson: JSONObject): CellExecution {
     let executionTime = new Date(executionTimeString);
 
     if (id == null || executionCount == null || hasError == null ||
-        text == null || executionTime == null) {
+        kernelId == null || text == null || executionTime == null) {
         log("Cell could not be loaded, as it's missing a critical field.");
         return null;
     }

@@ -12,6 +12,7 @@ interface CellJson extends JSONObject {
     id: string;
     persistentId: string;
     executionCount: number;
+    kernelId: string;
     hasError: boolean;
     isCode: boolean;
     text: string;
@@ -33,6 +34,7 @@ export function storeHistory(notebookModel: INotebookModel, executionLog: Execut
         cellJson.id = cell.id;
         cellJson.persistentId = cell.persistentId;
         cellJson.executionCount = cell.executionCount;
+        cellJson.kernelId = cell.kernelId;
         cellJson.hasError = cell.hasError;
         cellJson.text = cell.text;
 

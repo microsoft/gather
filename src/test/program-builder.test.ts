@@ -5,9 +5,16 @@ import { ICell, LogCell } from '../model/cell';
 
 describe('program builder', () => {
 
+    const TEST_KERNEL_ID = "kernel-1";
+    
+    function createCellWithKernelId(persistentId: string, kernelId: string, executionCount: number, 
+        ...codeLines: string[]): ICell {
+            let text = codeLines.join("\n");
+            return new LogCell({ executionCount, persistentId, kernelId, text });
+    }
+
     function createCell(persistentId: string, executionCount: number, ...codeLines: string[]): ICell {
-        let text = codeLines.join("\n");
-        return new LogCell({ executionCount, persistentId, text });
+        return(createCellWithKernelId(persistentId, TEST_KERNEL_ID, executionCount, ...codeLines));
     }
 
     let programBuilder: ProgramBuilder;
@@ -20,7 +27,7 @@ describe('program builder', () => {
             createCell("id1", 2, "print(1)"),
             createCell("id2", 1, "print(2)")
         )
-        let code = programBuilder.build().text;
+        let code = programBuilder.buildTo("id1", TEST_KERNEL_ID, 2).text;
         expect(code).to.equal(["print(2)", "print(1)", ""].join("\n"))
     });
 
@@ -28,7 +35,7 @@ describe('program builder', () => {
         let cell1 = createCell("id1", 1, "print(1)");
         let cell2 = createCell("id2", 2, "print(2)");
         programBuilder.add(cell1, cell2);
-        let lineToCellMap = programBuilder.buildTo("id2").lineToCellMap;
+        let lineToCellMap = programBuilder.buildTo("id2", TEST_KERNEL_ID, 2).lineToCellMap;
         expect(lineToCellMap[1]).to.equal(cell1);
         expect(lineToCellMap[2]).to.equal(cell2);
     });
@@ -37,38 +44,18 @@ describe('program builder', () => {
         let cell1 = createCell("id1", 1, "print(1)");
         let cell2 = createCell("id2", 2, "print(2)");
         programBuilder.add(cell1, cell2);
-        let cellToLineMap = programBuilder.buildTo("id2").cellToLineMap;
+        let cellToLineMap = programBuilder.buildTo("id2", TEST_KERNEL_ID, 2).cellToLineMap;
         expect(cellToLineMap["id1"][1].items).to.deep.equal([1]);
         expect(cellToLineMap["id2"][2].items).to.deep.equal([2]);
     });
 
-    it('stops after the specified cell\'s ID', () => {
+    it('stops after the specified cell', () => {
         programBuilder.add(
             createCell("id1", 2, "print(1)"),
             createCell("id2", 1, "print(2)")
         );
-        let code = programBuilder.buildTo("id2").text;
+        let code = programBuilder.buildTo("id2", TEST_KERNEL_ID, 1).text;
         expect(code).to.equal("print(2)\n");
-    });
-
-    it('builds to the most recent version of the cell', () => {
-        programBuilder.add(
-            createCell("id1", 1, "print(1)"),
-            createCell("id2", 2, "print(2)"),
-            createCell("id1", 3, "print(3)")  // cell id1 run twice
-        );
-        let code = programBuilder.buildTo("id1").text;
-        expect(code).to.equal(["print(1)", "print(2)", "print(3)", ""].join("\n"));
-    });
-
-    it('builds to a requested version of a cell', () => {
-        programBuilder.add(
-            createCell("id1", 1, "print(1)"),
-            createCell("id2", 2, "print(2)"),
-            createCell("id1", 3, "print(3)")  // cell id1 run twice
-        );
-        let code = programBuilder.buildTo("id1", 1).text;
-        expect(code).to.equal("print(1)\n");
     });
 
     /* We might want the program builder to include code that was executed before a runtime
@@ -81,7 +68,7 @@ describe('program builder', () => {
             badCell,
             createCell("id3", 3, "print(3)")
         );
-        let code = programBuilder.buildTo("id3").text;
+        let code = programBuilder.buildTo("id3", TEST_KERNEL_ID, 3).text;
         expect(code).to.equal(["print(1)", "print(3)", ""].join("\n"));
     });
 
@@ -93,7 +80,7 @@ describe('program builder', () => {
             createCell("id2", 2, "print(2)"),
             badCell,
         );
-        let code = programBuilder.build().text;
+        let code = programBuilder.buildTo("idE", TEST_KERNEL_ID, 3).text;
         expect(code).to.equal(["print(1)", "print(2)", "print(bad_name)", ""].join("\n"));
     });
 
@@ -115,25 +102,35 @@ describe('program builder', () => {
         // Restore console output.
         console.log = oldConsoleLog;
 
-        let code = programBuilder.buildTo("id3").text;
+        let code = programBuilder.buildTo("id3", TEST_KERNEL_ID, 3).text;
         expect(code).to.equal(["print(1)", "print(3)", ""].join("\n"));
+    });
+
+    it('skips cells that were executed with different kernels', () => {
+        programBuilder.add(
+            createCellWithKernelId("id1", "kernel-1", 1, "print(1)"),
+            createCellWithKernelId("id2", "kernel-2", 2, "print(2)"),
+            createCellWithKernelId("id3", "kernel-1", 3, "print(3)")
+        );
+        let code = programBuilder.buildTo("id3", "kernel-1", 3).text;
+        expect(code).to.equals(["print(1)", "print(3)", ""].join("\n"));
     });
 
     it('constructs a tree for the program', () => {
         programBuilder.add(
-            createCell("id1", 2, "print(1)"),
-            createCell("id2", 1, "print(2)")
+            createCell("id1", 1, "print(1)"),
+            createCell("id2", 2, "print(2)")
         )
-        let tree = programBuilder.build().tree;
+        let tree = programBuilder.buildTo("id2", TEST_KERNEL_ID, 2).tree;
         expect(tree.code.length).to.equal(2);
     });
 
     it('adjusts the node locations', () => {
         programBuilder.add(
-            createCell("id1", 2, "print(1)"),
-            createCell("id2", 1, "print(2)")
+            createCell("id1", 1, "print(1)"),
+            createCell("id2", 2, "print(2)")
         )
-        let tree = programBuilder.build().tree;
+        let tree = programBuilder.buildTo("id2", TEST_KERNEL_ID, 2).tree;
         expect(tree.code[0].location.first_line).to.equal(1);
         expect(tree.code[1].location.first_line).to.equal(2);
     });
@@ -142,7 +139,7 @@ describe('program builder', () => {
         programBuilder.add(
             createCell("id1", 2, "print(1)")
         );
-        let tree = programBuilder.build().tree;
+        let tree = programBuilder.buildTo("id1", TEST_KERNEL_ID, 2).tree;
         expect(tree.code[0].cellPersistentId).to.equal("id1");
         expect(tree.code[0].executionCount).to.equal(2);
     });

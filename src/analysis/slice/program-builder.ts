@@ -122,22 +122,18 @@ export class ProgramBuilder {
      * Build a program from the list of cells. Program will include the cells' contents in
      * execution order. It will omit cells that raised errors (syntax or runtime).
      */
-    buildTo(cellPersistentId: string, executionCount?: number): Program {
+    buildTo(cellPersistentId: string, kernelId: string, executionCount: number): Program {
 
         let cellVersions = this._cellPrograms
             .filter(cp => cp.cell.persistentId == cellPersistentId)
             .map(cp => cp.cell);
-        let lastCell: ICell;
-        if (executionCount) {
-            lastCell = cellVersions.filter(cell => cell.executionCount == executionCount)[0];
-        } else {
-            lastCell = cellVersions.sort(
-                (cell1, cell2) => cell1.executionCount - cell2.executionCount
-            ).pop();
-        }
+        let lastCell = cellVersions
+            .filter(cell => cell.executionCount == executionCount)
+            .filter(cell => cell.kernelId !== undefined && cell.kernelId === kernelId)[0];
         if (!lastCell) return null;
 
         let sortedCellPrograms = this._cellPrograms
+            .filter(cp => cp.cell.kernelId !== undefined && cp.cell.kernelId === kernelId)
             .filter(cp => cp.cell == lastCell || !cp.hasError)  // can have error only if it's the last cell
             .filter(cp => cp.cell.executionCount != null && cp.cell.executionCount <= lastCell.executionCount)
             .sort((cp1, cp2) => cp1.cell.executionCount - cp2.cell.executionCount);
@@ -203,16 +199,11 @@ export class ProgramBuilder {
         return new Program(code, tree, cellToLineMap, lineToCellMap);
     }
 
-    build(): Program {
-        let lastCell = this._cellPrograms
-            .filter(cp => cp.cell.executionCount != null)
-            .sort((cp1, cp2) => cp1.cell.executionCount - cp2.cell.executionCount).pop();
-        return this.buildTo(lastCell.cell.persistentId);
-    }
-
     getCellProgram(cell: ICell): CellProgram {
         let matchingPrograms = this._cellPrograms.filter(
-            (cp) => cp.cell.persistentId == cell.persistentId && cp.cell.executionCount == cell.executionCount);
+            (cp) => cp.cell.persistentId == cell.persistentId &&
+                cp.cell.executionCount == cell.executionCount &&
+                cp.cell.kernelId !== undefined && cp.cell.kernelId === cell.kernelId);
         if (matchingPrograms.length >= 1) return matchingPrograms.pop();
         return null;
     }
