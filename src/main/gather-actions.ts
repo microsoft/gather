@@ -1,5 +1,5 @@
 import { Clipboard as JupyterClipboard } from "@jupyterlab/apputils";
-import { nbformat } from "@jupyterlab/coreutils";
+import { nbformat, PathExt } from "@jupyterlab/coreutils";
 import { DocumentManager } from "@jupyterlab/docmanager";
 import { IDocumentWidget } from "@jupyterlab/docregistry";
 import { FileEditor } from "@jupyterlab/fileeditor";
@@ -33,7 +33,6 @@ export class Clipboard {
     copy(slice: SlicedExecution, outputSelections?: OutputSelection[]) {
         const JUPYTER_CELL_MIME = 'application/vnd.jupyter.cells';
         if (slice) {
-            // let cellJson = sliceToCellJson(slice, this._gatherModel.selectedOutputs.concat());
             let cellJson = getCellsJsonForSlice(slice, outputSelections);
             const clipboard = JupyterClipboard.getInstance();
             clipboard.clear();
@@ -53,12 +52,23 @@ export class Clipboard {
 /**
  * Get partial spec for a kernel that will allow us to launch another kernel for the same language.
  */
-function _createKernelSpecForCurrentWidget(notebooks: INotebookTracker): Partial<Kernel.IModel> {
+function _createKernelSpecForCurrentNotebook(notebooks: INotebookTracker): Partial<Kernel.IModel> {
     let spec = new Object(null) as JSONObject;
     if (notebooks.currentWidget && notebooks.currentWidget.session.kernel) {
         spec.name =  notebooks.currentWidget.session.kernel.model.name;
     }
     return spec;
+}
+
+/**
+ * Return undefined if a path could not be found for the current widget.
+ */
+function _getPathForCurrentNotebook(notebooks: INotebookTracker): string | undefined {
+    let currentWidget = notebooks.currentWidget;
+    if (currentWidget !== null && currentWidget.context !== undefined && currentWidget.context !== null) {
+        return PathExt.dirname(currentWidget.context.path);
+    }
+    return undefined;
 }
 
 /**
@@ -72,8 +82,13 @@ export class ScriptOpener {
     }
 
     openScriptForSlice(slice: SlicedExecution) {
-        this._documentManager.newUntitled({ ext: 'py' }).then(model => {
-            let kernelSpec = _createKernelSpecForCurrentWidget(this._notebooks);
+        /*
+         * By opening the new script in the same place as the original notebook, the relative
+         * path of external dependences (data files, imports, etc.) should still be correct.
+         */
+        let notebookPath = _getPathForCurrentNotebook(this._notebooks);
+        this._documentManager.newUntitled({ ext: 'py', path: notebookPath }).then(model => {
+            let kernelSpec = _createKernelSpecForCurrentNotebook(this._notebooks);
             let editor = this._documentManager.open(model.path, undefined, kernelSpec) as IDocumentWidget<FileEditor>;
             editor.context.ready.then(() => {
                 if (slice) {
@@ -101,8 +116,9 @@ export class NotebookOpener {
     }
 
     openNotebookForSlice(slice: SlicedExecution, outputSelections?: OutputSelection[]) {
-        this._documentManager.newUntitled({ ext: 'ipynb' }).then(model => {
-            let kernelSpec = _createKernelSpecForCurrentWidget(this._notebooks);
+        let notebookPath = _getPathForCurrentNotebook(this._notebooks);
+        this._documentManager.newUntitled({ ext: 'ipynb', path: notebookPath }).then(model => {
+            let kernelSpec = _createKernelSpecForCurrentNotebook(this._notebooks);
             const widget = this._documentManager.open(model.path, undefined, kernelSpec) as NotebookPanel;
             widget.context.ready.then(() => {
                 const notebookModel = widget.content.model;
