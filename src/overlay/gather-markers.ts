@@ -11,6 +11,7 @@ import { log } from "../util/log";
 import { CellOutput, DefSelection, EditorDef, GatherEventData, GatherModel, GatherModelEvent, IGatherObserver, OutputSelection } from "../model";
 import { NotebookElementFinder } from "./element-finder";
 import { ICodeCellModel } from "@jupyterlab/cells";
+import { Widget, PanelLayout } from "@phosphor/widgets";
 
 /**
  * Class for a highlighted, clickable output.
@@ -21,6 +22,16 @@ const OUTPUT_HIGHLIGHTED_CLASS = "jp-OutputArea-highlighted";
  * Class for a selected output.
  */
 const OUTPUT_SELECTED_CLASS = "jp-OutputArea-selected";
+
+/**
+ * Class for a button that lets you gather an output.
+ */
+const OUTPUT_GATHER_BUTTON_CLASS = "jp-OutputArea-gatherbutton";
+
+/**
+ * Class for a label on a gather button on an output.
+ */
+const OUTPUT_GATHER_LABEL_CLASS = "jp-OutputArea-gatherlabel";
 
 /**
  * Class for variable definition text.
@@ -368,6 +379,7 @@ class OutputMarker {
             onToggle: (selected: boolean, event: MouseEvent) => void) {
         this._element = outputElement;
         this._element.classList.add(OUTPUT_HIGHLIGHTED_CLASS);
+        this._addSelectionButton();
         this.outputIndex = outputIndex;
         this.cell = cell;
         this._onToggle = onToggle;
@@ -376,9 +388,12 @@ class OutputMarker {
             let target = event.target as HTMLElement;
             // If the click is on a child of the output area (the actual content), then handle
             // that click event like normal without selecting the output.
-            if (!target || !target.classList.contains(OUTPUT_HIGHLIGHTED_CLASS)) return;
+            if (!target || !(
+                target.classList.contains(OUTPUT_HIGHLIGHTED_CLASS) ||
+                target.classList.contains(OUTPUT_GATHER_BUTTON_CLASS) ||
+                target.classList.contains(OUTPUT_GATHER_LABEL_CLASS))) return;
             if (this._onToggle) {
-                this.toggleSelected();
+                this._toggleSelected();
                 this._onToggle(this._selected, event);
             }
             log("Clicked on output area", { outputIndex, cell, toggledOn: this._selected });
@@ -386,7 +401,21 @@ class OutputMarker {
         this._element.addEventListener("click", this._clickListener);
     }
 
-    toggleSelected() {
+    private _addSelectionButton() {
+        
+        this._gatherButton = new Widget({ node: document.createElement('div') });
+        this._gatherButton.addClass(OUTPUT_GATHER_BUTTON_CLASS);
+        this._gatherButton.layout = new PanelLayout();
+
+        this._gatherLabel = new Widget({ node: document.createElement('p') });
+        this._gatherLabel.addClass(OUTPUT_GATHER_LABEL_CLASS);
+        this._gatherLabel.node.textContent = 'Gather';
+        (this._gatherButton.layout as PanelLayout).addWidget(this._gatherLabel);
+    
+        this._element.appendChild(this._gatherButton.node);
+    }
+
+    private _toggleSelected() {
         if (this._selected) this.deselect();
         else if (!this._selected) this.select();
     }
@@ -410,6 +439,8 @@ class OutputMarker {
     readonly outputIndex: number;
     readonly cell: ICell;
     private _element: HTMLElement;
+    private _gatherButton: Widget;
+    private _gatherLabel: Widget;
     private _clickListener: (_: MouseEvent) => void;
     private _onToggle: (selected: boolean, event: MouseEvent) => void;
     private _selected: boolean = false;
