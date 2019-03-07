@@ -1,1 +1,4 @@
-theme: jekyll-theme-leap-day
+title: Code Gathering Tools
+theme: minima
+description: Tools for cleaning, recovering, and comparing versions of code in computational notebooks
+author: Andrew Head, Fred Hohman, Titus Barik, Steven M. Drucker, and Robert DeLine

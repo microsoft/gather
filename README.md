@@ -97,7 +97,7 @@ npm publish --access=restricted  # make this public eventually
 
 ### Troubleshooting
 
-### `500` message when launching Jupyter notebook
+#### `500` message when launching Jupyter notebook
 
 Install these versions of Jupyter notebook and dependencies
 to see something working, before trying out other versions:
@@ -107,3 +107,10 @@ nbconvert==5.3.1
 nbformat==4.4.0
 notebook==5.6.0
 ```
+
+#### Build errors
+
+* **Errors about missing semicolons in React types files**: upgrade the `typescript` and `ts-node` packages
+* **Conflicting dependencies**: upgrade either the Python Jupyter Lab (may require Python upgrade to Python 3 to get the most recent version of Jupyter Lab) or the Jupyter Lab npm pacakges
+* **Issues with duplicated React types**: download React types in `@jupyterlab/` packages
+* **Other issues**: delete your node_modules files and reinstall them
