@@ -1,43 +1,69 @@
-@import './history.css';
+:root {
+  --brand-color4: #e3f2fd;
+  --brand-color3: #bbdefb;
+  --brand-color2: #90caf9;
+  --brand-color1: #64b5f6;
+  --brand-color0: #42a5f5;
+}
 
 /**
  * Gather button
  */
- .jp-Toolbar-gatherlabel {
-   float: left;
-   vertical-align: middle;
-   padding-top: 3px;
-   padding-left: 10px;
-   padding-right: 4px;
- }
+.jp-Toolbar-gatherlabel {
+  float: left;
+  vertical-align: middle;
+  padding-top: 3px;
+  padding-left: 10px;
+  padding-right: 4px;
+}
 
 .jp-Toolbar-gatherbutton.jp-Toolbar-gatherbutton-inactive {
   opacity: .8;
 }
 
-.jp-Toolbar-gatherbutton.jp-Toolbar-button-glow {
-   background-color: var(--brand-color5);
-   border-color: var(--brand-color1);
-   box-shadow: 0 0 3px var(--brand-color2);
- }
-
-.jp-Toolbar-gatherbutton.jp-Toolbar-button-glow:hover {
-  box-shadow: 0 0 10px var(--brand-color0);
+.jp-Toolbar-gatherbutton.jp-Toolbar-button-glow button.jp-ToolbarButtonComponent:hover {
+  background-color: var(--brand-color3);
 }
 
- .jp-Toolbar-gathertoclipboardbutton.jp-Toolbar-button-glow,
- .jp-Toolbar-gathertonotebookbutton.jp-Toolbar-button-glow, 
- .jp-Toolbar-gatherhistorybutton.jp-Toolbar-button-glow {
-   background-color: var(--brand-color5);
-   border-color: var(--brand-color1);
-   box-shadow: 0 0 3px var(--brand-color1);
- }
+.jp-Toolbar-button-glow button.jp-ToolbarButtonComponent.jp-Toolbar-clearbutton:hover {
+  background-color: #eeeeee;
+}
 
- .jp-Toolbar-clearbutton.jp-Toolbar-button-glow, .jp-Toolbar-mergebutton.jp-Toolbar-button-glow {
-   background-color: #f4f4f4;
-   border-color: #bbbbbb;
-   box-shadow: 0 0 7px #bbbbbb;
- }
+.jp-Toolbar-gatherbutton.jp-Toolbar-button-glow button.jp-ToolbarButtonComponent {
+  background-color: var(--brand-color4);
+}
+
+.jp-Toolbar-button-glow button.jp-ToolbarButtonComponent.jp-Toolbar-clearbutton {
+  background-color: #f4f4f4;
+} 
+
+span.jp-GatherLabel {
+  margin-top: -2px;
+  margin-right: .2em;
+}
+
+.jp-GatherSpacer {
+  width: 1em;
+}
+
+/**
+ * Button icons.
+ */
+.jp-BookIcon {
+  background-image: var(--jp-icon-book);
+}
+
+.jp-CellsIcon {
+  background-image: url('icons/cells.svg');
+}
+
+.jp-CloseIcon {
+  background-image: var(--jp-icon-close);
+}
+
+.jp-HistoryIcon {
+  background-image: url('icons/history.svg');
+}
 
 /**
  * Clues for gatherable text.
@@ -66,9 +92,12 @@
   font-weight: bold;
 }
 
+div.CodeMirror-linebackground.jp-InputArea-editor-dirtydependencyline {
+  background-color: #f7d3cf;
+}
+
 div.CodeMirror-linebackground.jp-InputArea-editor-dependencyline {
-  /* background-color: var(--brand-color4); */
-  background-color: #f4eafc;
+  background-color: #e6d4f4;
 }
 
 /**
@@ -80,22 +109,49 @@ div.CodeMirror-linebackground.jp-InputArea-editor-dependencyline {
 }
 
 .jp-OutputArea-highlighted:hover {
-  box-shadow: inset 0 0 3px var(--brand-color2);
-  cursor: pointer;
+  box-shadow: inset 0 0 5px var(--brand-color2);
 }
 
-/* Children of an output area (the output content) should not be
- * clickable---you should be able to interact with it normally */
-.jp-OutputArea-highlighted *:hover {
-  cursor: initial;
+.jp-OutputArea-highlighted:not(.jp-OutputArea-selected) .jp-OutputArea-gatherbutton {
+  visibility: hidden;
+}
+
+.jp-OutputArea-highlighted .jp-OutputArea-gatherbutton {
+  border-radius: 3px;
+  border: 1px solid black;
+  cursor: pointer;
+  padding: 0.5em 1em;
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: white;
+  font-family: var(--jp-ui-font-family);
+  opacity: .9;
+}
+
+.jp-OutputArea-highlighted:hover .jp-OutputArea-gatherbutton {
+  visibility: visible;
+}
+
+.jp-OutputArea-gatherbutton .jp-OutputArea-gathercheckbox {
+  margin: 0;
+}
+
+.jp-OutputArea-gatherbutton * {
+  cursor: pointer;
+  display: inline;
 }
 
 .jp-OutputArea-highlighted.jp-OutputArea-selected {
   box-shadow: inset 0 0 10px var(--brand-color0);
 }
 
+.jp-OutputArea-highlighted.jp-OutputArea-selected .jp-OutputArea-gatherbutton {
+  box-shadow: inset 0 0 10px var(--brand-color0);
+  background: var(--brand-color3);
+}
+
 .jp-OutputArea-highlighted.jp-OutputArea-selected:after {
-  content: "★";
   position: absolute;
   top: 6px;
   right: 14px;
@@ -107,15 +163,6 @@ div.CodeMirror-linebackground.jp-InputArea-editor-dependencyline {
   overflow: visible;
 }
 
-.jp-GatherWidget {
-  /* XXX: So the buttons don't add vertical height to the prompt. */
-  position: absolute;
-  bottom: -40px;
-  right: 0px;
-  overflow: visible;
-  z-index: 100;
-}
-
 .jp-Notebook :not(.jp-mod-active).jp-Cell .jp-OutputPrompt {
   /* XXX: Don't make the prompt translucent; make just its text translucent, so the gather buttons
      can be opaque. */
@@ -123,33 +170,208 @@ div.CodeMirror-linebackground.jp-InputArea-editor-dependencyline {
   opacity: 1;
 }
 
-.jp-GatherWidget-button {
-  display: inline-block;
-  border: 1px solid black;
-  margin: 1px;
-  width: 40px;
-  height: 40px;
-  background-size: 100%;
-}
-
-.jp-GatherWidget-button:hover {
-  border-width: 3px;
-}
-
-.jp-GatherWidget-historybutton {
-  background-image: var(--jp-icon-history-viewer);
-}
-
-.jp-GatherWidget-gatherbutton {
-  background-image: var(--jp-icon-gather);
-}
-
 /* Notifications */
 .jp-Toolbar-notification {
-  margin-top: -3px;
+  margin-top: -2px;
 }
 
 /* General PhosphorJS rules */
 .p-mod-hidden {
   display: none;
+}
+
+.jp-HistoryViewerIcon {
+  background-image: var(--jp-icon-history-viewer);
+  background-size: 100%;
+}
+
+/* Revision browser */
+.jp-HistoryViewer {
+  width: 100%;
+  height: 100%;
+  overflow-x: scroll;
+  white-space: nowrap;
+  margin: auto;
+}
+
+.jp-HistoryViewer .jp-Revision {
+  display: inline-block;
+  vertical-align: top;
+}
+
+.jp-HistoryViewer-referenceversion {
+  max-width: 500px;
+}
+
+.jp-HistoryViewer-olderversions {
+  max-width: 500px;
+}
+
+.jp-Revision {
+  display: inline-block;
+  height: 99%;
+  vertical-align: top;
+  background-color: #eee;
+  min-width: 350px;
+  padding-left: 2em;
+  padding-right: 2em;
+}
+
+.jp-Revision-notebook {
+  height: 100%;
+  overflow-y: auto;
+  background-color: white;
+  padding-left: 20px;
+  padding-right: 20px;
+  padding-top: 0.5em;
+  padding-bottom: 0.5em;
+  text-align: center;
+  display: flex;
+  flex-flow: column;
+}
+
+.jp-HistoryViewer-referenceversion .jp-Revision-header {
+  font-weight: bold;
+}
+
+.jp-Revision-header {
+  flex: 0 0 auto;
+  background-color: white;
+  font-size: medium;
+  padding-left: 1ex;
+  padding-right: 1ex;
+  padding-top: 0.5em;
+  padding-bottom: 0.5em;
+  margin-bottom: 0.5em;
+  margin-top: 0;
+}
+
+/* Cell styling */
+.jp-CellArea {
+  display: flex;
+  flex-direction: row;
+}
+
+.jp-SlicedCell {
+  padding: var(--jp-cell-padding);
+  overflow-x: auto;
+  width: 100%;
+}
+
+.jp-SlicedCell .jp-SlicedCell-editor {
+  border: 1px solid #cfcfcf;
+  background-color: #f7f7f7;
+  border-radius: 2px;
+  text-align: left;
+  width: 100%;
+}
+
+.jp-SlicedCell-editor-updatedtext:not(.jp-SlicedCell-editor-outofslicetext) {
+  background-color: yellow;
+}
+
+.jp-SlicedCell-editor-unchangedtext {
+   opacity: 1;
+}
+
+/* Every line that isn't in the slice. */
+.jp-SlicedCell-editor-outofslicetext {
+  opacity: .5;
+  text-decoration: line-through;
+  text-decoration-color: lightgray;
+}
+
+.jp-SlicedCell-editor-hidetext {
+  opacity: .5;
+  font-style: italic;
+}
+
+/*
+.jp-DiffedCell-editor-aftertext {
+  background-color: #fff1c6;
+}
+*/
+
+.jp-DiffedCell-editor-aftertext.jp-DiffedCell-editor-changedtext {
+  font-weight: bold;
+}
+
+.jp-DiffedCell-editor-beforebackground {
+  background-color: #eaeaea;
+}
+
+.jp-DiffedCell-editor-beforetext {
+  font-style: italic;
+  color: #6d6d6d;
+}
+
+.jp-DiffedCell-editor-beforetext.jp-DiffedCell-editor-changedtext {
+  font-weight: bold;
+  /* background-color: #99eaff; */
+  background-color: #cbcbcb;
+}
+
+/* Revision cell outputs */
+.jp-Notebook-revisionbrowser {
+  background-color: #eee;
+}
+
+.jp-Notebook-revisionbrowser-output div.output_area {
+  max-height: 5000px;
+  overflow-y: auto;
+}
+
+.jp-Notebook-revisionbrowser-output div.output_area div.output_subarea {
+  background-color: white;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.jp-Notebook-revisionbrowser-output .output_area:first-child {
+  margin-left: 1em;
+}
+
+/* Buttons for gathering from revision browser */
+.jp-Revision-buttons {
+  flex: 0 0 auto;
+  flex-direction: row;
+  display: flex;
+  margin-bottom: 0.5em;
+  display: inline-block;
+}
+
+.jp-Revision-button {
+  flex-grow: 1;
+  text-align: center;
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1.42857143;
+  height: 2em;
+}
+
+.jp-Revision-button:not(:last-child) {
+  margin-right: 5px;
+}
+
+.jp-Revision-button span.jp-Revision-button-label {
+  margin-left: 6px;
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  white-space: nowrap;
+}
+
+.jp-Revision-cells {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* Output prompt (so we can show tool buttons) */
+.jp-OutputArea {
+  overflow-y: visible;
+  overflow: visible;
+}
+
+.jp-OutputPrompt {
+  overflow: visible;
 }

@@ -1,6 +1,6 @@
 import { expect } from "chai";
-import { parse } from '../parsers/python/python_parser';
-import { slice, LocationSet } from "../slicing/Slice";
+import { parse } from '../analysis/parse/python/python-parser';
+import { LocationSet, slice } from "../analysis/slice/slice";
 
 describe('slices', () => {
 

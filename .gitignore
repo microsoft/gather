@@ -4,6 +4,7 @@ package-lock.json
 # Dependencies
 node_modules/
 *.egg-info/
+venv/
 
 # Generated parsers
 python3.js
@@ -18,6 +19,7 @@ python3.js
 # Build files
 dist/
 lib/
+gather-*.tgz
 
 # Notebooks
 notebooks/
@@ -26,3 +28,4 @@ Untitled*
 
 # Miscellany
 *.bundle.*
+.DS_Store

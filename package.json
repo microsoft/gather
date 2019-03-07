@@ -1,40 +1,50 @@
 {
-  "name": "livecells",
-  "version": "0.1.0",
-  "description": "Add live programming to Jupyter cells",
-  "author": "",
-  "main": "lib/lab/index.js",
+  "name": "gather",
+  "version": "0.2.5",
   "keywords": [
     "jupyter",
     "jupyterlab"
   ],
+  "author": {
+    "name": "Andrew Head",
+    "email": "andrewhead@berkeley.edu",
+    "url": "http://andrewhead.info"
+  },
+  "homepage": "https://microsoft.github.io/gather/",
   "scripts": {
-    "build_parser": "node ./node_modules/jison/lib/cli.js --outfile src/parsers/python/python3.js src/parsers/python/python3.jison",
-    "build": "tsc",
-    "build_nb_extension": "npm run build && npx webpack",
-    "watch_nb_extension": "npx webpack -w",
-    "install_nb_extension": "jupyter nbextension install dist && jupyter nbextension enable dist/gather",
-    "prepack": "npm run clean && npm run build_parser && npm run build",
-    "clean": "rimraf lib",
+    "build": "npm run build:parser && tsc",
+    "build:parser": "node ./node_modules/jison/lib/cli.js --outfile src/analysis/parse/python/python3.js src/analysis/parse/python/python3.jison",
     "watch": "tsc -w",
-    "test": "mocha -r ts-node/register src/test/*.test.ts"
+    "prepack": "npm run build",
+    "test": "karma start src/test/karma.conf.js",
+    "test:debug": "karma start src/test/karma.debug.conf.js",
+    "clean": "rm -rf lib/"
+  },
+  "main": "lib/main/main.js",
+  "jupyterlab": {
+    "extension": true,
+    "schemaDir": "schema"
   },
   "files": [
+    "schema/*.json",
     "lib/**/*.{d.ts,eot,gif,html,jpg,js,js.map,json,png,svg,woff2,ttf}",
     "style/**/*.{css,eot,gif,html,jpg,json,png,svg,woff2,ttf}"
   ],
-  "jupyterlab": {
-    "extension": true
-  },
   "dependencies": {
-    "@jupyterlab/application": "^0.17.2",
-    "@jupyterlab/apputils": "^0.17.2",
-    "@jupyterlab/codemirror": "^0.17.2",
-    "@jupyterlab/coreutils": "^2.0.0-0",
-    "@jupyterlab/docmanager": "^0.17.2",
-    "@jupyterlab/fileeditor": "^0.17.2",
-    "@jupyterlab/notebook": "^0.17.2",
+    "@jupyterlab/application": "^0.19.1",
+    "@jupyterlab/apputils": "^0.19.1",
+    "@jupyterlab/codemirror": "^0.19.1",
+    "@jupyterlab/coreutils": "^2.2.1",
+    "@jupyterlab/cells": "^0.19.1",
+    "@jupyterlab/outputarea": "^0.19.1",
+    "@jupyterlab/docmanager": "^0.19.1",
+    "@jupyterlab/fileeditor": "^0.19.1",
+    "@jupyterlab/notebook": "^0.19.1",
+    "@jupyterlab/rendermime": "^0.19.1",
+    "@jupyterlab/codeeditor": "^0.19.1",
+    "@jupyterlab/docregistry": "^0.19.1",
     "@phosphor/widgets": "^1.6.0",
+    "@types/react": "^16.8.1",
     "diff-match-patch": "^1.0.1",
     "jquery": "^3.3.1"
   },
@@ -46,16 +56,19 @@
     "@types/mocha": "^5.2.4",
     "@types/node": "^8.0.51",
     "chai": "^4.1.2",
-    "cloc": "^2.3.3",
     "css-loader": "^1.0.0",
     "file-loader": "^1.1.11",
     "jison": "^0.4.18",
+    "karma": "^4.0.0",
+    "karma-chai": "^0.1.0",
+    "karma-chrome-launcher": "^2.2.0",
+    "karma-mocha": "^1.3.0",
+    "karma-webpack": "^3.0.5",
     "mocha": "^5.2.0",
     "raw-loader": "^0.5.1",
-    "rimraf": "^2.6.1",
     "style-loader": "^0.21.0",
-    "ts-node": "^7.0.0",
-    "typescript": "~2.4.0",
+    "ts-loader": "^5.3.3",
+    "typescript": "3.3.1",
     "webpack": "^4.16.1",
     "webpack-cli": "^3.1.0"
   }

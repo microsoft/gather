@@ -1,22 +1,14 @@
 import { expect } from "chai";
-import { LocationSet } from "../slicing/Slice";
-import { SlicedExecution } from "../slicing/ExecutionSlicer";
-import { ICell, CellSlice } from "../packages/cell";
+import { SlicedExecution } from "../analysis/slice/log-slicer";
+import { LocationSet } from "../analysis/slice/slice";
+import { ICell, LogCell } from "../model/cell";
+import { CellSlice } from "../model/cellslice";
 
 describe('SlicedExecution', () => {
 
-    function cell(id: string, executionCount: number, ...codeLines: string[]): ICell {
-        let newCell = {
-            is_cell: true,
-            id: id,
-            executionCount: executionCount,
-            text: codeLines.join('\n'),
-            hasError: false,
-            isCode: true,
-            gathered: false,
-            copy: () => newCell
-        };
-        return newCell;
+    function cell(executionEventId: string, text: string, executionCount?: number, id?: string): ICell {
+        if (executionCount === undefined) executionCount = 1;
+        return new LogCell({ executionCount, text, executionEventId, id });
     }
 
     function cellSlice(cell: ICell, slice: LocationSet): CellSlice {
@@ -44,28 +36,28 @@ describe('SlicedExecution', () => {
         it('unions slices with different cells', () => {
             let slice1 = slicedExecution(
                 cellSlice(
-                    cell("1", 1, "a = 1"),
+                    cell("1", "a = 1", 1),
                     new LocationSet(location(1, 0, 1, 5))
                 ));
             let slice2 = slicedExecution(
                 cellSlice(
-                    cell("2", 2, "b = 2"),
+                    cell("2", "b = 2", 2),
                     new LocationSet(location(1, 0, 1, 5))
                 ));
             let merged = slice1.merge(slice2);
-            expect(merged.cellSlices[0].cell.id).to.equal("1");
-            expect(merged.cellSlices[1].cell.id).to.equal("2");
+            expect(merged.cellSlices[0].cell.executionEventId).to.equal("1");
+            expect(merged.cellSlices[1].cell.executionEventId).to.equal("2");
         });
 
         it('will not include the same locations from the same cell twice', () => {
             let slice1 = slicedExecution(
                 cellSlice(
-                    cell("1", 1, "a = 1"),
+                    cell("1", "a = 1"),
                     new LocationSet(location(1, 0, 1, 5))
                 ));
             let slice2 = slicedExecution(
                 cellSlice(
-                    cell("1", 1, "a = 1"),
+                    cell("1", "a = 1"),
                     new LocationSet(location(1, 0, 1, 5))
                 ));
             let merged = slice1.merge(slice2);
@@ -73,15 +65,16 @@ describe('SlicedExecution', () => {
             expect(merged.cellSlices[0].slice.size).to.equal(1);
         });
 
-        it('considers the same cell with different execution counts to be different', () => {
+        it('considers two cells sharing ID and execution count but differing in execution event ' +
+                'ID to be different', () => {
             let slice1 = slicedExecution(
                 cellSlice(
-                    cell("1", 1, "a = 1"),
+                    cell("1", "a = 1", 1, "id1"),
                     new LocationSet(location(1, 0, 1, 5))
                 ));
             let slice2 = slicedExecution(
                 cellSlice(
-                    cell("1", 2, "a = 1"),
+                    cell("2", "a = 1", 1, "id1"),
                     new LocationSet(location(1, 0, 1, 5))
                 ));
             let merged = slice1.merge(slice2);
@@ -91,12 +84,12 @@ describe('SlicedExecution', () => {
         it('will include complementary ranges from two slices of the same cell', () => {
             let slice1 = slicedExecution(
                 cellSlice(
-                    cell("1", 1, "a = 1"),
+                    cell("1", "a = 1"),
                     new LocationSet(location(1, 0, 1, 5))
                 ));
             let slice2 = slicedExecution(
                 cellSlice(
-                    cell("1", 1, "a = 1"),
+                    cell("1", "a = 1"),
                     new LocationSet(location(1, 0, 1, 4))
                 ));
             let merged = slice1.merge(slice2);
@@ -109,12 +102,12 @@ describe('SlicedExecution', () => {
         it('reorders the cells in execution order', () => {
             let slice1 = slicedExecution(
                 cellSlice(
-                    cell("2", 2, "a = 1"),
+                    cell("2", "a = 1", 2),
                     new LocationSet(location(1, 0, 1, 5))
                 ));
             let slice2 = slicedExecution(
                 cellSlice(
-                    cell("1", 1, "a = 1"),
+                    cell("1", "a = 1", 1),
                     new LocationSet(location(1, 0, 1, 4))
                 ));
             let merged = slice1.merge(slice2);
@@ -124,16 +117,16 @@ describe('SlicedExecution', () => {
 
         it('can do an n-way merge with a bunch of cells', () => {
             let slice1 = slicedExecution(
-                cellSlice(cell("1", 1, "a = 1"), new LocationSet(location(1, 0, 1, 5))),
-                cellSlice(cell("2", 2, "b = 1"), new LocationSet(location(1, 0, 1, 5)))
+                cellSlice(cell("1", "a = 1"), new LocationSet(location(1, 0, 1, 5))),
+                cellSlice(cell("2", "b = 1"), new LocationSet(location(1, 0, 1, 5)))
                 );
             let slice2 = slicedExecution(
-                cellSlice(cell("3", 3, "c = 1"), new LocationSet(location(1, 0, 1, 5))),
-                cellSlice(cell("4", 4, "d = 1"), new LocationSet(location(1, 0, 1, 5)))
+                cellSlice(cell("3", "c = 1"), new LocationSet(location(1, 0, 1, 5))),
+                cellSlice(cell("4", "d = 1"), new LocationSet(location(1, 0, 1, 5)))
                 );
             let slice3 = slicedExecution(
-                cellSlice(cell("5", 5, "e = 1"), new LocationSet(location(1, 0, 1, 5))),
-                cellSlice(cell("6", 6, "f = 1"), new LocationSet(location(1, 0, 1, 5)))
+                cellSlice(cell("5", "e = 1"), new LocationSet(location(1, 0, 1, 5))),
+                cellSlice(cell("6", "f = 1"), new LocationSet(location(1, 0, 1, 5)))
                 );
             let merged = slice1.merge(slice2, slice3);
             expect(merged.cellSlices.length).to.equal(6);

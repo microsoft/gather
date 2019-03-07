@@ -1,13 +1,12 @@
 import { expect } from 'chai';
-import { CellSlice } from '../packages/cell';
-import { LocationSet } from '../slicing/Slice';
+import { LocationSet } from '../analysis/slice/slice';
+import { LogCell } from '../model/cell';
+import { CellSlice } from '../model/cellslice';
 
 describe('CellSlice', () => {
 
     it('yields a text slice based on a set of locations', () => {
-        let cellSlice = new CellSlice({
-            is_cell: true,
-            id: "id",
+        let cellSlice = new CellSlice(new LogCell({
             text: [
                 "a = 1",
                 "b = 2",
@@ -15,12 +14,8 @@ describe('CellSlice', () => {
                 "d = 4",
                 ""
             ].join("\n"),
-            hasError: false,
             executionCount: 1,
-            isCode: true,
-            gathered: false,
-            copy: () => null
-        }, new LocationSet(
+        }), new LocationSet(
             { first_line: 1, first_column: 0, last_line: 1, last_column: 5 },
             { first_line: 2, first_column: 4, last_line: 3, last_column: 4 }
         ));
@@ -32,9 +27,7 @@ describe('CellSlice', () => {
     });
 
     it('yields entire lines if requested', () => {
-        let cellSlice = new CellSlice({
-            is_cell: true,
-            id: "id",
+        let cellSlice = new CellSlice(new LogCell({
             text: [
                 "a = 1",
                 "b = 2",
@@ -42,12 +35,8 @@ describe('CellSlice', () => {
                 "d = 4",
                 ""
             ].join("\n"),
-            hasError: false,
             executionCount: 1,
-            isCode: true,
-            gathered: false,
-            copy: () => null
-        }, new LocationSet(
+        }), new LocationSet(
             { first_line: 1, first_column: 0, last_line: 1, last_column: 5 },
             { first_line: 2, first_column: 4, last_line: 3, last_column: 4 }
         ));

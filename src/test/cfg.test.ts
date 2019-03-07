@@ -1,6 +1,6 @@
-import { ControlFlowGraph } from "../slicing/ControlFlowAnalysis";
-import { parse } from "../parsers/python/python_parser";
 import { expect } from "chai";
+import { parse } from "../analysis/parse/python/python-parser";
+import { ControlFlowGraph } from "../analysis/slice/control-flow";
 
 describe('ControlFlowGraph', () => {
 

@@ -1,49 +1,101 @@
-# Code Gathering Tools
+# Gather - Code Cleanup for Jupyter Notebooks
 
-Tool for gathering, recalling, comparing implicit versions of code in Jupyter Lab. Read the paper [here](dead link).
+Tool for cleaning code, recovering lost code, and version
+control in Jupyter Lab.
 
-## Download the Jupyter Lab extension
+Download the extension with one command:
 
 ```bash
-# This download link is currently dead
-jupyter labextension install gathering-tools
+jupyter labextension install gather
 ```
 
-## Development
+If you are seeing installation errors, make sure that npm
+and Jupyter Lab are up-to-date.
 
-For a development install (requires npm version 4 or later), do the following in the repository directory:
+Read the docs [here](https://microsoft.github.io/gather).
+And read our academic paper on the design of the tool
+[here](https://people.eecs.berkeley.edu/~andrewhead/pdf/notebooks.pdf).
+
+## Contributing
+
+To set up the code for this repository, run:
 
 ```bash
-npm install                   # download dependencies
-jupyter labextension link .   # install this package in Jupyter Lab
-jlpm run watch                # automatically recompile sources
-jupyter lab --watch           # launch Jupyter Lab, automatically re-load extension
+git clone <this-repository-url>  # clone the repository
+npm install                      # download dependencies
+jupyter labextension link .      # install this package in Jupyter Lab
+jlpm run watch                   # automatically recompile source code
+jupyter lab --watch              # launch Jupyter Lab, automatically re-load extension
 ```
 
-These setup instructions have been successfully completed with Node v9.5.0.
+This requires npm version 4 or later, and was tested most
+recently with Node v9.5.0.
 
-### Pre-alpha Jupyter notebook version
+### Testing the extension
 
-This project was initially developed as a Jupyter notebook extension. It is not being maintained, as it requires access to the internal API, including parts that change across minor versions. Still, if you want to build and install the notebook version, run these commands:
+The tests assume you have Google Chrome installed on your
+computer. Because this plugin depends on Jupyter Lab and in
+turn on browser functionality, some of these tests need a
+browser to run in.
+
+To run the tests from the command line, call:
 
 ```bash
-npm run build
-npm run build_nb_extension
-npm run install_nb_extension
+npm run test
+```
+
+Wait a few seconds while the code compiles, and then you
+should see the results of running the tests. The process
+will continue to live after the tests finish running---it
+will recompile and re-run the tests whenever the test code
+changes. Type Ctrl+C to abort the command at any time.
+
+Note that running tests with this command may interfere with
+you opening Chrome browsers. If that happens, cancel the
+command, open Chrome, and then restart the command.
+
+To debug the tests, call:
+
+```bash
+npm run test:debug
+```
+
+This will launch a Chrome window. Click the **DEBUG**
+button in the page that opens. Launch the Chrome developer
+tools (View -> Developer -> Developer Tools). The "Console"
+will show the test results, with one line for each test. In
+the "Sources" tab, you can open scripts using the file prompt
+(Cmd + P on Mac, Ctrl + P on Windows) and set breakpoints in
+the code. When you refresh the page, the tests will be run
+again, and the debugger will trigger when the first
+breakpoint is reached.
+
+### Packaging the project for beta users
+
+Package up the project as follows:
+
+```bash
+npm pack  # output: <package-name>-<version>.tgz
+```
+
+Then send the package to someone else, and have them install
+it using this command:
+
+```bash
+jupyter labextension install <package-name>-<version>.tgz
+```
+
+### Publishing to a private repository
+
+If you want to test publishing the package to npm, you can
+use the following commands.
+
+```bash
+npm login  # requires credentials for a valid npm account
+npm publish --access=restricted  # make this public eventually
 ```
 
 ### Troubleshooting
-
-#### The extension UI doesn't get loaded
-
-Sometimes you might reload the page and see that the buttons on the page are missing. I haven't been able to track the cause of the issue. [This Stack Overflow post](https://stackoverflow.com/questions/11991218/undefined-object-being-passed-via-requirejs) suggests the issue might be with circular `require` dependencies. The problem has disappeared when I have:
-
-* Deleted the virtual environment containing Jupyter, and installing it globally, or
-* Removed what I thought might be circular dependencies in the project
-
-But I don't know if either of these *really* fixed the issue. They're worth trying if the gathering UI disappears.
-
-Then run `jupyter notebook` and the extension will be running.
 
 #### `500` message when launching Jupyter notebook
 
@@ -62,17 +114,3 @@ notebook==5.6.0
 * **Conflicting dependencies**: upgrade either the Python Jupyter Lab (may require Python upgrade to Python 3 to get the most recent version of Jupyter Lab) or the Jupyter Lab npm pacakges
 * **Issues with duplicated React types**: download React types in `@jupyterlab/` packages
 * **Other issues**: delete your node_modules files and reinstall them
-
-### Backend (logging) extension (optional)
-
-If you want to add logging to the project, look in the `src/nb/python` directory. This Python plugin needs to be installed to receive logging requests and save them to file (`~/.jupyter/events.txt`). To register this Python extension in Jupyter notebook or lab, see this guide: https://jupyter-notebook.readthedocs.io/en/latest/extending/handlers.html. As of the time of this writing, installation involves:
-
-```bash
-pip install portalocker  # dependency for this package
-cd src/nb/python
-python setup.py install  # build this package
-jupyter serverextension enable --py gather_logger  # enable the package
-```
-
-We aren't yet including the frontend extension in the server extension, nor do we have a good way to develop the plugin in development mode yet. To do either of these two things, follow the instructions here:
-https://jupyter-notebook.readthedocs.io/en/latest/examples/Notebook/Distributing%20Jupyter%20Extensions%20as%20Python%20Packages.html .
