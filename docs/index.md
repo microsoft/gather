@@ -5,7 +5,7 @@ Andrew Head, Fred Hohman, Titus Barik, Steven M. Drucker, and Robert DeLine
 </div>
 
 <div class='teaser'>
-<img class='teaser' src="/assets/img/notebook-gathering.jpg"/>
+<img class='teaser' src="assets/img/notebook-gathering.jpg"/>
 </div>
 
 <div class='abstract'>
