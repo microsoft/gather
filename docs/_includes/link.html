@@ -1,0 +1,5 @@
+{% if link.coming_soon %}
+<span class='link-disabled'>{{ link.text }} (Coming Soon)</span>
+{% else %}
+<a href="{{ link.url }}">{{ link.text }}</a>
+{% endif %}
