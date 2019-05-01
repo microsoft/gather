@@ -18,28 +18,32 @@
 }
 
 .jp-Toolbar-gatherbutton.jp-Toolbar-gatherbutton-inactive {
-  opacity: .8;
+  opacity: 0.8;
 }
 
-.jp-Toolbar-gatherbutton.jp-Toolbar-button-glow button.jp-ToolbarButtonComponent:hover {
+.jp-Toolbar-gatherbutton.jp-Toolbar-button-glow
+  button.jp-ToolbarButtonComponent:hover {
   background-color: var(--brand-color3);
 }
 
-.jp-Toolbar-button-glow button.jp-ToolbarButtonComponent.jp-Toolbar-clearbutton:hover {
+.jp-Toolbar-button-glow
+  button.jp-ToolbarButtonComponent.jp-Toolbar-clearbutton:hover {
   background-color: #eeeeee;
 }
 
-.jp-Toolbar-gatherbutton.jp-Toolbar-button-glow button.jp-ToolbarButtonComponent {
+.jp-Toolbar-gatherbutton.jp-Toolbar-button-glow
+  button.jp-ToolbarButtonComponent {
   background-color: var(--brand-color4);
 }
 
-.jp-Toolbar-button-glow button.jp-ToolbarButtonComponent.jp-Toolbar-clearbutton {
+.jp-Toolbar-button-glow
+  button.jp-ToolbarButtonComponent.jp-Toolbar-clearbutton {
   background-color: #f4f4f4;
-} 
+}
 
 span.jp-GatherLabel {
   margin-top: -2px;
-  margin-right: .2em;
+  margin-right: 0.2em;
 }
 
 .jp-GatherSpacer {
@@ -81,12 +85,12 @@ span.jp-GatherLabel {
 }
 
 .jp-InputArea-editor-nametext.jp-InputArea-editor-nametext-selected {
-  box-shadow: inset 0 0 2px #222222;  /* border */
+  box-shadow: inset 0 0 2px #222222; /* border */
   background-color: var(--brand-color2);
 }
 
 .jp-InputArea-editor-nameline-selected:after {
-  content: "★";
+  content: '★';
   position: absolute;
   right: 14px;
   font-weight: bold;
@@ -112,7 +116,8 @@ div.CodeMirror-linebackground.jp-InputArea-editor-dependencyline {
   box-shadow: inset 0 0 5px var(--brand-color2);
 }
 
-.jp-OutputArea-highlighted:not(.jp-OutputArea-selected) .jp-OutputArea-gatherbutton {
+.jp-OutputArea-highlighted:not(.jp-OutputArea-selected)
+  .jp-OutputArea-gatherbutton {
   visibility: hidden;
 }
 
@@ -126,7 +131,7 @@ div.CodeMirror-linebackground.jp-InputArea-editor-dependencyline {
   right: 10px;
   background: white;
   font-family: var(--jp-ui-font-family);
-  opacity: .9;
+  opacity: 0.9;
 }
 
 .jp-OutputArea-highlighted:hover .jp-OutputArea-gatherbutton {
@@ -271,18 +276,18 @@ div.CodeMirror-linebackground.jp-InputArea-editor-dependencyline {
 }
 
 .jp-SlicedCell-editor-unchangedtext {
-   opacity: 1;
+  opacity: 1;
 }
 
 /* Every line that isn't in the slice. */
 .jp-SlicedCell-editor-outofslicetext {
-  opacity: .5;
+  opacity: 0.5;
   text-decoration: line-through;
   text-decoration-color: lightgray;
 }
 
 .jp-SlicedCell-editor-hidetext {
-  opacity: .5;
+  opacity: 0.5;
   font-style: italic;
 }
 
@@ -356,7 +361,7 @@ div.CodeMirror-linebackground.jp-InputArea-editor-dependencyline {
 
 .jp-Revision-button span.jp-Revision-button-label {
   margin-left: 6px;
-  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
   white-space: nowrap;
 }
 

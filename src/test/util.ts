@@ -1,8 +1,8 @@
-import { ICodeCellModel } from "@jupyterlab/cells";
-import { nbformat } from "@jupyterlab/coreutils";
-import { IObservableString } from "@jupyterlab/observables";
-import { IOutputAreaModel } from "@jupyterlab/outputarea";
-import { IOutputModel } from "@jupyterlab/rendermime";
+import { ICodeCellModel } from '@jupyterlab/cells';
+import { nbformat } from '@jupyterlab/coreutils';
+import { IObservableString } from '@jupyterlab/observables';
+import { IOutputAreaModel } from '@jupyterlab/outputarea';
+import { IOutputModel } from '@jupyterlab/rendermime';
 
 /**
  * IMPLEMENTATIONS OF JUPYTER INTERFACES.
@@ -12,83 +12,88 @@ import { IOutputModel } from "@jupyterlab/rendermime";
  * These implementations let us use Jupyter types for objects under test.
  */
 export class SimpleObservableString implements IObservableString {
-    constructor(value: string) {
-        this.text = value;
-    }
-    type: 'String';
-    changed: null;
-    text: string;
-    insert: null;
-    remove: null;
-    clear: null;
-    dispose: null;
-    isDisposed: false;
+  constructor(value: string) {
+    this.text = value;
+  }
+  type: 'String';
+  changed: null;
+  text: string;
+  insert: null;
+  remove: null;
+  clear: null;
+  dispose: null;
+  isDisposed: false;
 }
 
 export class SimpleOutputAreaModel implements IOutputAreaModel {
-    constructor(...outputs: IOutputModel[]) {
-        this._outputs = outputs;
-    }
+  constructor(...outputs: IOutputModel[]) {
+    this._outputs = outputs;
+  }
 
-    get(index: number): IOutputModel {
-        return this._outputs[index];
-    }
-    
-    get length(): number {
-        return this._outputs.length;
-    }
+  get(index: number): IOutputModel {
+    return this._outputs[index];
+  }
 
-    _outputs: IOutputModel[];
-    stateChanged: null;
-    changed: null;
-    trusted: true;
-    contentFactory: null;
-    add: null;
-    set: null;
-    clear: null;
-    fromJSON: null;
-    toJSON: null;
-    isDisposed: false;
-    dispose: null;
+  get length(): number {
+    return this._outputs.length;
+  }
+
+  _outputs: IOutputModel[];
+  stateChanged: null;
+  changed: null;
+  trusted: true;
+  contentFactory: null;
+  add: null;
+  set: null;
+  clear: null;
+  fromJSON: null;
+  toJSON: null;
+  isDisposed: false;
+  dispose: null;
 }
 
 export class SimpleOutputModel implements IOutputModel {
-    constructor(type: string, data?: nbformat.IOutput) {
-        this.type = type;
-        this.data = data;
-    }
-    changed: null;
-    type: string;
-    executionCount: null;
-    trusted: true;
-    dispose: null;
-    toJSON: null;
-    data: nbformat.IOutput;
-    metadata: {};
-    setData: null;
+  constructor(type: string, data?: nbformat.IOutput) {
+    this.type = type;
+    this.data = data;
+  }
+  changed: null;
+  type: string;
+  executionCount: null;
+  trusted: true;
+  dispose: null;
+  toJSON: null;
+  data: nbformat.IOutput;
+  metadata: {};
+  setData: null;
 }
 
 export class SimpleCodeCellModel implements ICodeCellModel {
-    constructor(id: string, executionCount: number, text: string, outputs?: IOutputAreaModel) {
-        this.id = id;
-        this.executionCount = executionCount;
-        this.value = new SimpleObservableString(text);
-        this.outputs = outputs;
-    }
-    type: "code";
-    executionCount: number;
-    outputs: IOutputAreaModel;
-    id: string;
-    contentChanged: null;
-    stateChanged: null;
-    trusted: true;
-    metadata: null;
-    toJSON: null;
-    mimeTypeChanged: null;
-    value:IObservableString;
-    mimeType: null;
-    selections: null;
-    modelDB: null;
-    isDisposed: false;
-    dispose: null;
+  constructor(
+    id: string,
+    executionCount: number,
+    text: string,
+    outputs?: IOutputAreaModel
+  ) {
+    this.id = id;
+    this.executionCount = executionCount;
+    this.value = new SimpleObservableString(text);
+    this.outputs = outputs;
+  }
+  type: 'code';
+  executionCount: number;
+  outputs: IOutputAreaModel;
+  id: string;
+  contentChanged: null;
+  stateChanged: null;
+  trusted: true;
+  metadata: null;
+  toJSON: null;
+  mimeTypeChanged: null;
+  value: IObservableString;
+  mimeType: null;
+  selections: null;
+  modelDB: null;
+  isDisposed: false;
+  dispose: null;
 }

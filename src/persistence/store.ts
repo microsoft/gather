@@ -1,47 +1,51 @@
-import { INotebookModel } from "@jupyterlab/notebook";
-import { JSONArray, JSONObject } from "@phosphor/coreutils";
-import { ExecutionLogSlicer } from "../analysis/slice/log-slicer";
-import { EXECUTION_HISTORY_METADATA_KEY } from "./load";
+import { INotebookModel } from '@jupyterlab/notebook';
+import { JSONArray, JSONObject } from '@phosphor/coreutils';
+import { ExecutionLogSlicer } from '../analysis/slice/log-slicer';
+import { EXECUTION_HISTORY_METADATA_KEY } from './load';
 
 interface CellExecutionJson extends JSONObject {
-    executionTime: string;
-    cell: CellJson;
+  executionTime: string;
+  cell: CellJson;
 }
 
 interface CellJson extends JSONObject {
-    id: string;
-    executionEventId: string;
-    executionCount: number;
-    hasError: boolean;
-    isCode: boolean;
-    text: string;
-    gathered: boolean;
+  id: string;
+  executionEventId: string;
+  executionCount: number;
+  hasError: boolean;
+  isCode: boolean;
+  text: string;
+  gathered: boolean;
 }
 
 /**
  * This method is complementary with the loadHistory method. Make sure that any chances to the
  * format of stored history is reflected in changes to that method.
  */
-export function storeHistory(notebookModel: INotebookModel, executionLog: ExecutionLogSlicer) {
+export function storeHistory(
+  notebookModel: INotebookModel,
+  executionLog: ExecutionLogSlicer
+) {
+  let cellExecutionsJson: JSONArray = [];
 
-    let cellExecutionsJson: JSONArray = [];
+  for (let cellExecution of executionLog.cellExecutions) {
+    let cell = cellExecution.cell;
+    let cellJson = new Object(null) as CellJson;
+    cellJson.id = cell.id;
+    cellJson.executionEventId = cell.executionEventId;
+    cellJson.executionCount = cell.executionCount;
+    cellJson.hasError = cell.hasError;
+    cellJson.text = cell.text;
 
-    for (let cellExecution of executionLog.cellExecutions) {
-        
-        let cell = cellExecution.cell;
-        let cellJson = new Object(null) as CellJson;
-        cellJson.id = cell.id;
-        cellJson.executionEventId = cell.executionEventId;
-        cellJson.executionCount = cell.executionCount;
-        cellJson.hasError = cell.hasError;
-        cellJson.text = cell.text;
+    let cellExecutionJson = new Object(null) as CellExecutionJson;
+    cellExecutionJson.cell = cellJson;
+    cellExecutionJson.executionTime = cellExecution.executionTime.toISOString();
 
-        let cellExecutionJson = new Object(null) as CellExecutionJson;
-        cellExecutionJson.cell = cellJson;
-        cellExecutionJson.executionTime = cellExecution.executionTime.toISOString();
-        
-        cellExecutionsJson.push(cellExecutionJson);
-    }
+    cellExecutionsJson.push(cellExecutionJson);
+  }
 
-    notebookModel.metadata.set(EXECUTION_HISTORY_METADATA_KEY, cellExecutionsJson);
+  notebookModel.metadata.set(
+    EXECUTION_HISTORY_METADATA_KEY,
+    cellExecutionsJson
+  );
 }

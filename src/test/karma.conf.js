@@ -5,4 +5,4 @@ conf['browsers'] = ['ChromeHeadless'];
 
 module.exports = function(config) {
   config.set(conf);
-}
+};

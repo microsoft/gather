@@ -1,6 +1,6 @@
-import { ISettingRegistry } from "@jupyterlab/coreutils";
-import { JSONExt, JSONObject } from "@phosphor/coreutils";
-import * as $ from "jquery";
+import { ISettingRegistry } from '@jupyterlab/coreutils';
+import { JSONExt, JSONObject } from '@phosphor/coreutils';
+import * as $ from 'jquery';
 
 let _settingRegistry: ISettingRegistry;
 
@@ -8,7 +8,7 @@ let _settingRegistry: ISettingRegistry;
  * Initialize logger with the settings registry, so that the logger can access the user's ID.
  */
 export function initLogger(settingRegistry: ISettingRegistry) {
-    _settingRegistry = settingRegistry;
+  _settingRegistry = settingRegistry;
 }
 
 let _statePollers: IStatePoller[] = [];
@@ -17,17 +17,17 @@ let _statePollers: IStatePoller[] = [];
  * Interface for a class that polls the state to get logging information at each log action.
  */
 export interface IStatePoller {
-    /**
-     * Gets called on every log statement; returns JSON that should be logged.
-     */
-    poll(): any;
+  /**
+   * Gets called on every log statement; returns JSON that should be logged.
+   */
+  poll(): any;
 }
 
 /**
  * Register a state poller to add information to the log on each log call.
  */
 export function registerPollers(...pollers: IStatePoller[]) {
-    _statePollers.push(...pollers);
+  _statePollers.push(...pollers);
 }
 
 /**
@@ -39,51 +39,49 @@ export function registerPollers(...pollers: IStatePoller[]) {
  * log the event when connected to the internet again.
  */
 export function log(eventName: string, data?: any) {
+  data = data || {};
 
-    data = data || {};
-    
-    let LOG_ENDPOINT = 'https://clarence.eecs.berkeley.edu';
-    
-    // Prepare log data.
-    let postData: any = {
-        timestamp: new Date().toISOString(),
-        event: eventName,
-        data: data,
-        userEmail: undefined,
-    };
-    
-    if (_settingRegistry != undefined || _settingRegistry != null) {
-        _settingRegistry.get('gather:plugin', 'gatheringConfig').then((data) => {
-            if (JSONExt.isObject(data.composite)) {
-                let dataCompositeObject = data.composite as JSONObject;
-                postData.userEmail = dataCompositeObject['userEmail'];
+  let LOG_ENDPOINT = 'https://clarence.eecs.berkeley.edu';
 
-                // Poll for additional data from each state poller.
-                for (let poller of _statePollers) {
-                    let pollData = poller.poll();
-                    for (let k in pollData) {
-                        if (pollData.hasOwnProperty(k)) {
-                            postData[k] = pollData[k];
-                        }
-                    }
-                }
+  // Prepare log data.
+  let postData: any = {
+    timestamp: new Date().toISOString(),
+    event: eventName,
+    data: data,
+    userEmail: undefined,
+  };
 
-                // If there is any sensitive data to be logged, it should first be cleaned through a
-                // `toJSON` method defined on a class, or manually before passing it into this method.
-                // Earlier, we used the replacer argument to JSON.stringify, but it takes too much time
-                // to apply replacers to every value in the resulting JSON.
-                postData.data = JSON.stringify(postData.data);
+  if (_settingRegistry != undefined || _settingRegistry != null) {
+    _settingRegistry.get('gather:plugin', 'gatheringConfig').then(data => {
+      if (JSONExt.isObject(data.composite)) {
+        let dataCompositeObject = data.composite as JSONObject;
+        postData.userEmail = dataCompositeObject['userEmail'];
 
-                // Submit data to logger endpoint.
-                $.ajax(LOG_ENDPOINT + "/save", {
-
-                    data: postData,
-                    method: "POST",
-                    error: (_: any, textStatus: string, errorThrown: string) => {
-                        console.error("Failed to log", textStatus, errorThrown);
-                    }
-                });
+        // Poll for additional data from each state poller.
+        for (let poller of _statePollers) {
+          let pollData = poller.poll();
+          for (let k in pollData) {
+            if (pollData.hasOwnProperty(k)) {
+              postData[k] = pollData[k];
             }
+          }
+        }
+
+        // If there is any sensitive data to be logged, it should first be cleaned through a
+        // `toJSON` method defined on a class, or manually before passing it into this method.
+        // Earlier, we used the replacer argument to JSON.stringify, but it takes too much time
+        // to apply replacers to every value in the resulting JSON.
+        postData.data = JSON.stringify(postData.data);
+
+        // Submit data to logger endpoint.
+        $.ajax(LOG_ENDPOINT + '/save', {
+          data: postData,
+          method: 'POST',
+          error: (_: any, textStatus: string, errorThrown: string) => {
+            console.error('Failed to log', textStatus, errorThrown);
+          },
         });
-    }
+      }
+    });
+  }
 }

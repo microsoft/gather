@@ -31,6 +31,9 @@ jupyter lab --watch              # launch Jupyter Lab, automatically re-load ext
 This requires npm version 4 or later, and was tested most
 recently with Node v9.5.0.
 
+Before submitting a pull request, format the code files by
+running `jlpm run format:all`.
+
 ### Testing the extension
 
 The tests assume you have Google Chrome installed on your

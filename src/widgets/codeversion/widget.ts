@@ -12,41 +12,41 @@ const CODE_VERSION_CLASS = 'jp-CodeVersion';
  * A widget for showing a version of code.
  */
 export class CodeVersion extends Widget {
-    /**
-     * Construct a new code version.
-     */
-    constructor(options: CodeVersion.IOptions) {
-        super();
-        this.addClass(CODE_VERSION_CLASS);
-        this.model = options.model;
+  /**
+   * Construct a new code version.
+   */
+  constructor(options: CodeVersion.IOptions) {
+    super();
+    this.addClass(CODE_VERSION_CLASS);
+    this.model = options.model;
 
-        let layout = (this.layout = new PanelLayout());
-        for (let cellModel of this.model.cells) {
-            let options: CellArea.IOptions = {
-                model: cellModel,
-                showDiff: this.model.isLatest
-            };
-            layout.addWidget(new CellArea(options));
-        }
+    let layout = (this.layout = new PanelLayout());
+    for (let cellModel of this.model.cells) {
+      let options: CellArea.IOptions = {
+        model: cellModel,
+        showDiff: this.model.isLatest,
+      };
+      layout.addWidget(new CellArea(options));
     }
+  }
 
-    /**
-     * The model used by the widget.
-     */
-    readonly model: ICodeVersionModel;
+  /**
+   * The model used by the widget.
+   */
+  readonly model: ICodeVersionModel;
 }
 
 /**
  * A namespace for `CodeVersion` statics.
  */
 export namespace CodeVersion {
+  /**
+   * The options used to create a `CodeVersion`.
+   */
+  export interface IOptions {
     /**
-     * The options used to create a `CodeVersion`.
+     * The model used by the widget.
      */
-    export interface IOptions {
-        /**
-         * The model used by the widget.
-         */
-        model: ICodeVersionModel;
-    }
+    model: ICodeVersionModel;
+  }
 }

@@ -5,4 +5,4 @@ conf['browsers'] = ['Chrome'];
 
 module.exports = function(config) {
   config.set(conf);
-}
+};

@@ -2,15 +2,13 @@ var webpackConfig = require('./webpack.test.config.js');
 
 module.exports = {
   frameworks: ['mocha', 'chai'],
-  files: [
-    '**/*.test.ts'
-  ],
+  files: ['**/*.test.ts'],
   preprocessors: {
-    '**/*.ts': ['webpack']
+    '**/*.ts': ['webpack'],
   },
   webpack: webpackConfig,
   reporters: ['progress'],
   colors: true,
   autoWatch: true,
-  concurrency: Infinity
-}
+  concurrency: Infinity,
+};
