@@ -1,6 +1,3 @@
-# NPM stuff
-package-lock.json
-
 # Dependencies
 node_modules/
 *.egg-info/
