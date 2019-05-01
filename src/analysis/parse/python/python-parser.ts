@@ -157,14 +157,14 @@ export const RETURN = 'return';
 
 export interface IReturn extends ILocatable {
     type: typeof RETURN;
-    value: ISyntaxNode;
+    value: ISyntaxNode[];
 }
 
 export const YIELD = 'yield';
 
 export interface IYield extends ILocatable {
     type: typeof YIELD;
-    value: ISyntaxNode;
+    value: ISyntaxNode[];
 }
 
 export const RAISE = 'raise';
@@ -509,8 +509,8 @@ function walkRecursive(node: ISyntaxNode, ancestors?: ISyntaxNode[], walkListene
             break;
         case COMPFOR: children = node.for.concat([node.in]); break;
         case COMPIF: children = [node.test]; break;
-        case YIELD: children = node.value ? [node.value] : []; break;
-        case RETURN: children = node.value ? [node.value] : []; break;
+        case YIELD: children = node.value ? node.value : []; break;
+        case RETURN: children = node.value ? node.value : []; break;
         case RAISE: children = node.err ? [node.err] : []; break;
         case IFEXPR: children = [node.test, node.then, node.else]; break;
     }
