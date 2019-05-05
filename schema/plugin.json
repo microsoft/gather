@@ -44,7 +44,7 @@
     },
     "rules": {
       "title": "Slicing Rules",
-      "description": "Rules for tailoring the output of the program slicing algorithmp. If you change these rules, you will need to refresh the notebook for the changes to take effect.",
+      "description": "Rules for tailoring the output of the program slicing algorithm, by giving hints of what the slicer need *not* include in a slice.\n\nIf you override this property, make sure to borrow all of rules you need from the defaults, as they don't get merged. You will need to refresh the notebook each time you change these rules to see an update in the slicer's behavior.",
       "default": [{
         "objectName": "df",
         "functionName": "head",
@@ -56,7 +56,21 @@
       }, {
 	"functionName": "print",
 	"doesNotModify": ["ARGUMENTS"]
-      }]
+      }, {
+        "functionName": "KMeans",
+        "doesNotModify": ["ARGUMENTS"]
+      }, {
+        "functionName": "scatter",
+        "doesNotModify": ["ARGUMENTS"]
+    }, {
+        "functionName": "fit",
+        "doesNotModify": ["ARGUMENTS"]
+    }, {
+        "functionName": "sum",
+        "doesNotModify": ["ARGUMENTS"]
+    }, {
+        "functionName": "len",
+        "doesNotModify": ["ARGUMENTS"]
     }
   },
   "additionalProperties": false,
