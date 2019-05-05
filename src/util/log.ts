@@ -50,10 +50,10 @@ export function log(eventName: string, data?: any) {
 
   if (_settingRegistry != undefined || _settingRegistry != null) {
     
-    _settingRegistry.get('gather:plugin', 'loggingEnabled').then(loggingEnabled => { 
+    _settingRegistry.get('nbgather:plugin', 'loggingEnabled').then(loggingEnabled => { 
       if ((typeof(loggingEnabled.composite) === 'boolean') && loggingEnabled.composite) {
 
-        _settingRegistry.get('gather:plugin', 'loggingId').then(loggingId => {
+        _settingRegistry.get('nbgather:plugin', 'loggingId').then(loggingId => {
           if (typeof(loggingId.composite) === 'string') {
             postData.loggingId = loggingId.composite as string;
     

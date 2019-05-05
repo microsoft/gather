@@ -66,7 +66,7 @@ export class CodeGatheringExtension
     this._documentManager = documentManager;
     this._notebooks = notebooks;
     this._gatherModelRegistry = gatherModelRegistry;
-    settingRegistry.get('gather:plugin', 'rules').then(data => {
+    settingRegistry.get('nbgather:plugin', 'rules').then(data => {
         if (JSONExt.isArray(data.composite)) {
           let dataCompositeObject = data.composite as JSONArray;
           this._sliceConfiguration = dataCompositeObject as SliceConfiguration;
