@@ -10,9 +10,9 @@ import {
   SymbolType,
 } from '../analysis/slice/data-flow';
 import { Set, StringSet } from '../analysis/slice/set';
-import { FunctionConfig, SlicerConfig } from '../analysis/slice/slice-config';
+import { SliceConfiguration } from '../analysis/slice/slice-config';
 
-// High-level tests on dataflow as a sanity check.
+
 describe('detects dataflow dependencies', () => {
   function analyze(...codeLines: string[]): Set<IDataflow> {
     let code = codeLines.concat('').join('\n'); // add newlines to end of every line.
@@ -69,7 +69,7 @@ describe('detects dataflow dependencies', () => {
     });
   });
 
-  it('detects a dependency to a full for-loop declaration', () => {
+  it('to a full for-loop declaration', () => {
     let deps = analyze('for i in range(a, b):', '    print(i)');
     expect(deps.items[0].fromNode.location).to.deep.equal({
       first_line: 1,
@@ -77,11 +77,6 @@ describe('detects dataflow dependencies', () => {
       last_line: 1,
       last_column: 21,
     });
-  });
-
-  it("doesn't detect a dependency in for-loop by default", () => {
-    let deps = analyze('for i in range(a, b):', '    print(c)');
-    expect(deps.items).does.deep.equal([]);
   });
 
   it('links from a class use to its def', () => {
@@ -92,74 +87,6 @@ describe('detects dataflow dependencies', () => {
   it('links from a function use to its def', () => {
     let deps = analyzeLineDeps('def func():', '    pass', '', 'func()');
     expect(deps).to.deep.equal([[4, 1]]);
-  });
-
-  let complexDepsSliceConfig = new SlicerConfig([
-    new FunctionConfig({
-      pattern: { functionName: 'update' },
-      instanceEffect: ReferenceType.UPDATE,
-    }),
-    new FunctionConfig({
-      pattern: { functionName: 'init' },
-      instanceEffect: ReferenceType.INITIALIZATION,
-    }),
-    new FunctionConfig({
-      pattern: { functionName: 'global_config' },
-      instanceEffect: ReferenceType.GLOBAL_CONFIG,
-    }),
-  ]);
-
-  function analyzeComplexDeps(...codeLines: string[]) {
-    let code = codeLines.concat('').join('\n'); // add newlines to end of every line.
-    let analyzer = new DataflowAnalyzer(complexDepsSliceConfig);
-    return analyzer
-      .analyze(new ControlFlowGraph(parse(code)))
-      .flows.items.map(function(dep): [number, number] {
-        return [
-          dep.toNode.location.first_line,
-          dep.fromNode.location.first_line,
-        ];
-      });
-  }
-
-  it('links from uses to variable updates', () => {
-    let deps = analyzeComplexDeps('obj.update()', 'print(obj)');
-    expect(deps).to.deep.equal([[2, 1]]);
-  });
-
-  it("links from a use to it's first previous update", () => {
-    let deps = analyzeComplexDeps('obj.update()', 'obj.update()', 'print(obj)');
-    expect(deps).to.not.deep.include([3, 1]);
-  });
-
-  it("links from a use to an update if there isn't an def before it", () => {
-    let deps = analyzeComplexDeps('obj.update()', 'obj = 1', 'print(obj)');
-    expect(deps).to.not.deep.include([3, 1]);
-  });
-
-  it('links from a global config to a previous global config', () => {
-    let deps = analyzeComplexDeps('obj.global_config()', 'obj.global_config()');
-    expect(deps).to.deep.equal([[2, 1]]);
-  });
-
-  it('links from an initialization to a global config', () => {
-    let deps = analyzeComplexDeps(
-      'obj.global_config()',
-      'obj.init()',
-      'obj.init()'
-    );
-    expect(deps).to.deep.equal([[2, 1], [3, 1]]);
-  });
-
-  it('links from a use to both a global config and an init', () => {
-    let deps = analyzeComplexDeps(
-      'obj.init()',
-      'obj.global_config()',
-      'print(obj)'
-    );
-    expect(deps.length).to.equal(2);
-    expect(deps).to.deep.include([3, 2]);
-    expect(deps).to.deep.include([3, 1]);
   });
 });
 
@@ -230,17 +157,18 @@ describe('getDefs', () => {
 
   function getDefsFromStatement(
     code: string,
-    slicerConfig?: SlicerConfig
+    sliceConfiguration?: SliceConfiguration
   ): Ref[] {
+    sliceConfiguration = sliceConfiguration || [];
     code = code + '\n'; // programs need to end with newline
     let mod = parse(code);
-    let analyzer = new DataflowAnalyzer(slicerConfig);
+    let analyzer = new DataflowAnalyzer(sliceConfiguration);
     return analyzer.getDefs(mod.code[0], { moduleNames: new StringSet() })
       .items;
   }
 
-  function getDefNamesFromStatement(code: string, slicerConfig?: SlicerConfig) {
-    return getDefsFromStatement(code, slicerConfig).map(def => def.name);
+  function getDefNamesFromStatement(code: string, sliceConfiguration?: SliceConfiguration) {
+    return getDefsFromStatement(code, sliceConfiguration).map(def => def.name);
   }
 
   describe('detects definitions', () => {
@@ -329,7 +257,7 @@ describe('getDefs', () => {
       it('computing the def location relative to the line it appears on', () => {
         let defs = getDefsFromStatements(
           [
-            'print(a)',
+            '# this is an empty line',
             '"""defs: [{ "name": "a", "pos": [[0, 0], [0, 11]] }]"""%some_magic',
           ].join('\n')
         );
@@ -344,75 +272,61 @@ describe('getDefs', () => {
       });
     });
 
-    describe('when given a slice config', () => {
-      it('for instances that functions mutate', () => {
-        let defs = getDefsFromStatement(
-          'obj.func()',
-          new SlicerConfig([
-            new FunctionConfig({
-              pattern: { functionName: 'func' },
-              instanceEffect: ReferenceType.UPDATE,
-            }),
-          ])
-        );
-        expect(defs[0]).to.include({ type: SymbolType.MUTATION, name: 'obj' });
-      });
-
-      it('for positional arguments that functions mutate', () => {
-        let defs = getDefNamesFromStatement(
-          'func(a)',
-          new SlicerConfig([
-            new FunctionConfig({
-              pattern: { functionName: 'func' },
-              positionalArgumentEffects: {
-                0: ReferenceType.UPDATE,
-              },
-            }),
-          ])
-        );
-        expect(defs).to.include('a');
-      });
-
-      it('for keyword variables that functions mutate', () => {
-        let defs = getDefNamesFromStatement(
-          'func(a=var)',
-          new SlicerConfig([
-            new FunctionConfig({
-              pattern: { functionName: 'func' },
-              keywordArgumentEffects: {
-                a: ReferenceType.UPDATE,
-              },
-            }),
-          ])
-        );
-        expect(defs).to.include('var');
-      });
-
-      it('only recognizing instance names in the config', () => {
-        let defs = getDefNamesFromStatement(
-          'unmodified.method()',
-          new SlicerConfig([
-            new FunctionConfig({
-              pattern: {
-                functionName: 'method',
-                instanceNames: ['modified'],
-              },
-              instanceEffect: ReferenceType.UPDATE,
-            }),
-          ])
-        );
-        expect(defs).to.deep.equal([]);
-      });
-    });
-
-    describe('ignoring by default', () => {
+    describe('including', () => {
       it('function arguments', () => {
         let defs = getDefNamesFromStatement('func(a)');
-        expect(defs).to.deep.equal([]);
+        expect(defs.length).to.equal(1);
       });
 
       it('the object a function is called on', () => {
         let defs = getDefNamesFromStatement('obj.func()');
+        expect(defs.length).to.equal(1);
+      });
+    });
+
+    describe('; given a slice config', () => {
+
+      it('can ignore all arguments', () => {
+        let defs = getDefsFromStatement(
+          'func(a, b, c)',
+          [{
+            functionName: 'func',
+            doesNotModify: ["ARGUMENTS"],
+          }]
+        );
+        expect(defs).to.deep.equal([]);
+      });
+
+      it('can ignore the object functions are called on', () => {
+        let defs = getDefsFromStatement(
+          'obj.func()',
+          [{
+            functionName: 'func',
+            doesNotModify: ["OBJECT"],
+          }]
+        );
+        expect(defs).to.deep.equal([]);
+      });
+
+      it('can ignore positional arguments a function is called with', () => {
+        let defs = getDefNamesFromStatement(
+          'func(a)',
+          [{
+            functionName: 'func',
+            doesNotModify: [0],
+          }]
+        );
+        expect(defs).to.not.include('a');
+      });
+
+      it('can ignore keyword arguments a function is called with', () => {
+        let defs = getDefNamesFromStatement(
+          'func(a=var)',
+          [{
+            functionName: 'func',
+            doesNotModify: ['a'],
+          }]
+        );
         expect(defs).to.deep.equal([]);
       });
     });

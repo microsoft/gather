@@ -1,7 +1,7 @@
 import * as ast from '../parse/python/python-parser';
 import { Block, ControlFlowGraph } from './control-flow';
 import { Set, StringSet } from './set';
-import { SlicerConfig } from './slice-config';
+import { SliceConfiguration } from './slice-config';
 
 /**
  * Use a shared dataflow analyzer object for all dataflow analysis / querying for defs and uses.
@@ -9,8 +9,9 @@ import { SlicerConfig } from './slice-config';
  * For caching to work, statements must be annotated with a cell's ID and execution count.
  */
 export class DataflowAnalyzer {
-  constructor(slicerConfig?: SlicerConfig) {
-    this._slicerConfig = slicerConfig || DEFAULT_SLICER_CONFIG;
+
+  constructor(sliceConfiguration?: SliceConfiguration) {
+    this._sliceConfiguration = sliceConfiguration || [];
   }
 
   private _statementLocationKey(statement: ast.ISyntaxNode) {
@@ -38,11 +39,9 @@ export class DataflowAnalyzer {
     let cacheKey = this._statementLocationKey(statement);
     if (cacheKey != null) {
       if (this._defUsesCache.hasOwnProperty(cacheKey)) {
-        // console.log("Cache hit!");
         return this._defUsesCache[cacheKey];
       }
     }
-    // console.log("Cache miss");
     let defSet = this.getDefs(statement, symbolTable);
     let useSet = this.getUses(statement, symbolTable);
     let result = { defs: defSet, uses: useSet };
@@ -54,10 +53,11 @@ export class DataflowAnalyzer {
 
   analyze(
     cfg: ControlFlowGraph,
-    slicerConfig?: SlicerConfig,
+    sliceConfiguration?: SliceConfiguration,
     namesDefined?: StringSet
   ): DataflowAnalysisResult {
-    slicerConfig = slicerConfig || DEFAULT_SLICER_CONFIG;
+
+    sliceConfiguration = sliceConfiguration || [];
     let symbolTable: SymbolTable = { moduleNames: new StringSet() };
     const workQueue: Block[] = cfg.blocks.reverse();
     let undefinedRefs = new RefSet();
@@ -93,7 +93,7 @@ export class DataflowAnalyzer {
       // TODO: fix up dataflow computation within this block: check for definitions in
       // defsWithinBlock first; if found, don't look to defs that come from the predecessor.
       for (let statement of block.statements) {
-        // Note that defs includes updates, initializations, global configs, etc., that need to be separated out.
+        // Note that defs includes both definitions and mutations and variables
         let { defs: definedHere, uses: usedHere } = this.getDefsUses(
           statement,
           symbolTable
@@ -115,6 +115,7 @@ export class DataflowAnalyzer {
           if (
             !definedHere.items.some(
               def =>
+                def.level == ReferenceType.DEFINITION &&
                 def.name == use.name && sameLocation(def.location, use.location)
             )
           ) {
@@ -185,11 +186,13 @@ export class DataflowAnalyzer {
     let defs = new RefSet();
     if (!statement) return defs;
 
-    // ️⚠️ The following is heuristic and unsound, but works for many scripts:
-    // Unless noted in the `slicerConfig`, assume that no instances or arguments are changed
-    // by a function call.
+    /*
+     * Assume by default that all names passed in as arguments to a function
+     * an all objects that a function is called on are modified by that function call,
+     * unless otherwise specified in the slice configuration.
+     */
     let callNamesListener = new CallNamesListener(
-      this._slicerConfig,
+      this._sliceConfiguration,
       statement
     );
     ast.walk(statement, callNamesListener);
@@ -217,7 +220,9 @@ export class DataflowAnalyzer {
         break;
       }
       case ast.FROM: {
-        // ⚠️ Doesn't handle 'from <pkg> import *'
+        /*
+         * TODO(andrewhead): Discover definitions of symbols from wildcards, like {@code from <pkg> import *}.
+         */
         let modnames: Array<string> = [];
         if (statement.imports.constructor === Array) {
           modnames = statement.imports.map(i => i.name || i.path);
@@ -314,7 +319,7 @@ export class DataflowAnalyzer {
             })
             .filter(n => n != undefined)
         );
-        let undefinedRefs = this.analyze(defCfg, this._slicerConfig, argNames)
+        let undefinedRefs = this.analyze(defCfg, this._sliceConfiguration, argNames)
           .undefinedRefs;
         uses = undefinedRefs.filter(r => r.level == ReferenceType.USE);
         break;
@@ -340,7 +345,7 @@ export class DataflowAnalyzer {
     return uses;
   }
 
-  private _slicerConfig: SlicerConfig;
+  private _sliceConfiguration: SliceConfiguration;
   private _defUsesCache: { [statementLocation: string]: IDefUseInfo } = {};
 }
 
@@ -351,8 +356,6 @@ export interface IDataflow {
 
 export enum ReferenceType {
   DEFINITION = 'DEFINITION',
-  GLOBAL_CONFIG = 'GLOBAL_CONFIG',
-  INITIALIZATION = 'INITIALIZATION',
   UPDATE = 'UPDATE',
   USE = 'USE',
 }
@@ -438,8 +441,6 @@ interface SymbolTable {
   moduleNames: StringSet;
 }
 
-const DEFAULT_SLICER_CONFIG = new SlicerConfig();
-
 /**
  * Tree walk listener for collecting manual def annotations.
  */
@@ -489,8 +490,8 @@ class DefAnnotationListener implements ast.IWalkListener {
  * Tree walk listener for collecting names used in function call.
  */
 class CallNamesListener implements ast.IWalkListener {
-  constructor(slicerConfig: SlicerConfig, statement: ast.ISyntaxNode) {
-    this._slicerConfig = slicerConfig;
+  constructor(sliceConfiguration: SliceConfiguration, statement: ast.ISyntaxNode) {
+    this._sliceConfiguration = sliceConfiguration;
     this._statement = statement;
   }
 
@@ -500,88 +501,88 @@ class CallNamesListener implements ast.IWalkListener {
     ancestors: ast.ISyntaxNode[]
   ) {
     if (type == ast.CALL) {
+
       let callNode = node as ast.ICall;
-      let name: string;
+      let functionNameNode: ast.ISyntaxNode;
+      let functionName: string;
       if (callNode.func.type == ast.DOT) {
-        name = callNode.func.name.toString();
+        functionNameNode = callNode.func.name;
+        functionName = functionNameNode.toString();
       } else {
-        name = (callNode.func as ast.IName).id;
+        functionNameNode = (callNode.func as ast.IName);
+        functionName = functionNameNode.id;
       }
-      this._slicerConfig.functionConfigs
-        .filter(config => config.pattern.functionName == name)
+
+      let skipRules = this._sliceConfiguration
+        .filter(config => config.functionName == functionName)
         .filter(config => {
-          if (!config.pattern.instanceNames) return true;
+          if (!config.objectName) return true;
           if (
             callNode.func.type == ast.DOT &&
             callNode.func.value.type == ast.NAME
           ) {
             let instanceName = (callNode.func.value as ast.IName).id;
-            return config.pattern.instanceNames.indexOf(instanceName) != -1;
+            return config.objectName == instanceName;
           }
           return false;
-        })
-        .forEach(config => {
-          if (config.instanceEffect && callNode.func.type == ast.DOT) {
-            if (config.pattern.instanceNames) {
-            }
-            this._parentsOfRelevantNames.push({
-              node: callNode.func.value,
-              effect: config.instanceEffect,
-            });
-          }
-          if (config.positionalArgumentEffects) {
-            for (let posArg in config.positionalArgumentEffects) {
-              if (config.positionalArgumentEffects.hasOwnProperty(posArg)) {
-                this._parentsOfRelevantNames.push({
-                  node: callNode.args[posArg].actual,
-                  effect: config.positionalArgumentEffects[posArg],
-                });
-              }
-            }
-          }
-          if (config.keywordArgumentEffects) {
-            for (let kwArg in config.keywordArgumentEffects) {
-              if (config.keywordArgumentEffects.hasOwnProperty(kwArg)) {
-                for (let arg of callNode.args) {
-                  if (arg.keyword && (arg.keyword as ast.IName).id == kwArg) {
-                    this._parentsOfRelevantNames.push({
-                      node: arg.actual,
-                      effect: config.keywordArgumentEffects[kwArg],
-                    });
-                  }
-                }
-              }
-            }
-          }
         });
-    }
-    if (type == ast.NAME) {
-      let foundName = false;
-      for (let ancestor of ancestors) {
-        for (let nameParent of this._parentsOfRelevantNames) {
-          if (nameParent.node == ancestor) {
-            this.defs.add({
-              type: SymbolType.MUTATION,
-              level: nameParent.effect,
-              name: (node as ast.IName).id,
-              location: node.location,
-              statement: this._statement,
-            });
-            foundName = true;
+
+      if (callNode.func.type == ast.DOT) {
+        let skipObject = false;
+        for (let skipRule of skipRules) {
+          if (skipRule.doesNotModify.indexOf("OBJECT") !== -1) {
+            skipObject = true;
+            break;
           }
-          if (foundName) break;
         }
-        if (foundName) break;
+        if (!skipObject && callNode.func.value !== undefined) {
+          this._subtreesToProcess.push(callNode.func.value); 
+        }
       }
+
+      for (let i = 0; i < callNode.args.length; i++) {
+        let arg = callNode.args[i];
+        let skipArg = false;
+        for (let skipRule of skipRules) {
+          for (let skipSpec of skipRule.doesNotModify) {
+            if ((typeof skipSpec === 'number') && skipSpec === i) {
+              skipArg = true;
+              break;
+            } else if (typeof skipSpec === 'string') {
+              if (skipSpec === 'ARGUMENTS' || (arg.keyword && (arg.keyword as ast.IName).id === skipSpec)) {
+                skipArg = true;
+                break;
+              }
+            }
+          }
+          if (skipArg) break;
+        }
+        if (!skipArg) {
+          this._subtreesToProcess.push(arg.actual);
+        }
+      }
+    }
+
+    if (type == ast.NAME) {
+      for (let ancestor of ancestors) {
+        if (this._subtreesToProcess.indexOf(ancestor) !== -1) {
+          this.defs.add({
+            type: SymbolType.MUTATION,
+            level: ReferenceType.UPDATE,
+            name: (node as ast.IName).id,
+            location: node.location,
+            statement: this._statement
+          });
+          break;
+        }
+      }
+
     }
   }
 
-  private _slicerConfig: SlicerConfig;
+  private _sliceConfiguration: SliceConfiguration;
   private _statement: ast.ISyntaxNode;
-  private _parentsOfRelevantNames: {
-    node: ast.ISyntaxNode;
-    effect: ReferenceType;
-  }[] = [];
+  private _subtreesToProcess: ast.ISyntaxNode[] = [];
   readonly defs: RefSet = new RefSet();
 }
 
@@ -649,29 +650,15 @@ let DEPENDENCY_RULES = [
   {
     from: ReferenceType.USE,
     to: [
-      ReferenceType.DEFINITION,
-      ReferenceType.GLOBAL_CONFIG,
-      ReferenceType.INITIALIZATION,
       ReferenceType.UPDATE,
+      ReferenceType.DEFINITION,
     ],
-  },
-  {
+  }, {
     from: ReferenceType.UPDATE,
     to: [
-      ReferenceType.DEFINITION,
-      ReferenceType.GLOBAL_CONFIG,
-      ReferenceType.INITIALIZATION,
-      ReferenceType.UPDATE,
-    ],
-  },
-  {
-    from: ReferenceType.INITIALIZATION,
-    to: [ReferenceType.DEFINITION, ReferenceType.GLOBAL_CONFIG],
-  },
-  {
-    from: ReferenceType.GLOBAL_CONFIG,
-    to: [ReferenceType.DEFINITION, ReferenceType.GLOBAL_CONFIG],
-  },
+      ReferenceType.DEFINITION
+    ]
+  }
 ];
 
 let TYPES_WITH_DEPENDENCIES = DEPENDENCY_RULES.map(r => r.from);
@@ -684,36 +671,18 @@ let KILL_RULES = [
   // The one case where a variable doesn't kill a previous variable is the global configuration, because
   // it neither depends on initializations or updates, nor clobbers them.
   {
-    level: ReferenceType.UPDATE,
-    kills: [
-      ReferenceType.UPDATE,
-      ReferenceType.INITIALIZATION,
-      ReferenceType.GLOBAL_CONFIG,
-      ReferenceType.DEFINITION,
-    ],
-  },
-  {
-    level: ReferenceType.INITIALIZATION,
-    kills: [
-      ReferenceType.UPDATE,
-      ReferenceType.INITIALIZATION,
-      ReferenceType.GLOBAL_CONFIG,
-      ReferenceType.DEFINITION,
-    ],
-  },
-  {
-    level: ReferenceType.GLOBAL_CONFIG,
-    kills: [ReferenceType.GLOBAL_CONFIG, ReferenceType.DEFINITION],
-  },
-  {
     level: ReferenceType.DEFINITION,
     kills: [
-      ReferenceType.UPDATE,
-      ReferenceType.INITIALIZATION,
-      ReferenceType.GLOBAL_CONFIG,
       ReferenceType.DEFINITION,
+      ReferenceType.UPDATE
     ],
-  },
+  }, {
+    level: ReferenceType.UPDATE,
+    kills: [
+      ReferenceType.DEFINITION,
+      ReferenceType.UPDATE
+    ],
+  }
 ];
 
 function updateDefsForLevel(

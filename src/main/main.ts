@@ -8,7 +8,7 @@ import {
   INotebookTracker,
   NotebookPanel,
 } from '@jupyterlab/notebook';
-import { JSONObject } from '@phosphor/coreutils';
+import { JSONObject, JSONExt, JSONArray } from '@phosphor/coreutils';
 import { DisposableDelegate, IDisposable } from '@phosphor/disposable';
 import { Widget } from '@phosphor/widgets';
 import '../../style/index.css';
@@ -34,6 +34,7 @@ import { storeHistory } from '../persistence/store';
 import { initLogger, log } from '../util/log';
 import { ExecutionLogger } from './execution-logger';
 import { Clipboard } from './gather-actions';
+import { SliceConfiguration } from '../analysis/slice/slice-config';
 
 const extension: JupyterLabPlugin<void> = {
   activate: activateExtension,
@@ -57,6 +58,7 @@ export class CodeGatheringExtension
   constructor(
     app: JupyterLab,
     documentManager: DocumentManager,
+    settingRegistry: ISettingRegistry,
     notebooks: INotebookTracker,
     gatherModelRegistry: GatherModelRegistry
   ) {
@@ -64,6 +66,12 @@ export class CodeGatheringExtension
     this._documentManager = documentManager;
     this._notebooks = notebooks;
     this._gatherModelRegistry = gatherModelRegistry;
+    settingRegistry.get('gather:plugin', 'rules').then(data => {
+        if (JSONExt.isArray(data.composite)) {
+          let dataCompositeObject = data.composite as JSONArray;
+          this._sliceConfiguration = dataCompositeObject as SliceConfiguration;
+        }
+    });
   }
 
   createNew(
@@ -79,12 +87,12 @@ export class CodeGatheringExtension
        * executed cells and the state of the gather UI.
        */
       let notebookModel = notebookContext.model;
-      let executionLog = new ExecutionLogSlicer(new DataflowAnalyzer());
+      let executionLog = new ExecutionLogSlicer(new DataflowAnalyzer(this._sliceConfiguration));
       let gatherModel = new GatherModel(executionLog);
       new ExecutionLogger(gatherModel);
 
       /*
-       * Then,Initialize reactive UI before loading the execution log from storage. This lets us
+       * Then, initialize reactive UI before loading the execution log from storage. This lets us
        * update the UI automatically as we populate the log.
        */
       this._toolbarWidgets = initToolbar(notebook, gatherModel, this);
@@ -171,6 +179,7 @@ export class CodeGatheringExtension
   private _app: JupyterLab;
   private _documentManager: DocumentManager;
   private _notebooks: INotebookTracker;
+  private _sliceConfiguration: SliceConfiguration;
   private _gatherModelRegistry: GatherModelRegistry;
 }
 
@@ -206,6 +215,7 @@ function activateExtension(
   let codeGatheringExtension = new CodeGatheringExtension(
     app,
     documentManager,
+    settingRegistry,
     notebooks,
     gatherModelRegistry
   );
