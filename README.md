@@ -1,6 +1,6 @@
 # Gather - Code Cleanup for Jupyter Notebooks
 
-Tool for cleaning code, recovering lost code, and version
+Tools for cleaning code, recovering lost code, and version
 control in Jupyter Lab.
 
 Download the extension with one command:
@@ -10,11 +10,9 @@ jupyter labextension install gather
 ```
 
 If you are seeing installation errors, make sure that npm
-and Jupyter Lab are up-to-date.
-
-Read the docs [here](https://microsoft.github.io/gather).
-And read our academic paper on the design of the tool
-[here](https://people.eecs.berkeley.edu/~andrewhead/pdf/notebooks.pdf).
+and Jupyter Lab are up-to-date. These installation
+instructions assume you are using Python 3 and the most
+recent version of Jupyter Lab.
 
 ## Contributing
 
@@ -31,10 +29,12 @@ jupyter lab --watch              # launch Jupyter Lab, automatically re-load ext
 This requires npm version 4 or later, and was tested most
 recently with Node v9.5.0.
 
+### Formatting the code
+
 Before submitting a pull request, format the code files by
 running `jlpm run format:all`.
 
-### Testing the extension
+### Testing the code
 
 The tests assume you have Google Chrome installed on your
 computer. Because this plugin depends on Jupyter Lab and in
@@ -88,32 +88,10 @@ it using this command:
 jupyter labextension install <package-name>-<version>.tgz
 ```
 
-### Publishing to a private repository
-
-If you want to test publishing the package to npm, you can
-use the following commands.
-
-```bash
-npm login  # requires credentials for a valid npm account
-npm publish --access=restricted  # make this public eventually
-```
-
 ### Troubleshooting
 
-#### `500` message when launching Jupyter notebook
-
-Install these versions of Jupyter notebook and dependencies
-to see something working, before trying out other versions:
-
-```
-nbconvert==5.3.1
-nbformat==4.4.0
-notebook==5.6.0
-```
-
-#### Build errors
+#### If you see build errors...
 
 * **Errors about missing semicolons in React types files**: upgrade the `typescript` and `ts-node` packages
 * **Conflicting dependencies**: upgrade either the Python Jupyter Lab (may require Python upgrade to Python 3 to get the most recent version of Jupyter Lab) or the Jupyter Lab npm pacakges
-* **Issues with duplicated React types**: download React types in `@jupyterlab/` packages
-* **Other issues**: delete your node_modules files and reinstall them
+* **Other build issues**: we've found some issues can be solved by just deleting your `node_modules/` directory and reinstalling it.
