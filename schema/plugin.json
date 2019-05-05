@@ -49,6 +49,13 @@
         "objectName": "df",
         "functionName": "head",
 	"doesNotModify": ["OBJECT"]
+      }, {
+	"objectName": "df",
+	"functionName": "describe",
+	"doesNotModify": ["OBJECT"]
+      }, {
+	"functionName": "print",
+	"doesNotModify": ["ARGUMENTS"]
       }]
     }
   },
