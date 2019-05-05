@@ -1,4 +1,4 @@
-# Gather - Code Cleanup for Jupyter Notebooks
+# nbgather: Spit shine for computational notebooks 🧽✨
 
 Tools for cleaning code, recovering lost code, and version
 control in Jupyter Lab.
@@ -6,13 +6,18 @@ control in Jupyter Lab.
 Download the extension with one command:
 
 ```bash
-jupyter labextension install gather
+jupyter labextension install nbgather
 ```
 
-If you are seeing installation errors, make sure that npm
-and Jupyter Lab are up-to-date. These installation
-instructions assume you are using Python 3 and the most
-recent version of Jupyter Lab.
+Before installing, make sure that Jupyter Lab is up-to-date.
+These installation instructions assume you are using Python 3
+and the most recent version of Jupyter Lab.
+
+**The state of this project**: the interaction ideas are there,
+but the code and interface need some cleanup to be more reliable.
+We welcome all contributors, and are actively looking for those
+with a penchant for programming language hacking and experience
+using computational notebooks.
 
 ## Contributing
 
