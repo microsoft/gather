@@ -60,8 +60,8 @@ export class Revision<TOutputModel> extends Widget {
         let buttons = new Widget({ node: document.createElement("div") });
         buttons.addClass(REVISION_BUTTONS_CLASS);
         const panelLayout = buttons.layout = new PanelLayout();
-        panelLayout.addWidget(this.createButton("Open in notebook", GatherState.GATHER_TO_NOTEBOOK));
-        panelLayout.addWidget(this.createButton("Copy to clipboard", GatherState.GATHER_TO_CLIPBOARD));
+        panelLayout.addWidget(this.createButton("Open in notebook", GatherState.GATHER_TO_NOTEBOOK, "book"));
+        panelLayout.addWidget(this.createButton("Copy cells", GatherState.GATHER_TO_CLIPBOARD, "clipboard"));
         nbLayout.addWidget(buttons);
 
         // Add the revision's code
@@ -102,11 +102,11 @@ export class Revision<TOutputModel> extends Widget {
         }
     }
 
-    private createButton(label: string, gatherState: GatherState) {
+    private createButton(label: string, gatherState: GatherState, icon: string) {
         let button = new Widget({ node: document.createElement("button") });
         button.addClass(REVISION_BUTTON_CLASS);
         let notebookLabel = document.createElement("i");
-        notebookLabel.classList.add("fa-book", "fa");
+        notebookLabel.classList.add("fa-" + icon, "fa");
         let notebookText = document.createElement("span");
         notebookText.classList.add(REVISION_BUTTON_LABEL_CLASS);
         notebookText.textContent = label;

@@ -14,7 +14,8 @@
   width: 100%;
   height: 100%;
   z-index: 1000;
-  padding-top: 4%;
+  padding-top: 150px;
+  padding-bottom: 20px;
   background-color: rgba(0, 0, 0, .7);
 }
 
@@ -24,5 +25,5 @@
   cursor: pointer;
   position: absolute;
   right: 30px;
-  top: 8px;
+  top: 100px;
 }

@@ -68,19 +68,19 @@
 
 div.CodeMirror-linebackground.jp-InputArea-editor-dependencyline {
   /* background-color: var(--brand-color4); */
-  background-color: #f4eafc;
+  background-color: #e7d4f7;
 }
 
 /**
  * Clues for gatherable results.
  */
 .jp-OutputArea-highlighted {
-  border: 1px solid var(--brand-color3);
+  border: 3px solid var(--brand-color3);
   border-radius: 3px;
 }
 
 .jp-OutputArea-highlighted:hover {
-  box-shadow: inset 0 0 3px var(--brand-color2);
+  box-shadow: inset 0 0 5px var(--brand-color2);
   cursor: pointer;
 }
 

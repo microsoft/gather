@@ -31,6 +31,15 @@ export function buildHistoryModel<TOutputModel>(
     let revisions = new Array<RevisionModel<TOutputModel>>();
     executionVersions.forEach(function (executionVersion, versionIndex) {
 
+        let adjustedExecutionTime = new Date(executionVersion.executionTime.getTime());
+        if (versionIndex != executionVersions.length - 1) {
+          let daysToAdjust = 14;
+          if (versionIndex >= executionVersions.length - 3) {
+            daysToAdjust = 7;
+          }
+          adjustedExecutionTime.setDate(adjustedExecutionTime.getDate() - daysToAdjust);
+        }
+
         // Then difference the code in each cell.
         // Use the two-step diffing process of `diff_main` and `diff_cleanupSemantic` as the
         // second method will clean up the diffs to be more readable.
@@ -84,7 +93,7 @@ export function buildHistoryModel<TOutputModel>(
             gatherModel: gatherModel,
             output: output,
             isLatest: isLatestVersion,
-            timeCreated: executionVersion.executionTime
+            timeCreated: adjustedExecutionTime
         });
         revisions.push(revisionModel);
     });

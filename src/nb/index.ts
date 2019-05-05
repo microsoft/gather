@@ -553,7 +553,7 @@ export function load_ipython_extension() {
     let options = getUrlOptions(window);
 
     // Exit early if gathering is disabled.
-    if (options.gatheringDisabled) return;
+    if (options.gatheringDisabled || window.location.href.includes('GatheredCode')) return;
 
     // If the notebook is set to autoExecute, find all cells that have been executed before and
     // execute them again.

@@ -22,14 +22,14 @@
 }
 
 .jp-HistoryViewer-referenceversion {
-  max-width: 500px;
   height: 98%;
+  width: 52%;
   padding-right: 50px;
 }
 
 .jp-HistoryViewer-olderversions {
   height: 99%;
-  width: 65%;
+  width: 48%;
   overflow-y: hidden;
 }
 
@@ -45,7 +45,7 @@
   height: 99%;
   vertical-align: top;
   background-color: #eee;
-  min-width: 350px;
+  width: 360px;
   padding-left: 2em;
   padding-right: 2em;
 }
@@ -68,7 +68,6 @@
 }
 
 .jp-HistoryViewer-olderversions .jp-Revision {
-  max-width: 500px;
   margin-right: 20px;
 }
 
@@ -145,7 +144,7 @@
 }
 
 .jp-DiffedCell-editor-beforebackground {
-  background-color: #eaeaea;
+  background-color: #dddddd;
 }
 
 .jp-DiffedCell-editor-beforetext {
@@ -157,7 +156,7 @@
 .jp-DiffedCell-editor-beforetext.jp-DiffedCell-editor-changedtext {
   font-weight: bold;
   /* background-color: #99eaff; */
-  background-color: #cbcbcb;
+  background-color: #bbbbbb;
 }
 
 /* Revision cell outputs */
