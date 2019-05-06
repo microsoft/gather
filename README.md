@@ -16,14 +16,35 @@ Then you can clean and compare versions of your code like so:
 **Did the `install` fail?** Make sure Jupyter Lab is
 up-to-date, and that you are running Jupyter Lab from Python 3.
 
-**This project's alpha status**: this extension is in alpha:
-the code it collects will sometimes be more than you want,
-and the user interface has a few quirks.
+**This project is in alpha**: The code this collects will
+sometimes be more than you want. It saves your a history of
+all code you've executed and the outputs it produces to the
+notebook's metadata. The user interface has a few quirks.
 
-Help us make this a real, and really useful tool. We welcome
-any and all feedback and contribution. We are in particular
-need of the opinions and efforts of those with a penchant
-for hacking code analysis.
+Help us make this a real, practical, and really useful tool.
+We welcome any and all feedback and contribution. We are
+particularly in need of the opinions and efforts of those
+with a penchant for hacking code analysis.
+
+## Usage Tips
+
+**Can it extract more precise slices of code?** Yes. First submit
+a pull request telling us the desired extraction behavior, so we
+can incorporate this behavior into the tool.
+
+Meanwhile, you can help the backend make more precise slices by
+telling the tool which functions don't modify their
+arguments. By default, the tool assumes that functions change all
+arguments they're called with, and the objects they're called on.
+To edit the slicing rules, open the *Advanced Settings Editor* in the Jupyter Lab
+Settings menu and choose the "Code Gathering Tools" tab. In your
+user-defined settings, override `rules`, following
+[this format](https://github.com/microsoft/gather/blob/9582165ca7af009343a96625d49f5b52a2e115cb/schema/plugin.json#L48-L74)
+to specify which functions don't modify their arguments.
+
+**How do I clear the notebook's history?** Open up your `.ipynb`
+file in a text editor, find the `history` key in the
+top-level `metadata` object, and set `history` to `[]`.
 
 ## Contributing
 
@@ -91,21 +112,6 @@ the "Sources" tab, you can open scripts using the file prompt
 the code. When you refresh the page, the tests will be run
 again, and the debugger will trigger when the first
 breakpoint is reached.
-
-### Packaging the project for alpha users
-
-Package up the project as follows:
-
-```bash
-npm pack  # output: <package-name>-<version>.tgz
-```
-
-Then send the package to someone else, and have them install
-it using this command:
-
-```bash
-jupyter labextension install <package-name>-<version>.tgz
-```
 
 ### Troubleshooting
 
