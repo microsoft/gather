@@ -1,4 +1,4 @@
-# nbgather: 🧽✨ Spit shine for computational notebooks 
+# nbgather: 🧽✨ Spit shine for Jupyter notebooks 
 
 Tools for cleaning code, recovering lost code, and comparing
 versions of code in Jupyter Lab.
