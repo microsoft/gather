@@ -84,7 +84,7 @@ browser to run in.
 To run the tests from the command line, call:
 
 ```bash
-npm run test
+jlpm run test
 ```
 
 Wait a few seconds while the code compiles, and then you
@@ -100,7 +100,7 @@ command, open Chrome, and then restart the command.
 To debug the tests, call:
 
 ```bash
-npm run test:debug
+jlpm run test:debug
 ```
 
 This will launch a Chrome window. Click the **DEBUG**
