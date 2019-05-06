@@ -12,7 +12,6 @@ import {
 import { Set, StringSet } from '../analysis/slice/set';
 import { SliceConfiguration } from '../analysis/slice/slice-config';
 
-
 describe('detects dataflow dependencies', () => {
   function analyze(...codeLines: string[]): Set<IDataflow> {
     let code = codeLines.concat('').join('\n'); // add newlines to end of every line.
@@ -167,7 +166,10 @@ describe('getDefs', () => {
       .items;
   }
 
-  function getDefNamesFromStatement(code: string, sliceConfiguration?: SliceConfiguration) {
+  function getDefNamesFromStatement(
+    code: string,
+    sliceConfiguration?: SliceConfiguration
+  ) {
     return getDefsFromStatement(code, sliceConfiguration).map(def => def.name);
   }
 
@@ -285,48 +287,43 @@ describe('getDefs', () => {
     });
 
     describe('; given a slice config', () => {
-
       it('can ignore all arguments', () => {
-        let defs = getDefsFromStatement(
-          'func(a, b, c)',
-          [{
+        let defs = getDefsFromStatement('func(a, b, c)', [
+          {
             functionName: 'func',
-            doesNotModify: ["ARGUMENTS"],
-          }]
-        );
+            doesNotModify: ['ARGUMENTS'],
+          },
+        ]);
         expect(defs).to.deep.equal([]);
       });
 
       it('can ignore the object functions are called on', () => {
-        let defs = getDefsFromStatement(
-          'obj.func()',
-          [{
+        let defs = getDefsFromStatement('obj.func()', [
+          {
             functionName: 'func',
-            doesNotModify: ["OBJECT"],
-          }]
-        );
+            doesNotModify: ['OBJECT'],
+          },
+        ]);
         expect(defs).to.deep.equal([]);
       });
 
       it('can ignore positional arguments a function is called with', () => {
-        let defs = getDefNamesFromStatement(
-          'func(a)',
-          [{
+        let defs = getDefNamesFromStatement('func(a)', [
+          {
             functionName: 'func',
             doesNotModify: [0],
-          }]
-        );
+          },
+        ]);
         expect(defs).to.not.include('a');
       });
 
       it('can ignore keyword arguments a function is called with', () => {
-        let defs = getDefNamesFromStatement(
-          'func(a=var)',
-          [{
+        let defs = getDefNamesFromStatement('func(a=var)', [
+          {
             functionName: 'func',
             doesNotModify: ['a'],
-          }]
-        );
+          },
+        ]);
         expect(defs).to.deep.equal([]);
       });
     });

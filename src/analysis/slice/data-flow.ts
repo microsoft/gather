@@ -9,7 +9,6 @@ import { SliceConfiguration } from './slice-config';
  * For caching to work, statements must be annotated with a cell's ID and execution count.
  */
 export class DataflowAnalyzer {
-
   constructor(sliceConfiguration?: SliceConfiguration) {
     this._sliceConfiguration = sliceConfiguration || [];
   }
@@ -56,7 +55,6 @@ export class DataflowAnalyzer {
     sliceConfiguration?: SliceConfiguration,
     namesDefined?: StringSet
   ): DataflowAnalysisResult {
-
     sliceConfiguration = sliceConfiguration || [];
     let symbolTable: SymbolTable = { moduleNames: new StringSet() };
     const workQueue: Block[] = cfg.blocks.reverse();
@@ -116,7 +114,8 @@ export class DataflowAnalyzer {
             !definedHere.items.some(
               def =>
                 def.level == ReferenceType.DEFINITION &&
-                def.name == use.name && sameLocation(def.location, use.location)
+                def.name == use.name &&
+                sameLocation(def.location, use.location)
             )
           ) {
             statementRefs[ReferenceType.USE].add(use);
@@ -319,8 +318,11 @@ export class DataflowAnalyzer {
             })
             .filter(n => n != undefined)
         );
-        let undefinedRefs = this.analyze(defCfg, this._sliceConfiguration, argNames)
-          .undefinedRefs;
+        let undefinedRefs = this.analyze(
+          defCfg,
+          this._sliceConfiguration,
+          argNames
+        ).undefinedRefs;
         uses = undefinedRefs.filter(r => r.level == ReferenceType.USE);
         break;
       case ast.CLASS:
@@ -490,7 +492,10 @@ class DefAnnotationListener implements ast.IWalkListener {
  * Tree walk listener for collecting names used in function call.
  */
 class CallNamesListener implements ast.IWalkListener {
-  constructor(sliceConfiguration: SliceConfiguration, statement: ast.ISyntaxNode) {
+  constructor(
+    sliceConfiguration: SliceConfiguration,
+    statement: ast.ISyntaxNode
+  ) {
     this._sliceConfiguration = sliceConfiguration;
     this._statement = statement;
   }
@@ -501,7 +506,6 @@ class CallNamesListener implements ast.IWalkListener {
     ancestors: ast.ISyntaxNode[]
   ) {
     if (type == ast.CALL) {
-
       let callNode = node as ast.ICall;
       let functionNameNode: ast.ISyntaxNode;
       let functionName: string;
@@ -509,7 +513,7 @@ class CallNamesListener implements ast.IWalkListener {
         functionNameNode = callNode.func.name;
         functionName = functionNameNode.toString();
       } else {
-        functionNameNode = (callNode.func as ast.IName);
+        functionNameNode = callNode.func as ast.IName;
         functionName = functionNameNode.id;
       }
 
@@ -530,13 +534,13 @@ class CallNamesListener implements ast.IWalkListener {
       if (callNode.func.type == ast.DOT) {
         let skipObject = false;
         for (let skipRule of skipRules) {
-          if (skipRule.doesNotModify.indexOf("OBJECT") !== -1) {
+          if (skipRule.doesNotModify.indexOf('OBJECT') !== -1) {
             skipObject = true;
             break;
           }
         }
         if (!skipObject && callNode.func.value !== undefined) {
-          this._subtreesToProcess.push(callNode.func.value); 
+          this._subtreesToProcess.push(callNode.func.value);
         }
       }
 
@@ -545,11 +549,14 @@ class CallNamesListener implements ast.IWalkListener {
         let skipArg = false;
         for (let skipRule of skipRules) {
           for (let skipSpec of skipRule.doesNotModify) {
-            if ((typeof skipSpec === 'number') && skipSpec === i) {
+            if (typeof skipSpec === 'number' && skipSpec === i) {
               skipArg = true;
               break;
             } else if (typeof skipSpec === 'string') {
-              if (skipSpec === 'ARGUMENTS' || (arg.keyword && (arg.keyword as ast.IName).id === skipSpec)) {
+              if (
+                skipSpec === 'ARGUMENTS' ||
+                (arg.keyword && (arg.keyword as ast.IName).id === skipSpec)
+              ) {
                 skipArg = true;
                 break;
               }
@@ -571,12 +578,11 @@ class CallNamesListener implements ast.IWalkListener {
             level: ReferenceType.UPDATE,
             name: (node as ast.IName).id,
             location: node.location,
-            statement: this._statement
+            statement: this._statement,
           });
           break;
         }
       }
-
     }
   }
 
@@ -649,16 +655,12 @@ let DEPENDENCY_RULES = [
   // "from" depends on all reference types in "to"
   {
     from: ReferenceType.USE,
-    to: [
-      ReferenceType.UPDATE,
-      ReferenceType.DEFINITION,
-    ],
-  }, {
+    to: [ReferenceType.UPDATE, ReferenceType.DEFINITION],
+  },
+  {
     from: ReferenceType.UPDATE,
-    to: [
-      ReferenceType.DEFINITION
-    ]
-  }
+    to: [ReferenceType.DEFINITION],
+  },
 ];
 
 let TYPES_WITH_DEPENDENCIES = DEPENDENCY_RULES.map(r => r.from);
@@ -672,17 +674,12 @@ let KILL_RULES = [
   // it neither depends on initializations or updates, nor clobbers them.
   {
     level: ReferenceType.DEFINITION,
-    kills: [
-      ReferenceType.DEFINITION,
-      ReferenceType.UPDATE
-    ],
-  }, {
+    kills: [ReferenceType.DEFINITION, ReferenceType.UPDATE],
+  },
+  {
     level: ReferenceType.UPDATE,
-    kills: [
-      ReferenceType.DEFINITION,
-      ReferenceType.UPDATE
-    ],
-  }
+    kills: [ReferenceType.DEFINITION, ReferenceType.UPDATE],
+  },
 ];
 
 function updateDefsForLevel(

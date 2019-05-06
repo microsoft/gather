@@ -6,7 +6,10 @@ import { CodeVersion } from '../codeversion';
 import { GatherState } from '../../model';
 import { IRevisionModel } from './model';
 import { OutputArea, OutputAreaModel } from '@jupyterlab/outputarea';
-import { RenderMimeRegistry, standardRendererFactories } from '@jupyterlab/rendermime';
+import {
+  RenderMimeRegistry,
+  standardRendererFactories,
+} from '@jupyterlab/rendermime';
 
 // HTML element classes for rendered revisions
 const REVISION_CLASS = 'jp-Revision';
@@ -28,11 +31,15 @@ class OutputRenderer {
   render(outputs: nbformat.IOutput[]): HTMLElement {
     let outputArea = new OutputArea({
       model: new OutputAreaModel({ values: outputs, trusted: false }),
-      rendermime: new RenderMimeRegistry({ initialFactories: standardRendererFactories })
+      rendermime: new RenderMimeRegistry({
+        initialFactories: standardRendererFactories,
+      }),
     });
-    outputArea.node.querySelectorAll('.jp-OutputArea-prompt').forEach((promptNode) => {
-      promptNode.remove();
-    });
+    outputArea.node
+      .querySelectorAll('.jp-OutputArea-prompt')
+      .forEach(promptNode => {
+        promptNode.remove();
+      });
     outputArea.addClass(REVISION_OUTPUT_CLASS);
     return outputArea.node;
   }

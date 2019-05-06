@@ -50,7 +50,6 @@ const extension: JupyterLabPlugin<void> = {
 
 /**
  * Extension for tracking sequences of cells executed in a notebook.
- * TODO(andrewhead): have an execution stamp that includes the kernel that executed a cell... (requires insulation in program builder)
  * TODO(andrewhead): can we run the analysis on the backend with a web-worker (specifically, def-use?)
  */
 export class CodeGatheringExtension
@@ -67,10 +66,10 @@ export class CodeGatheringExtension
     this._notebooks = notebooks;
     this._gatherModelRegistry = gatherModelRegistry;
     settingRegistry.get('nbgather:plugin', 'rules').then(data => {
-        if (JSONExt.isArray(data.composite)) {
-          let dataCompositeObject = data.composite as JSONArray;
-          this._sliceConfiguration = dataCompositeObject as SliceConfiguration;
-        }
+      if (JSONExt.isArray(data.composite)) {
+        let dataCompositeObject = data.composite as JSONArray;
+        this._sliceConfiguration = dataCompositeObject as SliceConfiguration;
+      }
     });
   }
 
@@ -87,7 +86,9 @@ export class CodeGatheringExtension
        * executed cells and the state of the gather UI.
        */
       let notebookModel = notebookContext.model;
-      let executionLog = new ExecutionLogSlicer(new DataflowAnalyzer(this._sliceConfiguration));
+      let executionLog = new ExecutionLogSlicer(
+        new DataflowAnalyzer(this._sliceConfiguration)
+      );
       let gatherModel = new GatherModel(executionLog);
       new ExecutionLogger(gatherModel);
 

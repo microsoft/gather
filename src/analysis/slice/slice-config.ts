@@ -3,7 +3,7 @@
  * Default rules are listed in {@code schema/plugin.json}.
  */
 export type SliceConfiguration = {
-  objectName?: string,
-  functionName: string,
-  doesNotModify: (string|Number)[]
+  objectName?: string;
+  functionName: string;
+  doesNotModify: (string | Number)[];
 }[];

@@ -159,7 +159,7 @@ export class LogCell extends AbstractCell {
   constructor(data: {
     id?: string;
     executionCount?: number;
-    persistentId?: string,
+    persistentId?: string;
     executionEventId?: string;
     hasError?: boolean;
     text?: string;
@@ -218,10 +218,10 @@ export class LabCell extends AbstractCell {
   }
 
   get persistentId(): string {
-    if (!this._model.metadata.has("persistent_id")) {	
-      this._model.metadata.set("persistent_id", UUID.uuid4());
+    if (!this._model.metadata.has('persistent_id')) {
+      this._model.metadata.set('persistent_id', UUID.uuid4());
     }
-    return this._model.metadata.get("persistent_id") as string;
+    return this._model.metadata.get('persistent_id') as string;
   }
 
   get executionEventId(): string {

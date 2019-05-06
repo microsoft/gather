@@ -90,7 +90,7 @@ function _loadExecutionFromJson(executionJson: JSONObject): CellExecution {
   }
 
   function _getOutputs(json: JSONObject): nbformat.IOutput[] {
-    if (!json.hasOwnProperty("outputs") || !(JSONExt.isArray(json["outputs"]))) {
+    if (!json.hasOwnProperty('outputs') || !JSONExt.isArray(json['outputs'])) {
       log('Could not find outputs in object ' + json);
       return null;
     }
@@ -138,7 +138,7 @@ function _loadExecutionFromJson(executionJson: JSONObject): CellExecution {
     text,
     persistentId,
     executionEventId,
-    outputs
+    outputs,
   });
   return new CellExecution(cell, executionTime);
 }

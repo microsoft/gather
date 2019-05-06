@@ -11,7 +11,7 @@ interface CellExecutionJson extends JSONObject {
 
 interface CellJson extends JSONObject {
   id: string;
-  persistentId: string,
+  persistentId: string;
   executionEventId: string;
   executionCount: number;
   hasError: boolean;
