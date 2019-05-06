@@ -22,7 +22,7 @@ all code you've executed and the outputs it produces to the
 notebook's metadata. The user interface has a few quirks.
 
 Help us make this a real, practical, and really useful tool.
-We welcome any and all feedback and contribution. We are
+We welcome any and all feedback and contributions. We are
 particularly in need of the opinions and efforts of those
 with a penchant for hacking code analysis.
 
