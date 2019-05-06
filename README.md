@@ -9,7 +9,11 @@ Download the alpha extension with the following command:
 jupyter labextension install nbgather
 ```
 
-**Having trouble installing?** Make sure Jupyter Lab is
+Then you can clean and compare versions of your code like so:
+
+![gif not found](docs/demo.gif "Code gathering tools can help you clean your code and review versions of results.")
+
+**Did the `install` fail?** Make sure Jupyter Lab is
 up-to-date, and that you are running Jupyter Lab from Python 3.
 
 **Alpha status**: this extension is in alpha: the code it collects
