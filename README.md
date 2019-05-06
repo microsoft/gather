@@ -1,27 +1,29 @@
-# nbgather: Spit shine for computational notebooks 🧽✨
+# nbgather: 🧽✨ Spit shine for computational notebooks 
 
-Tools for cleaning code, recovering lost code, and version
-control in Jupyter Lab.
+Tools for cleaning code, recovering lost code, and comparing
+versions of code in Jupyter Lab.
 
-Download the extension with one command:
+Download the alpha extension with the following command:
 
 ```bash
 jupyter labextension install nbgather
 ```
 
-Before installing, make sure that Jupyter Lab is up-to-date.
-These installation instructions assume you are using Python 3
-and the most recent version of Jupyter Lab.
+**Having trouble installing?** Make sure Jupyter Lab is
+up-to-date, and that you are running Jupyter Lab from Python 3.
 
-**The state of this project**: the interaction ideas are there,
-but the code and interface need some cleanup to be more reliable.
-We welcome all contributors, and are actively looking for those
-with a penchant for programming language hacking and experience
-using computational notebooks.
+**Alpha status**: this extension is in alpha: the code it collects
+will sometimes be more than you want, and the user interface has
+a few quirks.
+
+Help us make this a real, and really useful tool. We welcome
+any and all feedback and contribution. We are in particular
+need of the opinions and efforts of those with a penchant
+for hacking code analysis.
 
 ## Contributing
 
-To set up the code for this repository, run:
+To run the development version of nbgather, run:
 
 ```bash
 git clone <this-repository-url>  # clone the repository
@@ -34,10 +36,18 @@ jupyter lab --watch              # launch Jupyter Lab, automatically re-load ext
 This requires npm version 4 or later, and was tested most
 recently with Node v9.5.0.
 
+Submit all change as a pull request. Feel free to author the
+the lead contributor (Andrew Head, <andrewhead@berkeley.edu>) if
+you have any questions about getting started with the code or
+about features or updates you'd like to contribute.
+
+Also, make sure to format the code and test it before submitting
+a pull request, as described below:
+
 ### Formatting the code
 
-Before submitting a pull request, format the code files by
-running `jlpm run format:all`.
+Before submitting a pull request with changed code, format the code
+files by running `jlpm run format:all`.
 
 ### Testing the code
 
@@ -78,7 +88,7 @@ the code. When you refresh the page, the tests will be run
 again, and the debugger will trigger when the first
 breakpoint is reached.
 
-### Packaging the project for beta users
+### Packaging the project for alpha users
 
 Package up the project as follows:
 
@@ -95,7 +105,8 @@ jupyter labextension install <package-name>-<version>.tgz
 
 ### Troubleshooting
 
-#### If you see build errors...
+Here are some tips for dealing with build errors we've encountered
+while developing code gathering tools:
 
 * **Errors about missing semicolons in React types files**: upgrade the `typescript` and `ts-node` packages
 * **Conflicting dependencies**: upgrade either the Python Jupyter Lab (may require Python upgrade to Python 3 to get the most recent version of Jupyter Lab) or the Jupyter Lab npm pacakges
