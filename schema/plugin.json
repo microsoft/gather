@@ -62,15 +62,16 @@
       }, {
         "functionName": "scatter",
         "doesNotModify": ["ARGUMENTS"]
-    }, {
+      }, {
         "functionName": "fit",
         "doesNotModify": ["ARGUMENTS"]
-    }, {
+      }, {
         "functionName": "sum",
         "doesNotModify": ["ARGUMENTS"]
-    }, {
+      }, {
         "functionName": "len",
         "doesNotModify": ["ARGUMENTS"]
+      }]
     }
   },
   "additionalProperties": false,

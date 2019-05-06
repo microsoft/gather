@@ -5,6 +5,8 @@ import { log } from '../../util/log';
 import { CodeVersion } from '../codeversion';
 import { GatherState } from '../../model';
 import { IRevisionModel } from './model';
+import { OutputArea, OutputAreaModel } from '@jupyterlab/outputarea';
+import { RenderMimeRegistry, standardRendererFactories } from '@jupyterlab/rendermime';
 
 // HTML element classes for rendered revisions
 const REVISION_CLASS = 'jp-Revision';
@@ -14,15 +16,31 @@ const REVISION_BUTTONS_CLASS = 'jp-Revision-buttons';
 const REVISION_BUTTON_LABEL_CLASS = 'jp-Revision-button-label';
 const REVISION_BUTTON_CLASS = 'jp-Revision-button';
 const REVISION_CELLS_CLASS = 'jp-Revision-cells';
+const REVISION_OUTPUT_CLASS = 'jp-Notebook-revisionbrowser-output';
 
-export interface IOutputRenderer {
-  render(outputModel: nbformat.IOutput): HTMLElement;
+/**
+ * Renders output models for notebooks as new cells.
+ */
+class OutputRenderer {
+  /**
+   * Render HTML element for this output.
+   */
+  render(outputs: nbformat.IOutput[]): HTMLElement {
+    let outputArea = new OutputArea({
+      model: new OutputAreaModel({ values: outputs, trusted: false }),
+      rendermime: new RenderMimeRegistry({ initialFactories: standardRendererFactories })
+    });
+    outputArea.node.querySelectorAll('.jp-OutputArea-prompt').forEach((promptNode) => {
+      promptNode.remove();
+    });
+    outputArea.addClass(REVISION_OUTPUT_CLASS);
+    return outputArea.node;
+  }
 }
 
 export namespace Revision {
   export interface IOptions {
     model: IRevisionModel;
-    outputRenderer: IOutputRenderer;
     now: Date; // the current time, which should be the same for all revisions
   }
 }
@@ -34,7 +52,7 @@ export class Revision extends Widget {
     super();
     this.addClass(REVISION_CLASS);
     let model = (this.model = options.model);
-    let outputRenderer = options.outputRenderer;
+    let outputRenderer = new OutputRenderer();
 
     let layout = (this.layout = new PanelLayout());
 
@@ -85,7 +103,7 @@ export class Revision extends Widget {
     );
 
     if (model.output && model.output.length >= 1) {
-      let outputElement = outputRenderer.render(model.output[0]);
+      let outputElement = outputRenderer.render(model.output);
       if (outputElement) {
         cellsLayout.addWidget(
           new Widget({

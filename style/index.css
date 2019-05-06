@@ -217,7 +217,7 @@ div.CodeMirror-linebackground.jp-InputArea-editor-dependencyline {
   height: 99%;
   vertical-align: top;
   background-color: #eee;
-  min-width: 350px;
+  width: 500px;
   padding-left: 2em;
   padding-right: 2em;
 }

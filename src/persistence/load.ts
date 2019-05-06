@@ -4,6 +4,7 @@ import { log } from 'util';
 import { CellExecution } from '../analysis/slice/log-slicer';
 import { LogCell } from '../model/cell';
 import { GatherModel } from '../model';
+import { nbformat } from '@jupyterlab/coreutils';
 
 /**
  * Key for accessing execution history in Jupyter notebook metadata.
@@ -88,6 +89,14 @@ function _loadExecutionFromJson(executionJson: JSONObject): CellExecution {
     return json[key] as boolean;
   }
 
+  function _getOutputs(json: JSONObject): nbformat.IOutput[] {
+    if (!json.hasOwnProperty("outputs") || !(JSONExt.isArray(json["outputs"]))) {
+      log('Could not find outputs in object ' + json);
+      return null;
+    }
+    return json['outputs'] as nbformat.IOutput[];
+  }
+
   if (
     !executionJson.hasOwnProperty('cell') ||
     !JSONExt.isObject(executionJson['cell'])
@@ -99,9 +108,11 @@ function _loadExecutionFromJson(executionJson: JSONObject): CellExecution {
 
   let id = _getString(cellJson, 'id');
   let executionCount = _getNumber(cellJson, 'executionCount');
+  let persistentId = _getString(cellJson, 'persistentId');
   let executionEventId = _getString(cellJson, 'executionEventId');
   let hasError = _getBoolean(cellJson, 'hasError');
   let text = _getString(cellJson, 'text');
+  let outputs = _getOutputs(cellJson);
 
   let executionTimeString = _getString(executionJson, 'executionTime');
   let executionTime = new Date(executionTimeString);
@@ -110,23 +121,24 @@ function _loadExecutionFromJson(executionJson: JSONObject): CellExecution {
     id == null ||
     executionCount == null ||
     hasError == null ||
+    persistentId == null ||
     executionEventId == null ||
     text == null ||
-    executionTime == null
+    executionTime == null ||
+    outputs == null
   ) {
     log("Cell could not be loaded, as it's missing a critical field.");
     return null;
   }
 
-  /**
-   * TODO(andrewhead): Update with Kunal's code for serializing and deserializing outputs.
-   */
   let cell = new LogCell({
     id,
     executionCount,
     hasError,
     text,
+    persistentId,
     executionEventId,
+    outputs
   });
   return new CellExecution(cell, executionTime);
 }

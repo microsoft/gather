@@ -139,7 +139,7 @@ export class ExecutionLogSlicer {
 
     return this._executionLog
       .filter(
-        execution => execution.cell.executionEventId == cell.executionEventId
+        execution => execution.cell.persistentId == cell.persistentId
       )
       .filter(execution => execution.cell.executionCount != undefined)
       .map(execution => {

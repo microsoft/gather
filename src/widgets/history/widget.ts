@@ -1,5 +1,5 @@
 import { PanelLayout, Widget } from '@phosphor/widgets';
-import { IOutputRenderer, Revision } from '../revision';
+import { Revision } from '../revision';
 import { IHistoryModel } from './model';
 
 /**
@@ -36,7 +36,6 @@ export class HistoryViewer extends Widget {
     const now = new Date();
     let referenceVersion = new Revision({
       model: this._model.revisions[this._model.revisions.length - 1],
-      outputRenderer: options.outputRenderer,
       now: now,
     });
     referenceVersion.addClass(REFERENCE_VERSION_CLASS);
@@ -49,7 +48,6 @@ export class HistoryViewer extends Widget {
         layout.addWidget(
           new Revision({
             model: revisionModel,
-            outputRenderer: options.outputRenderer,
             now: now,
           })
         );
@@ -90,10 +88,5 @@ export namespace HistoryViewer {
      * The model used by the history viewer.
      */
     model: IHistoryModel;
-
-    /**
-     * The renderer for output models.
-     */
-    outputRenderer: IOutputRenderer;
   }
 }

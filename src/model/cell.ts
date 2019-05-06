@@ -39,6 +39,12 @@ export interface ICell {
    */
   readonly executionEventId: string;
 
+  /**
+   * A persistent ID for a cell in a notebook. This ID will stay the same even as the cell is
+   * executed, and even when the cell is reloaded from the file.
+   */
+  readonly persistentId: string;
+
   outputs: nbformat.IOutput[];
 
   /**
@@ -81,6 +87,7 @@ export abstract class AbstractCell implements ICell {
   abstract id: string;
   abstract executionCount: number;
   abstract executionEventId: string;
+  abstract persistentId: string;
   abstract hasError: boolean;
   abstract isCode: boolean;
   abstract text: string;
@@ -106,6 +113,7 @@ export abstract class AbstractCell implements ICell {
     return {
       id: this.id,
       executionCount: this.executionCount,
+      persistentId: this.persistentId,
       lineCount: this.text.split('\n').length,
       isCode: this.isCode,
       hasError: this.hasError,
@@ -138,6 +146,7 @@ export abstract class AbstractCell implements ICell {
       metadata: {
         gathered: this.gathered,
         execution_event_id: this.executionEventId,
+        persistent_id: this.persistentId,
       },
     };
   }
@@ -150,6 +159,7 @@ export class LogCell extends AbstractCell {
   constructor(data: {
     id?: string;
     executionCount?: number;
+    persistentId?: string,
     executionEventId?: string;
     hasError?: boolean;
     text?: string;
@@ -159,6 +169,7 @@ export class LogCell extends AbstractCell {
     this.is_cell = true;
     this.id = data.id || UUID.uuid4();
     this.executionCount = data.executionCount || undefined;
+    this.persistentId = data.persistentId || UUID.uuid4();
     this.executionEventId = data.executionEventId || UUID.uuid4();
     this.hasError = data.hasError || false;
     this.text = data.text || '';
@@ -174,6 +185,7 @@ export class LogCell extends AbstractCell {
   readonly is_cell: boolean;
   readonly id: string;
   readonly executionCount: number;
+  readonly persistentId: string;
   readonly executionEventId: string;
   readonly hasError: boolean;
   readonly isCode: boolean;
@@ -191,6 +203,10 @@ export class LabCell extends AbstractCell {
   constructor(model: ICodeCellModel) {
     super();
     this._model = model;
+    /*
+     * Force the initialization of a persistent ID to make sure it's set before someone tries to clone the cell.
+     */
+    this.persistentId;
   }
 
   get model(): ICodeCellModel {
@@ -199,6 +215,13 @@ export class LabCell extends AbstractCell {
 
   get id(): string {
     return this._model.id;
+  }
+
+  get persistentId(): string {
+    if (!this._model.metadata.has("persistent_id")) {	
+      this._model.metadata.set("persistent_id", UUID.uuid4());
+    }
+    return this._model.metadata.get("persistent_id") as string;
   }
 
   get executionEventId(): string {
