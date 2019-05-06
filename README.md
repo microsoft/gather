@@ -11,14 +11,14 @@ jupyter labextension install nbgather
 
 Then you can clean and compare versions of your code like so:
 
-![gif not found](docs/demo.gif "Code gathering tools can help you clean your code and review versions of results.")
+<img src=docs/demo.gif alt="Code gathering tools can help you clean your code and review versions of results."/>
 
 **Did the `install` fail?** Make sure Jupyter Lab is
 up-to-date, and that you are running Jupyter Lab from Python 3.
 
-**Alpha status**: this extension is in alpha: the code it collects
-will sometimes be more than you want, and the user interface has
-a few quirks.
+**This project's alpha status**: this extension is in alpha:
+the code it collects will sometimes be more than you want,
+and the user interface has a few quirks.
 
 Help us make this a real, and really useful tool. We welcome
 any and all feedback and contribution. We are in particular
