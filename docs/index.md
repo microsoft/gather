@@ -37,8 +37,3 @@ personal documentation and lightweight versioning.
 {% endfor %}
 </p>
 </div>
-
-If you want to try out out code gathering tools or view the
-source code, check back soon. We will post the code and an
-alpha version of the tools when we give the talk for the
-paper on May 6, 2019.
