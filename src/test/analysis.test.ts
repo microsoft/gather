@@ -42,6 +42,11 @@ describe('detects dataflow dependencies', () => {
     expect(deps).to.not.deep.include([4, 1]);
   });
 
+  it('handles augmenting operators', () => {
+    let deps = analyzeLineDeps('a = 1', 'a += 1');
+    expect(deps).to.deep.include([2, 1]);
+  });
+
   it('links between statements, not symbol locations', () => {
     let deps = analyze('a = 1', 'b = a');
     expect(deps.items[0].fromNode.location).to.deep.equal({
