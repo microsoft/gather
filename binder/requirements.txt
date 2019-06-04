@@ -1,3 +1,4 @@
+jupyterlab==0.35.4
 numpy
 scikit-learn
 matplotlib
