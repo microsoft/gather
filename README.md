@@ -13,6 +13,8 @@ Then you can clean and compare versions of your code like so:
 
 <img src=docs/demo.gif alt="Code gathering tools can help you clean your code and review versions of results."/>
 
+Want to try it out first? [Play around with `nbgather` on an example notebook on BinderHub.](https://gke.mybinder.org/v2/gh/microsoft/gather/master?urlpath=lab/tree/binder%2FTry%20out%20nbgather.ipynb)
+
 **Did the `install` fail?** Make sure Jupyter Lab is
 up-to-date, and that you are running Jupyter Lab from Python 3.
 
