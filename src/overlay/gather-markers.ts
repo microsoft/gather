@@ -21,6 +21,7 @@ import {
 import { NotebookElementFinder } from './element-finder';
 import { ICodeCellModel } from '@jupyterlab/cells';
 import { Widget, PanelLayout } from '@phosphor/widgets';
+import * as $ from 'JQuery';
 
 /**
  * Class for a highlighted, clickable output.
@@ -500,7 +501,13 @@ class OutputMarker {
     this._gatherLabel.node.textContent = 'Gather';
     (this._gatherButton.layout as PanelLayout).addWidget(this._gatherLabel);
 
+    $(this._element).css({ overflow: 'visible' });
     this._element.appendChild(this._gatherButton.node);
+    var buttonHeight = -$(this._gatherButton.node).outerHeight() - 0.5;
+    $(this._gatherButton.node).css({
+      top: buttonHeight + 'px',
+      'z-index': '900000',
+    });
   }
 
   private _toggleSelected() {
