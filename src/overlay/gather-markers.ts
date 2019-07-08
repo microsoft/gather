@@ -28,6 +28,11 @@ import { Widget, PanelLayout } from '@phosphor/widgets';
 const OUTPUT_HIGHLIGHTED_CLASS = 'jp-OutputArea-highlighted';
 
 /**
+ * Class for parent elements of a gather button in an output area.
+ */
+const GATHER_BUTTON_PARENT_CLASS = "jp-OutputArea-gather-button-parent";
+
+/**
  * Class for a selected output.
  */
 const OUTPUT_SELECTED_CLASS = 'jp-OutputArea-selected';
@@ -490,6 +495,17 @@ class OutputMarker {
     this._element.addEventListener('click', this._clickListener);
   }
 
+  private _relaxParentOverflowVisibility() {
+    let parentElement = this._element;
+    while (parent != null) {
+      parentElement.classList.add(GATHER_BUTTON_PARENT_CLASS);
+      if (parentElement.classList.contains("jp-OutputArea")) {
+        break;
+      }
+      parentElement = parentElement.parentElement;
+    }
+  }
+
   private _addSelectionButton() {
     this._gatherButton = new Widget({ node: document.createElement('div') });
     this._gatherButton.addClass(OUTPUT_GATHER_BUTTON_CLASS);
@@ -500,7 +516,11 @@ class OutputMarker {
     this._gatherLabel.node.textContent = 'Gather';
     (this._gatherButton.layout as PanelLayout).addWidget(this._gatherLabel);
 
+    this._relaxParentOverflowVisibility();
     this._element.appendChild(this._gatherButton.node);
+
+    var buttonHeight = -this._gatherButton.node.offsetHeight;
+    this._gatherButton.node.style['top'] = buttonHeight + 'px';
   }
 
   private _toggleSelected() {
