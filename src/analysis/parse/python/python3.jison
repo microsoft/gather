@@ -66,7 +66,7 @@ imagnumber              ({floatnumber}|{intpart})[jJ]
 
 <INITIAL,INLINE><<EOF>> %{ 
                             // if the last statement in indented, need to force a dedent before EOF
-                            if (this.indents == undefined) this.indents == [0];
+                            if (this.indents == undefined) this.indents = [0];
                             if (this.indents.length > 1) { 
                                this.begin( 'DEDENTS' ); 
                                this.unput(' '); // make sure EOF is not triggered 
