@@ -502,8 +502,15 @@ class OutputMarker {
     (this._gatherButton.layout as PanelLayout).addWidget(this._gatherLabel);
 
     $(this._element).css({ overflow: 'visible' });
+    
+    let element = this._element;
+    for (var i = 0; i < 3; i += 1) {
+      $(element).removeClass("p-Widget");
+      element = element.parentElement;
+    }
+
     this._element.appendChild(this._gatherButton.node);
-    var buttonHeight = -$(this._gatherButton.node).outerHeight() - 0.5;
+    var buttonHeight = -$(this._gatherButton.node).outerHeight();
     $(this._gatherButton.node).css({
       top: buttonHeight + 'px',
       'z-index': '900000',

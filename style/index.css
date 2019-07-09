@@ -118,12 +118,12 @@ div.CodeMirror-linebackground.jp-InputArea-editor-dependencyline {
 
 .jp-OutputArea-highlighted:not(.jp-OutputArea-selected)
   .jp-OutputArea-gatherbutton {
-  opacity: 0;
+  visibility: hidden;
 }
 
 .jp-OutputArea-highlighted .jp-OutputArea-gatherbutton {
+  border: 1px solid var(--brand-color3);
   border-radius: 3px 3px 0px 0px;
-  border: 1px solid black;
   border-bottom-style: none;
   cursor: pointer;
   padding: 0.25em 1em;
@@ -133,19 +133,22 @@ div.CodeMirror-linebackground.jp-InputArea-editor-dependencyline {
   background: white;
   font-family: var(--jp-ui-font-family);
   font-size: 12px;
-  opacity: 0.9;
-  transition-property: background-color, opacity;
-  transition-duration: 0.65s, 0.65s;
-  transition-timing-function: ease-in-out;
+  line-height: 19px;
+  margin-bottom: 0em;
+  visibility: hidden;
+  transition-property: background-color, visibility;
+  transition-duration: 0.15s, 0.0s;
+  transition-timing-function: linear;
 }
 
 .jp-OutputArea-highlighted .jp-OutputArea-gatherbutton:hover {
-  background: var(--brand-color3);
-  opacity: 0.9;
+  background: rgb(217, 236, 252);
+  cursor: pointer;
 }
 
 .jp-OutputArea-highlighted:hover .jp-OutputArea-gatherbutton {
-  opacity: 0.85;
+  visibility: visible;
+  cursor: default;
 }
 
 .jp-OutputArea-gatherbutton .jp-OutputArea-gathercheckbox {
@@ -162,9 +165,9 @@ div.CodeMirror-linebackground.jp-InputArea-editor-dependencyline {
 }
 
 .jp-OutputArea-highlighted.jp-OutputArea-selected .jp-OutputArea-gatherbutton {
-  background: var(--brand-color2);
+  background: var(--brand-color3);
   background-blend-mode: multiply;
-  opacity: 0.95;
+  visibility: visible;
 }
 
 .jp-OutputArea-highlighted.jp-OutputArea-selected:after {
