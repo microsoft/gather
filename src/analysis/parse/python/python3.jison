@@ -2,7 +2,7 @@
 /* https://docs.python.org/3.4/reference/lexical_analysis.html */
 /* https://docs.python.org/3.4/reference/grammar.html */
 
-/* lexical gammar */
+/* lexical grammar */
 %lex
 
 uppercase               [A-Z]
