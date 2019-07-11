@@ -611,8 +611,6 @@ class TargetsDefListener implements ast.IWalkListener {
         level = ReferenceType.UPDATE;
       } else if (ancestors.some(a => a.type == ast.INDEX)) {
         level = ReferenceType.UPDATE;
-      } else if (ancestors.some(a => a.type == ast.NAME)) {
-        level = ReferenceType.UPDATE;
       }
       this.defs.add({
         type: SymbolType.VARIABLE,
