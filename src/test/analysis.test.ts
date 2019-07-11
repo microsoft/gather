@@ -181,7 +181,12 @@ describe('getDefs', () => {
   describe('detects definitions', () => {
     it('for assignments', () => {
       let defs = getDefsFromStatement('a = 1');
-      expect(defs[0]).to.include({ type: SymbolType.VARIABLE, name: 'a' });
+      expect(defs[0]).to.include({ type: SymbolType.VARIABLE, name: 'a', level: ReferenceType.DEFINITION });
+    });
+
+    it('for augmenting assignments', () => {
+      let defs = getDefsFromStatement('a += 1');
+      expect(defs[0]).to.include({ type: SymbolType.VARIABLE, name: 'a', level: ReferenceType.UPDATE });
     });
 
     it('for imports', () => {
