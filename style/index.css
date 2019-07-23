@@ -144,7 +144,7 @@ div.CodeMirror-linebackground.jp-InputArea-editor-dependencyline {
   margin-bottom: 0em;
   opacity: 0;
   transition-property: background-color, visibility;
-  transition-duration: 0.15s, 0.0s;
+  transition-duration: 0.15s, 0s;
   transition-timing-function: linear;
   z-index: 1000000;
 }

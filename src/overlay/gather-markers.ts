@@ -35,7 +35,7 @@ const OUTPUT_HIGHLIGHTED_CLASS = 'jp-OutputArea-highlighted';
 /**
  * Class for parent elements of a gather button in an output area.
  */
-const GATHER_BUTTON_PARENT_CLASS = "jp-OutputArea-gather-button-parent";
+const GATHER_BUTTON_PARENT_CLASS = 'jp-OutputArea-gather-button-parent';
 
 /**
  * Class for a selected output.
@@ -504,7 +504,7 @@ class OutputMarker {
     let parentElement = this._element;
     while (parent != null) {
       parentElement.classList.add(GATHER_BUTTON_PARENT_CLASS);
-      if (parentElement.classList.contains("jp-OutputArea")) {
+      if (parentElement.classList.contains('jp-OutputArea')) {
         break;
       }
       parentElement = parentElement.parentElement;
@@ -523,7 +523,7 @@ class OutputMarker {
 
     this._relaxParentOverflowVisibility();
     this._element.appendChild(this._gatherButton.node);
-  
+
     var buttonHeight = -$(this._gatherButton.node).outerHeight();
     this._gatherButton.node.style['top'] = buttonHeight + 'px';
   }
