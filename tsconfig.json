@@ -6,7 +6,7 @@
     "moduleResolution": "node",
     "target": "es6",
     "outDir": "./lib",
-    "lib": ["es6", "dom"],
+    "lib": ["es6", "dom", "esnext.array"],
     "allowJs": true,
     "allowSyntheticDefaultImports": true,
     "typeRoots": ["./node_modules/@types"]
