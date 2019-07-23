@@ -337,11 +337,9 @@ export class DataflowAnalyzer {
         uses = undefinedRefs.filter(r => r.level == ReferenceType.USE);
         break;
       case ast.CLASS:
-        // For each statement in the class, call getUses
-        const usesArr = statement.code
-          .flatMap(classStatement => this.getUses(classStatement, _));
-        // Don't reduce an empty array
-        uses = usesArr.length > 0 ? usesArr.reduce((prev, curr) => prev.union(curr)) : uses;
+        statement.code.forEach(classStatement =>
+          uses.add(...this.getUses(classStatement, _).items)
+        );
         break;
       default: {
         const usedNames = gatherNames(statement);
