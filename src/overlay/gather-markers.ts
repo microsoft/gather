@@ -21,12 +21,16 @@ import {
 import { NotebookElementFinder } from './element-finder';
 import { ICodeCellModel } from '@jupyterlab/cells';
 import { Widget, PanelLayout } from '@phosphor/widgets';
-import * as $ from 'JQuery';
 
 /**
  * Class for a highlighted, clickable output.
  */
 const OUTPUT_HIGHLIGHTED_CLASS = 'jp-OutputArea-highlighted';
+
+/**
+ * Class for parent elements of a gather button in an output area.
+ */
+const GATHER_BUTTON_PARENT_CLASS = "jp-OutputArea-gather-button-parent";
 
 /**
  * Class for a selected output.
@@ -491,6 +495,17 @@ class OutputMarker {
     this._element.addEventListener('click', this._clickListener);
   }
 
+  private _relaxParentOverflowVisibility() {
+    let parentElement = this._element;
+    while (parent != null) {
+      parentElement.classList.add(GATHER_BUTTON_PARENT_CLASS);
+      if (parentElement.classList.contains("jp-OutputArea")) {
+        break;
+      }
+      parentElement = parentElement.parentElement;
+    }
+  }
+
   private _addSelectionButton() {
     this._gatherButton = new Widget({ node: document.createElement('div') });
     this._gatherButton.addClass(OUTPUT_GATHER_BUTTON_CLASS);
@@ -501,20 +516,11 @@ class OutputMarker {
     this._gatherLabel.node.textContent = 'Gather';
     (this._gatherButton.layout as PanelLayout).addWidget(this._gatherLabel);
 
-    $(this._element).css({ overflow: 'visible' });
-    
-    let element = this._element;
-    for (var i = 0; i < 3; i += 1) {
-      $(element).removeClass("p-Widget");
-      element = element.parentElement;
-    }
-
+    this._relaxParentOverflowVisibility();
     this._element.appendChild(this._gatherButton.node);
-    var buttonHeight = -$(this._gatherButton.node).outerHeight();
-    $(this._gatherButton.node).css({
-      top: buttonHeight + 'px',
-      'z-index': '900000',
-    });
+
+    var buttonHeight = -this._gatherButton.node.offsetHeight;
+    this._gatherButton.node.style['top'] = buttonHeight + 'px';
   }
 
   private _toggleSelected() {

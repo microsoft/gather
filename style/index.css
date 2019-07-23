@@ -110,15 +110,22 @@ div.CodeMirror-linebackground.jp-InputArea-editor-dependencyline {
 .jp-OutputArea-highlighted {
   border: 1px solid var(--brand-color3);
   border-radius: 3px;
+  overflow: visible;
 }
 
 .jp-OutputArea-highlighted:hover {
   box-shadow: inset 0 0 5px var(--brand-color2);
 }
 
+.jp-OutputArea-gather-button-parent,
+.jp-OutputArea-gather-button-parent.jp-OutputArea {
+  box-sizing: border-box;
+  position: static;
+}
+
 .jp-OutputArea-highlighted:not(.jp-OutputArea-selected)
   .jp-OutputArea-gatherbutton {
-  visibility: hidden;
+  opacity: 0;
 }
 
 .jp-OutputArea-highlighted .jp-OutputArea-gatherbutton {
@@ -132,13 +139,14 @@ div.CodeMirror-linebackground.jp-InputArea-editor-dependencyline {
   right: 10px;
   background: white;
   font-family: var(--jp-ui-font-family);
-  font-size: 12px;
-  line-height: 19px;
+  font-size: var(--jp-ui-font-size1);
+  line-height: var(--jp-content-line-height);
   margin-bottom: 0em;
-  visibility: hidden;
+  opacity: 0;
   transition-property: background-color, visibility;
   transition-duration: 0.15s, 0.0s;
   transition-timing-function: linear;
+  z-index: 1000000;
 }
 
 .jp-OutputArea-highlighted .jp-OutputArea-gatherbutton:hover {
@@ -146,8 +154,9 @@ div.CodeMirror-linebackground.jp-InputArea-editor-dependencyline {
   cursor: pointer;
 }
 
-.jp-OutputArea-highlighted:hover .jp-OutputArea-gatherbutton {
-  visibility: visible;
+.jp-OutputArea-highlighted:hover .jp-OutputArea-gatherbutton,
+.jp-OutputArea-highlighted .jp-OutputArea-gatherbutton:hover {
+  opacity: 1;
   cursor: default;
 }
 
