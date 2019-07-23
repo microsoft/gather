@@ -181,12 +181,20 @@ describe('getDefs', () => {
   describe('detects definitions', () => {
     it('for assignments', () => {
       let defs = getDefsFromStatement('a = 1');
-      expect(defs[0]).to.include({ type: SymbolType.VARIABLE, name: 'a', level: ReferenceType.DEFINITION });
+      expect(defs[0]).to.include({
+        type: SymbolType.VARIABLE,
+        name: 'a',
+        level: ReferenceType.DEFINITION,
+      });
     });
 
     it('for augmenting assignments', () => {
       let defs = getDefsFromStatement('a += 1');
-      expect(defs[0]).to.include({ type: SymbolType.VARIABLE, name: 'a', level: ReferenceType.UPDATE });
+      expect(defs[0]).to.include({
+        type: SymbolType.VARIABLE,
+        name: 'a',
+        level: ReferenceType.UPDATE,
+      });
     });
 
     it('for imports', () => {
@@ -367,6 +375,33 @@ describe('getUses', () => {
       let uses = getUseNames('def func(arg):', '    print(a)');
       expect(uses).to.include('a');
     });
+
+    it('of functions inside classes', () => {
+      let uses = getUseNames('class Baz():', '  def quux(self):', '    func()');
+      expect(uses).to.include('func');
+    });
+
+    it('of variables inside classes', () => {
+      let uses = getUseNames(
+        'class Baz():',
+        '  def quux(self):',
+        '    self.data = a'
+      );
+      expect(uses).to.include('a');
+    });
+
+    it('of functions and variables inside nested classes', () => {
+      let uses = getUseNames(
+        'class Bar():',
+        '  class Baz():',
+        '    class Qux():',
+        '      def quux(self):',
+        '         func()',
+        '         self.data = a'
+      );
+      expect(uses).to.include('func');
+      expect(uses).to.include('a');
+    });
   });
 
   describe('ignores uses', () => {
@@ -379,6 +414,15 @@ describe('getUses', () => {
       );
       expect(uses).to.not.include('arg');
       expect(uses).to.not.include('var');
+    });
+
+    it('for params used in an instance function body', () => {
+      let uses = getUseNames(
+        'class Foo():',
+        '    def func(arg1):',
+        '        print(arg1)'
+      );
+      expect(uses).to.not.include('arg1');
     });
   });
 });

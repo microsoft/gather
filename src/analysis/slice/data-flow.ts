@@ -337,6 +337,9 @@ export class DataflowAnalyzer {
         uses = undefinedRefs.filter(r => r.level == ReferenceType.USE);
         break;
       case ast.CLASS:
+        statement.code.forEach(classStatement =>
+          uses.add(...this.getUses(classStatement, _).items)
+        );
         break;
       default: {
         const usedNames = gatherNames(statement);
