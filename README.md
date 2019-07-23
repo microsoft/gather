@@ -54,7 +54,7 @@ To run the development version of nbgather, run:
 
 ```bash
 git clone <this-repository-url>  # clone the repository
-npm install                      # download dependencies
+jlpm install                     # download dependencies
 jupyter labextension link .      # install this package in Jupyter Lab
 jlpm run watch                   # automatically recompile source code
 jupyter lab --watch              # launch Jupyter Lab, automatically re-load extension

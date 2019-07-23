@@ -247,6 +247,17 @@ export class DataflowAnalyzer {
             ast.walk(target, targetsDefListener);
           }
         }
+        /*
+         * If `statement.op` is defined, then it is an augassign (e.g., +=). Any variables defined
+         * on the left-hand side are actually getting updated.
+         */
+        if (statement.op) {
+          for (let targetDef of targetsDefListener.defs.items) {
+            if (targetDef.level === ReferenceType.DEFINITION) {
+              targetDef.level = ReferenceType.UPDATE;
+            }
+          }
+        }
         defs = defs.union(targetsDefListener.defs);
         break;
       }
