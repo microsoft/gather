@@ -177,6 +177,7 @@ div.CodeMirror-linebackground.jp-InputArea-editor-dependencyline {
   background: var(--brand-color3);
   background-blend-mode: multiply;
   visibility: visible;
+  opacity: 1;
 }
 
 .jp-OutputArea-highlighted.jp-OutputArea-selected:after {

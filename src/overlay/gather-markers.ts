@@ -21,6 +21,11 @@ import {
 import { NotebookElementFinder } from './element-finder';
 import { ICodeCellModel } from '@jupyterlab/cells';
 import { Widget, PanelLayout } from '@phosphor/widgets';
+/*
+ * jQuery only used for dynamically computing element height. Use Phosphor whenever possible as the
+ * preferred user interface toolkit.
+ */
+import * as $ from 'jquery';
 
 /**
  * Class for a highlighted, clickable output.
@@ -518,8 +523,8 @@ class OutputMarker {
 
     this._relaxParentOverflowVisibility();
     this._element.appendChild(this._gatherButton.node);
-
-    var buttonHeight = -this._gatherButton.node.offsetHeight;
+  
+    var buttonHeight = -$(this._gatherButton.node).outerHeight();
     this._gatherButton.node.style['top'] = buttonHeight + 'px';
   }
 
