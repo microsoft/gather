@@ -38,6 +38,11 @@ export class CellSlice {
           .map((line, index0) => {
             let index = index0 + 1;
             let left, right;
+            // If a dedent has caused last_line to be +1 more than it should be,
+            // and we're actually out of bounds for this node, return early
+            if (loc.last_column === 0 && index > loc.last_line - 1) {
+              return '';
+            }
             if (index == loc.first_line) {
               left = loc.first_column;
             }
