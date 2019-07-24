@@ -34,33 +34,19 @@ export class CellSlice {
     return sliceLocations
       .sort((l1, l2) => l1.first_line - l2.first_line)
       .map(loc => {
-        return textLines
-          .map((line, index0) => {
-            let index = index0 + 1;
-            let left, right;
-            if (index == loc.first_line) {
-              left = loc.first_column;
-            }
-            if (index == loc.last_line) {
-              right = loc.last_column;
-            }
-            if (index > loc.first_line) {
-              left = 0;
-            }
-            if (index < loc.last_line) {
-              right = line.length;
-            }
-            if (left != undefined && right != undefined) {
-              if (fullLines) {
-                return line.slice(0, line.length);
-              } else {
-                return line.slice(left, right);
-              }
-            }
-            return '';
-          })
-          .filter(text => text != '')
-          .join('\n');
+        // grab the desired subset of lines (they are one-indexed)
+        const lines = textLines.slice(loc.first_line - 1, loc.last_line + (loc.last_column > 0 ? 0 : -1));
+        if (!fullLines) {
+          // if we don't want full lines, then adjust the first and last lines based on columns
+          if (loc.last_line === loc.first_line) {
+            lines[0] = lines[0].slice(loc.first_column, loc.last_column);
+          } else {
+            lines[0] = lines[0].slice(loc.first_column);
+            const last = lines.length - 1;
+            lines[last] = lines[last].slice(0, loc.last_column);
+          }
+        }
+        return lines.join('\n');
       })
       .filter(text => text != '')
       .join('\n');
