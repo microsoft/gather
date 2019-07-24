@@ -198,7 +198,9 @@ expressions
 // file_input: (NEWLINE | stmt)* ENDMARKER
 file_input
     : EOF
-    | file_input0 EOF    { $$ = { type: 'module', code: $1, location: @$ } }
+        { $$ = { type: 'module', code: [], location: @$ } }
+    | file_input0 EOF
+        { $$ = { type: 'module', code: $1, location: @$ } }
     ;
 
 file_input0
