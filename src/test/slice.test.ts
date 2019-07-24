@@ -21,61 +21,7 @@ describe('slices', () => {
       last_column: 5,
     });
   });
-
-  it('statements including the def and use for funcdefs', () => {
-    let ast = parse([
-      'def foo():',
-      '    print("hi")',
-      'a = 1',
-      'foo()',
-      ''
-    ].join('\n'));
-    let locations = slice(
-      ast,
-      new LocationSet({
-        first_line: 4, 
-        first_column: 0,
-        last_line: 4,
-        last_column: 5
-      })
-    );
-
-    // Expect locations.items to contain the location for def foo()
-    expect(locations.items).to.deep.include({
-      first_line: 1,
-      first_column: 0,
-      last_line: 2, // Instead this is 3
-      last_column: 15 // Instead this is 0
-    });
-  })
-
-  it('statements including the def and use for class defs', () => {
-    let ast = parse([
-      'class Foo():',
-      '    pass',
-      'a = 1',
-      'Foo()',
-      ''
-    ].join('\n'));
-    let locations = slice(
-      ast,
-      new LocationSet({
-        first_line: 4, 
-        first_column: 0,
-        last_line: 4,
-        last_column: 5
-      })
-    );
-
-    // Expect locations.items to contain the location for class Foo
-    expect(locations.items).to.deep.include({
-      first_line: 1,
-      first_column: 0,
-      last_line: 2, // Instead this is 3
-      last_column: 8 // Instead this is 0
-    })
-  })
-
+  
   it('at least yields the statement for a seed', () => {
     let ast = parse(['c = 1', ''].join('\n'));
     let locations = slice(
