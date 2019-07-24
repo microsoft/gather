@@ -21,7 +21,7 @@ describe('slices', () => {
       last_column: 5,
     });
   });
-  
+
   it('at least yields the statement for a seed', () => {
     let ast = parse(['c = 1', ''].join('\n'));
     let locations = slice(
@@ -43,14 +43,3 @@ describe('slices', () => {
     ).to.be.true;
   });
 });
-
-function log(locations: LocationSet) {
-  locations.items.map(loc => {
-    console.log(
-      `first_line: ${loc.first_line}`,
-      `first_column: ${loc.first_column}`,
-      `last_line: ${loc.last_line}`,
-      `last_column: ${loc.last_column}`,
-    )
-  })
-}
