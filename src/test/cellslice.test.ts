@@ -24,11 +24,16 @@ describe('CellSlice', () => {
         text: ['def foo():', '    pass', 'a = 1', 'foo()', ''].join('\n'),
         executionCount: 1,
       }),
-      new LocationSet(
-        { first_line: 1, first_column: 0, last_line: 3, last_column: 0 },
-      )
+      new LocationSet({
+        first_line: 1,
+        first_column: 0,
+        last_line: 3,
+        last_column: 0,
+      })
     );
-    expect(cellSlice.textSliceLines).to.equal(['def foo():', '    pass'].join('\n'));
+    expect(cellSlice.textSliceLines).to.equal(
+      ['def foo():', '    pass'].join('\n')
+    );
   });
 
   it('yields entire lines if requested', () => {
