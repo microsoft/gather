@@ -53,20 +53,23 @@ span.jp-GatherLabel {
 /**
  * Button icons.
  */
-.jp-BookIcon {
-  background-image: var(--jp-icon-book);
+ /* From https://github.com/jupyterlab/jupyterlab/blob/master/packages/theme-light-extension/style/icons/jupyter/notebook.svg */
+.jp-Toolbar-gatherbutton-BookIcon {
+  background-image: url('icons/notebook.svg');
 }
 
-.jp-CellsIcon {
-  background-image: url('icons/cells.svg');
+/* From https://github.com/jupyterlab/jupyterlab/blob/master/packages/theme-light-extension/style/icons/md/close.svg */
+.jp-Toolbar-gatherbutton-ClearIcon {
+  background-image: url('icons/clear.svg');
 }
 
-.jp-CloseIcon {
-  background-image: var(--jp-icon-close);
-}
-
-.jp-HistoryIcon {
+/* The following icons were generated from style/icons/icons.afdesign */
+.jp-Toolbar-gatherbutton-HistoryIcon {
   background-image: url('icons/history.svg');
+}
+
+.jp-Toolbar-gatherbutton-CellsIcon {
+  background-image: url('icons/cells.svg');
 }
 
 /**
