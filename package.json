@@ -43,7 +43,7 @@
     "@jupyterlab/notebook": "^0.19.1",
     "@jupyterlab/outputarea": "^0.19.1",
     "@jupyterlab/rendermime": "^0.19.1",
-    "@msrvida/python-program-analysis": "0.0.11",
+    "@msrvida/python-program-analysis": "0.1.0",
     "@phosphor/widgets": "^1.6.0",
     "diff-match-patch": "^1.0.1",
     "jquery": "^3.3.1"

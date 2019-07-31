@@ -5,13 +5,8 @@ import {
   OutputSelection,
   CellOutput,
 } from './selections';
-import { JupyterCell } from '@msrvida/python-program-analysis';
 import { log } from '../util/log';
-import {
-  SlicedExecution,
-  ExecutionLogSlicer,
-} from '@msrvida/python-program-analysis';
-import { CellProgram } from '@msrvida/python-program-analysis';
+import { SlicedExecution, ExecutionLogSlicer, Cell, CellProgram } from '@msrvida/python-program-analysis';
 
 /**
  * Available states for the gathering application.
@@ -51,7 +46,7 @@ export enum GatherModelEvent {
  */
 export type GatherEventData =
   | GatherState
-  | JupyterCell
+  | Cell
   | EditorDef
   | DefSelection
   | CellOutput
@@ -95,7 +90,7 @@ export class GatherModel {
     return this._executionLog;
   }
 
-  getCellProgram(cell: JupyterCell): CellProgram {
+  getCellProgram(cell: Cell): CellProgram {
     return this._executionLog.getCellProgram(cell);
   }
 
@@ -120,14 +115,14 @@ export class GatherModel {
   /**
    * Get the last cell that was executed.
    */
-  get lastExecutedCell(): JupyterCell {
+  get lastExecutedCell(): Cell {
     return this._lastExecutedCell;
   }
 
   /**
    * Set the last executed cell.
    */
-  set lastExecutedCell(cell: JupyterCell) {
+  set lastExecutedCell(cell: Cell) {
     this._lastExecutedCell = cell;
     this.notifyObservers(GatherModelEvent.CELL_EXECUTED, cell);
   }
@@ -135,14 +130,14 @@ export class GatherModel {
   /**
    * Get the last cell that was deleted.
    */
-  get lastDeletedCell(): JupyterCell {
+  get lastDeletedCell(): Cell {
     return this._lastDeletedCell;
   }
 
   /**
    * Set the last deleted cell.
    */
-  set lastDeletedCell(cell: JupyterCell) {
+  set lastDeletedCell(cell: Cell) {
     this._lastDeletedCell = cell;
     this.notifyObservers(GatherModelEvent.CELL_DELETED, cell);
   }
@@ -150,14 +145,14 @@ export class GatherModel {
   /**
    * Get the last cell that was edited.
    */
-  get lastEditedCell(): JupyterCell {
+  get lastEditedCell(): Cell {
     return this._lastEditedCell;
   }
 
   /**
    * Set the last edited cell.
    */
-  set lastEditedCell(cell: JupyterCell) {
+  set lastEditedCell(cell: Cell) {
     this._lastEditedCell = cell;
     this.notifyObservers(GatherModelEvent.CELL_EDITED, cell);
   }
@@ -460,9 +455,9 @@ export class GatherModel {
   private _state: GatherState = GatherState.SELECTING;
   private _executionLog: ExecutionLogSlicer;
   private _observers: IGatherObserver[] = [];
-  private _lastExecutedCell: JupyterCell;
-  private _lastDeletedCell: JupyterCell;
-  private _lastEditedCell: JupyterCell;
+  private _lastExecutedCell: Cell;
+  private _lastDeletedCell: Cell;
+  private _lastEditedCell: Cell;
   private _editorDefs: EditorDef[] = [];
   private _selectedDefs: DefSelection[] = [];
   private _outputs: CellOutput[] = [];

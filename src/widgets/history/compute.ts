@@ -1,5 +1,5 @@
 import { nbformat } from '@jupyterlab/coreutils';
-import { CellSlice, JupyterCell, SlicedExecution } from '@msrvida/python-program-analysis';
+import { CellSlice, Cell, SlicedExecution } from '@msrvida/python-program-analysis';
 import { GatherModel } from '../../model';
 import { CodeVersionModel } from '../codeversion/model';
 import { RevisionModel } from '../revision/model';
@@ -54,7 +54,7 @@ export function buildHistoryModel(
 
     let output: nbformat.IOutput[] = null;
     if (includeOutput) {
-      let selectedCell: JupyterCell = null;
+      let selectedCell: Cell = null;
       executionVersion.cellSlices
         .map(cs => cs.cell)
         .forEach(function(cellModel) {
