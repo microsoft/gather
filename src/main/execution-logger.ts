@@ -4,7 +4,7 @@ import {
   GatherModelEvent,
   GatherEventData,
 } from '../model';
-import { LabCell } from '@msrvida/python-program-analysis';
+import { LabCell } from '../model/labcell';
 
 export class ExecutionLogger implements IGatherObserver {
   constructor(gatherModel: GatherModel) {

@@ -2,7 +2,7 @@ import { CodeCellModel, ICellModel, ICodeCellModel } from '@jupyterlab/cells';
 import { NotebookPanel } from '@jupyterlab/notebook';
 import { IObservableList } from '@jupyterlab/observables';
 import { GatherModel } from '../model';
-import { LabCell } from '@msrvida/python-program-analysis';
+import { LabCell } from '../model/labcell';
 import { UUID } from '@phosphor/coreutils';
 
 /**

@@ -23,6 +23,7 @@ import { Widget, PanelLayout } from '@phosphor/widgets';
  * preferred user interface toolkit.
  */
 import * as $ from 'jquery';
+import { LabCell } from '../model/labcell';
 
 /**
  * Class for a highlighted, clickable output.
@@ -385,7 +386,7 @@ export class MarkerManager implements IGatherObserver {
       let editor = this._elementFinder.getEditor(loggedCell);
 
       if (liveCellWidget && editor) {
-        let liveCell = new py.LabCell(liveCellWidget.model as ICodeCellModel);
+        let liveCell = new LabCell(liveCellWidget.model as ICodeCellModel);
         let numLines = 0;
         // Batch the highlight operations for each cell to spend less time updating cell height.
         editor.operation(() => {
@@ -428,7 +429,7 @@ export class MarkerManager implements IGatherObserver {
   private _updateDependenceHighlightsForCell(cell: py.Cell) {
     let editor = this._elementFinder.getEditor(cell);
     let liveCellWidget = this._elementFinder.getCellWidget(cell);
-    let liveCell = new py.LabCell(liveCellWidget.model as ICodeCellModel);
+    let liveCell = new LabCell(liveCellWidget.model as ICodeCellModel);
     this._dependencyLineMarkers
       .filter(marker => marker.editor == editor)
       .forEach(marker => {

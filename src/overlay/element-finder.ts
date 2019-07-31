@@ -3,6 +3,7 @@ import { Cell, isCodeCellModel } from '@jupyterlab/cells';
 import { CodeMirrorEditor } from '@jupyterlab/codemirror';
 import { NotebookPanel } from '@jupyterlab/notebook';
 import CodeMirror from 'codemirror';
+import { LabCell } from '../model/labcell';
 
 /**
  * Finds the HTML elements in a notebook corresponding to a cell. Useful for looking up HTML
@@ -21,7 +22,7 @@ export class NotebookElementFinder {
   getCellWidget(cell: py.Cell): Cell | null {
     for (let cellWidget of this._notebook.content.widgets) {
       if (isCodeCellModel(cellWidget.model)) {
-        let labCell = new py.LabCell(cellWidget.model);
+        let labCell = new LabCell(cellWidget.model);
         if (labCell.executionEventId == cell.executionEventId) {
           return cellWidget;
         }
