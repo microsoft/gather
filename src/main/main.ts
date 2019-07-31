@@ -12,8 +12,7 @@ import { JSONObject, JSONExt, JSONArray } from '@phosphor/coreutils';
 import { DisposableDelegate, IDisposable } from '@phosphor/disposable';
 import { Widget } from '@phosphor/widgets';
 import '../../style/index.css';
-import { DataflowAnalyzer } from '../analysis/slice/data-flow';
-import { ExecutionLogSlicer } from '../analysis/slice/log-slicer';
+import { DataflowAnalyzer, ExecutionLogSlicer } from '@msrvida/python-program-analysis';
 import {
   GatherController,
   GatherModel,
@@ -34,7 +33,7 @@ import { storeHistory } from '../persistence/store';
 import { initLogger, log } from '../util/log';
 import { ExecutionLogger } from './execution-logger';
 import { Clipboard } from './gather-actions';
-import { SliceConfiguration } from '../analysis/slice/slice-config';
+import { SliceConfiguration } from '@msrvida/python-program-analysis';
 
 const extension: JupyterLabPlugin<void> = {
   activate: activateExtension,

@@ -1,6 +1,4 @@
-import { Ref } from '../analysis/slice/data-flow';
-import { SlicedExecution } from '../analysis/slice/log-slicer';
-import { ICell } from './cell';
+import { Ref, SlicedExecution, JupyterCell } from '@msrvida/python-program-analysis';
 
 /**
  * A user's selection.
@@ -13,9 +11,9 @@ export type UserSelection = DefSelection | OutputSelection;
  */
 export class DefSelection {
   readonly editorDef: EditorDef;
-  readonly cell: ICell;
+  readonly cell: JupyterCell;
 
-  constructor(options: { editorDef: EditorDef; cell: ICell }) {
+  constructor(options: { editorDef: EditorDef; cell: JupyterCell }) {
     this.editorDef = options.editorDef;
     this.cell = options.cell;
   }
@@ -42,7 +40,7 @@ export type SliceSelection = {
  */
 export type EditorDef = {
   editor: CodeMirror.Editor;
-  cell: ICell;
+  cell: JupyterCell;
   def: Ref;
 };
 
@@ -52,7 +50,7 @@ export type EditorDef = {
 export type CellOutput = {
   outputIndex: number;
   element: HTMLElement;
-  cell: ICell;
+  cell: JupyterCell;
 };
 
 /**
@@ -60,7 +58,7 @@ export type CellOutput = {
  */
 export type OutputSelection = {
   outputIndex: number;
-  cell: ICell;
+  cell: JupyterCell;
 };
 export function instanceOfOutputSelection(
   object: any

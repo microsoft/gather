@@ -1,5 +1,5 @@
 import { CharacterRange } from '../codeversion';
-import { ILocation } from '../../analysis/parse/python/python-parser';
+import { Location } from '@msrvida/python-program-analysis';
 import { diff_match_patch } from 'diff-match-patch';
 
 /**
@@ -11,7 +11,7 @@ export type Diff = {
   text: string;
   beforeLines: number[];
   afterLines: number[];
-  changeLocations: ILocation[];
+  changeLocations: Location[];
 };
 
 type DiffLine = {
@@ -148,7 +148,7 @@ export function computeTextDiff(before: string, after: string): Diff {
 
   let beforeLineNumbers: number[] = [];
   let afterLineNumbers: number[] = [];
-  let changeLocations: ILocation[] = [];
+  let changeLocations: Location[] = [];
 
   // All "before" diff lines should go before "after" diff lines.
   // All other lines should preserve their original order.

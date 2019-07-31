@@ -3,10 +3,10 @@
  */
 import { NotebookPanel } from '@jupyterlab/notebook';
 import { LineHandle } from 'codemirror';
-import { ICell, LabCell } from '../model/cell';
-import { ILocation, ISyntaxNode } from '../analysis/parse/python/python-parser';
-import { Ref, SymbolType } from '../analysis/slice/data-flow';
-import { SlicedExecution } from '../analysis/slice/log-slicer';
+import { JupyterCell, LabCell } from '@msrvida/python-program-analysis';
+import { Location, SyntaxNode } from '@msrvida/python-program-analysis';
+import { Ref, SymbolType } from '@msrvida/python-program-analysis';
+import { SlicedExecution } from '@msrvida/python-program-analysis';
 import { log } from '../util/log';
 import {
   CellOutput,
@@ -135,7 +135,7 @@ export class MarkerManager implements IGatherObserver {
   ) {
     // When a cell is executed, search for definitions and output.
     if (eventType == GatherModelEvent.CELL_EXECUTION_LOGGED) {
-      let cell = eventData as ICell;
+      let cell = eventData as JupyterCell;
       this.clearSelectablesForCell(cell);
       let editor = this._elementFinder.getEditor(cell);
       if (editor) {
@@ -150,7 +150,7 @@ export class MarkerManager implements IGatherObserver {
       eventType == GatherModelEvent.CELL_DELETED ||
       eventType == GatherModelEvent.CELL_EDITED
     ) {
-      let cell = eventData as ICell;
+      let cell = eventData as JupyterCell;
       this._updateDependenceHighlightsForCell(cell);
       this.clearSelectablesForCell(cell);
     }
@@ -284,8 +284,8 @@ export class MarkerManager implements IGatherObserver {
       cell: editorDef.cell,
     });
     let clickHandler = (
-      _: ICell,
-      __: ILocation,
+      _: JupyterCell,
+      __: Location,
       selected: boolean,
       event: MouseEvent
     ) => {
@@ -340,7 +340,7 @@ export class MarkerManager implements IGatherObserver {
   /**
    * Clear all def markers that belong to this editor.
    */
-  clearSelectablesForCell(cell: ICell) {
+  clearSelectablesForCell(cell: JupyterCell) {
     this._model.removeEditorDefsForCell(cell.executionEventId);
     this._model.deselectOutputsForCell(cell.executionEventId);
   }
@@ -348,7 +348,7 @@ export class MarkerManager implements IGatherObserver {
   /**
    * Highlight all of the definitions in an editor.
    */
-  highlightDefs(editor: CodeMirror.Editor, cell: ICell) {
+  highlightDefs(editor: CodeMirror.Editor, cell: JupyterCell) {
     /**
      * Fetch the cell program instead of recomputing it, as it can stall the interface if we
      * analyze the code here.
@@ -367,7 +367,7 @@ export class MarkerManager implements IGatherObserver {
   /**
    * Highlight a list of output elements.
    */
-  highlightOutputs(cell: ICell, outputElements: HTMLElement[]) {
+  highlightOutputs(cell: JupyterCell, outputElements: HTMLElement[]) {
     for (let i = 0; i < outputElements.length; i++) {
       let outputElement = outputElements[i];
       let output = { cell: cell, element: outputElement, outputIndex: i };
@@ -392,7 +392,7 @@ export class MarkerManager implements IGatherObserver {
         let numLines = 0;
         // Batch the highlight operations for each cell to spend less time updating cell height.
         editor.operation(() => {
-          sliceLocations.items.forEach((loc: ILocation) => {
+          sliceLocations.items.forEach((loc: Location) => {
             for (
               let lineNumber = loc.first_line - 1;
               lineNumber <= loc.last_line - 1;
@@ -428,7 +428,7 @@ export class MarkerManager implements IGatherObserver {
     editor.removeLineClass(lineHandle, 'background', DIRTY_DEPENDENCY_CLASS);
   }
 
-  private _updateDependenceHighlightsForCell(cell: ICell) {
+  private _updateDependenceHighlightsForCell(cell: JupyterCell) {
     let editor = this._elementFinder.getEditor(cell);
     let liveCellWidget = this._elementFinder.getCellWidget(cell);
     let liveCell = new LabCell(liveCellWidget.model as ICodeCellModel);
@@ -464,7 +464,7 @@ class OutputMarker {
   constructor(
     outputElement: HTMLElement,
     outputIndex: number,
-    cell: ICell,
+    cell: JupyterCell,
     onToggle: (selected: boolean, event: MouseEvent) => void
   ) {
     this._element = outputElement;
@@ -550,7 +550,7 @@ class OutputMarker {
   }
 
   readonly outputIndex: number;
-  readonly cell: ICell;
+  readonly cell: JupyterCell;
   private _element: HTMLElement;
   private _gatherButton: Widget;
   private _gatherLabel: Widget;
@@ -575,12 +575,12 @@ class DefMarker {
     marker: CodeMirror.TextMarker,
     editor: CodeMirror.Editor,
     def: Ref,
-    location: ILocation,
-    statement: ISyntaxNode,
-    cell: ICell,
+    location: Location,
+    statement: SyntaxNode,
+    cell: JupyterCell,
     clickHandler: (
-      cell: ICell,
-      selection: ILocation,
+      cell: JupyterCell,
+      selection: Location,
       selected: boolean,
       event: MouseEvent
     ) => void
@@ -653,12 +653,12 @@ class DefMarker {
   readonly marker: CodeMirror.TextMarker;
   readonly editor: CodeMirror.Editor;
   readonly def: Ref;
-  readonly location: ILocation;
-  readonly statement: ISyntaxNode;
-  readonly cell: ICell;
+  readonly location: Location;
+  readonly statement: SyntaxNode;
+  readonly cell: JupyterCell;
   readonly clickHandler: (
-    cell: ICell,
-    selection: ILocation,
+    cell: JupyterCell,
+    selection: Location,
     selected: boolean,
     event: MouseEvent
   ) => void;

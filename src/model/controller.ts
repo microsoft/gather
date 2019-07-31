@@ -7,8 +7,7 @@ import {
   GatherState,
   IGatherObserver,
 } from '.';
-import { ExecutionLogSlicer } from '../analysis/slice/log-slicer';
-import { LocationSet } from '../analysis/slice/slice';
+import { ExecutionLogSlicer, LocationSet } from '@msrvida/python-program-analysis';
 import {
   Clipboard,
   NotebookOpener,
