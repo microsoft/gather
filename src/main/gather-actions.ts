@@ -1,6 +1,6 @@
 import { Clipboard as JupyterClipboard } from '@jupyterlab/apputils';
 import { nbformat, PathExt } from '@jupyterlab/coreutils';
-import { DocumentManager } from '@jupyterlab/docmanager';
+import { IDocumentManager } from '@jupyterlab/docmanager';
 import { IDocumentWidget } from '@jupyterlab/docregistry';
 import { FileEditor } from '@jupyterlab/fileeditor';
 import { INotebookTracker, NotebookPanel } from '@jupyterlab/notebook';
@@ -82,7 +82,7 @@ function _getPathForCurrentNotebook(
  * Opens new scripts containing program slices.
  */
 export class ScriptOpener {
-  constructor(documentManager: DocumentManager, notebooks: INotebookTracker) {
+  constructor(documentManager: IDocumentManager, notebooks: INotebookTracker) {
     this._documentManager = documentManager;
     this._notebooks = notebooks;
   }
@@ -114,7 +114,7 @@ export class ScriptOpener {
       });
   }
 
-  private _documentManager: DocumentManager;
+  private _documentManager: IDocumentManager;
   private _notebooks: INotebookTracker;
 }
 
@@ -122,7 +122,7 @@ export class ScriptOpener {
  * Opens new notebooks containing program slices.
  */
 export class NotebookOpener {
-  constructor(documentManager: DocumentManager, notebooks: INotebookTracker) {
+  constructor(documentManager: IDocumentManager, notebooks: INotebookTracker) {
     this._documentManager = documentManager;
     this._notebooks = notebooks;
   }
@@ -156,7 +156,7 @@ export class NotebookOpener {
       });
   }
 
-  private _documentManager: DocumentManager;
+  private _documentManager: IDocumentManager;
   private _notebooks: INotebookTracker;
 }
 
