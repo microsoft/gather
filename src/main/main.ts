@@ -8,11 +8,11 @@ import {
   INotebookTracker,
   NotebookPanel,
 } from '@jupyterlab/notebook';
-import { JSONObject, JSONExt, JSONArray } from '@phosphor/coreutils';
+import { JSONObject, JSONExt } from '@phosphor/coreutils';
 import { DisposableDelegate, IDisposable } from '@phosphor/disposable';
 import { Widget } from '@phosphor/widgets';
 import '../../style/index.css';
-import { DataflowAnalyzer, ExecutionLogSlicer, SliceConfiguration } from '@msrvida/python-program-analysis';
+import { DataflowAnalyzer, ExecutionLogSlicer, JsonSpecs } from '@msrvida/python-program-analysis';
 import {
   GatherController,
   GatherModel,
@@ -64,9 +64,9 @@ export class CodeGatheringExtension
     this._notebooks = notebooks;
     this._gatherModelRegistry = gatherModelRegistry;
     settingRegistry.get('nbgather:plugin', 'rules').then(data => {
-      if (JSONExt.isArray(data.composite)) {
-        let dataCompositeObject = data.composite as JSONArray;
-        this._sliceConfiguration = dataCompositeObject as SliceConfiguration;
+      if (JSONExt.isObject(data.composite)) {
+        let dataCompositeObject = data.composite as JSONObject;
+        this._sliceConfiguration = dataCompositeObject as JsonSpecs;
       }
     });
   }
@@ -178,7 +178,7 @@ export class CodeGatheringExtension
   private _app: JupyterLab;
   private _documentManager: DocumentManager;
   private _notebooks: INotebookTracker;
-  private _sliceConfiguration: SliceConfiguration;
+  private _sliceConfiguration: JsonSpecs;
   private _gatherModelRegistry: GatherModelRegistry;
 }
 

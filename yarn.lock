@@ -248,9 +248,9 @@
     "@phosphor/disposable" "^1.1.2"
     "@phosphor/signaling" "^1.2.2"
 
-"@msrvida/python-program-analysis@0.0.11":
-  version "0.0.11"
-  resolved "https://registry.yarnpkg.com/@msrvida/python-program-analysis/-/python-program-analysis-0.0.11.tgz#c4d9c0c7ea68c13369002ff1d4882a0091c17fb7"
+"@msrvida/python-program-analysis@^0.2.0":
+  version "0.2.0"
+  resolved "https://registry.yarnpkg.com/@msrvida/python-program-analysis/-/python-program-analysis-0.2.0.tgz#c201cc7ce5a6941eeac73ef0cff7ac0365799348"
   dependencies:
     "@jupyterlab/cells" "^0.19.1"
     "@jupyterlab/coreutils" "^2.2.1"
