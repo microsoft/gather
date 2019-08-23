@@ -1,5 +1,5 @@
 import { PanelLayout, Widget } from '@phosphor/widgets';
-import { GatherModel, GatherState } from '../model/model';
+import { GatherModel, GatherState } from '../model';
 import { log } from '../util/log';
 import { buildHistoryModel, HistoryViewer } from '../widgets/history';
 

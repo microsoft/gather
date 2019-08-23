@@ -1,8 +1,7 @@
 import { INotebookModel } from '@jupyterlab/notebook';
 import { JSONArray, JSONExt, JSONObject } from '@phosphor/coreutils';
 import { log } from 'util';
-import { CellExecution } from '../analysis/slice/log-slicer';
-import { LogCell } from '../model/cell';
+import { CellExecution, LogCell } from '@msrvida/python-program-analysis';
 import { GatherModel } from '../model';
 import { nbformat } from '@jupyterlab/coreutils';
 

@@ -1,8 +1,9 @@
-import { ICell, LabCell } from '../model/cell';
+import * as py from '@msrvida/python-program-analysis';
 import { Cell, isCodeCellModel } from '@jupyterlab/cells';
 import { CodeMirrorEditor } from '@jupyterlab/codemirror';
 import { NotebookPanel } from '@jupyterlab/notebook';
 import CodeMirror from 'codemirror';
+import { LabCell } from '../model/labcell';
 
 /**
  * Finds the HTML elements in a notebook corresponding to a cell. Useful for looking up HTML
@@ -18,7 +19,7 @@ export class NotebookElementFinder {
    * This is the only way to make sure we get the right cell if a cell has been executed
    * with the same exeuction count twice in two separate notebook sessions.
    */
-  getCellWidget(cell: ICell): Cell | null {
+  getCellWidget(cell: py.Cell): Cell | null {
     for (let cellWidget of this._notebook.content.widgets) {
       if (isCodeCellModel(cellWidget.model)) {
         let labCell = new LabCell(cellWidget.model);
@@ -33,7 +34,7 @@ export class NotebookElementFinder {
   /**
    * Get the element for the code editor for a cell.
    */
-  getEditor(cell: ICell): CodeMirror.Editor | null {
+  getEditor(cell: py.Cell): CodeMirror.Editor | null {
     let widget = this.getCellWidget(cell);
     return this._getEditor(widget);
   }
@@ -48,7 +49,7 @@ export class NotebookElementFinder {
   /**
    * Finds HTML elements for cell outputs in a notebook.
    */
-  getOutputs(cell: ICell): HTMLElement[] {
+  getOutputs(cell: py.Cell): HTMLElement[] {
     let cellWidget = this.getCellWidget(cell);
     let outputElements: HTMLElement[] = [];
     if (cellWidget == null) {

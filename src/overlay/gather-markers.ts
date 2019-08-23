@@ -3,10 +3,7 @@
  */
 import { NotebookPanel } from '@jupyterlab/notebook';
 import { LineHandle } from 'codemirror';
-import { ICell, LabCell } from '../model/cell';
-import { ILocation, ISyntaxNode } from '../analysis/parse/python/python-parser';
-import { Ref, SymbolType } from '../analysis/slice/data-flow';
-import { SlicedExecution } from '../analysis/slice/log-slicer';
+import * as py from '@msrvida/python-program-analysis';
 import { log } from '../util/log';
 import {
   CellOutput,
@@ -26,6 +23,7 @@ import { Widget, PanelLayout } from '@phosphor/widgets';
  * preferred user interface toolkit.
  */
 import * as $ from 'jquery';
+import { LabCell } from '../model/labcell';
 
 /**
  * Class for a highlighted, clickable output.
@@ -135,7 +133,7 @@ export class MarkerManager implements IGatherObserver {
   ) {
     // When a cell is executed, search for definitions and output.
     if (eventType == GatherModelEvent.CELL_EXECUTION_LOGGED) {
-      let cell = eventData as ICell;
+      let cell = eventData as py.Cell;
       this.clearSelectablesForCell(cell);
       let editor = this._elementFinder.getEditor(cell);
       if (editor) {
@@ -150,7 +148,7 @@ export class MarkerManager implements IGatherObserver {
       eventType == GatherModelEvent.CELL_DELETED ||
       eventType == GatherModelEvent.CELL_EDITED
     ) {
-      let cell = eventData as ICell;
+      let cell = eventData as py.Cell;
       this._updateDependenceHighlightsForCell(cell);
       this.clearSelectablesForCell(cell);
     }
@@ -284,8 +282,8 @@ export class MarkerManager implements IGatherObserver {
       cell: editorDef.cell,
     });
     let clickHandler = (
-      _: ICell,
-      __: ILocation,
+      _: py.Cell,
+      __: py.Location,
       selected: boolean,
       event: MouseEvent
     ) => {
@@ -340,7 +338,7 @@ export class MarkerManager implements IGatherObserver {
   /**
    * Clear all def markers that belong to this editor.
    */
-  clearSelectablesForCell(cell: ICell) {
+  clearSelectablesForCell(cell: py.Cell) {
     this._model.removeEditorDefsForCell(cell.executionEventId);
     this._model.deselectOutputsForCell(cell.executionEventId);
   }
@@ -348,7 +346,7 @@ export class MarkerManager implements IGatherObserver {
   /**
    * Highlight all of the definitions in an editor.
    */
-  highlightDefs(editor: CodeMirror.Editor, cell: ICell) {
+  highlightDefs(editor: CodeMirror.Editor, cell: py.Cell) {
     /**
      * Fetch the cell program instead of recomputing it, as it can stall the interface if we
      * analyze the code here.
@@ -356,7 +354,7 @@ export class MarkerManager implements IGatherObserver {
     let cellProgram = this._model.getCellProgram(cell);
     if (cellProgram !== null && !cellProgram.hasError) {
       for (let ref of cellProgram.defs) {
-        if (ref.type == SymbolType.VARIABLE) {
+        if (ref.type == py.SymbolType.VARIABLE) {
           this._model.addEditorDef({ def: ref, editor: editor, cell: cell });
         }
       }
@@ -367,7 +365,7 @@ export class MarkerManager implements IGatherObserver {
   /**
    * Highlight a list of output elements.
    */
-  highlightOutputs(cell: ICell, outputElements: HTMLElement[]) {
+  highlightOutputs(cell: py.Cell, outputElements: HTMLElement[]) {
     for (let i = 0; i < outputElements.length; i++) {
       let outputElement = outputElements[i];
       let output = { cell: cell, element: outputElement, outputIndex: i };
@@ -379,7 +377,7 @@ export class MarkerManager implements IGatherObserver {
   /**
    * Highlight dependencies in a cell at a set of locations.
    */
-  highlightDependencies(slice: SlicedExecution) {
+  highlightDependencies(slice: py.SlicedExecution) {
     let defLines: number[] = [];
     slice.cellSlices.forEach(cellSlice => {
       let loggedCell = cellSlice.cell;
@@ -392,7 +390,7 @@ export class MarkerManager implements IGatherObserver {
         let numLines = 0;
         // Batch the highlight operations for each cell to spend less time updating cell height.
         editor.operation(() => {
-          sliceLocations.items.forEach((loc: ILocation) => {
+          sliceLocations.items.forEach((loc: py.Location) => {
             for (
               let lineNumber = loc.first_line - 1;
               lineNumber <= loc.last_line - 1;
@@ -428,7 +426,7 @@ export class MarkerManager implements IGatherObserver {
     editor.removeLineClass(lineHandle, 'background', DIRTY_DEPENDENCY_CLASS);
   }
 
-  private _updateDependenceHighlightsForCell(cell: ICell) {
+  private _updateDependenceHighlightsForCell(cell: py.Cell) {
     let editor = this._elementFinder.getEditor(cell);
     let liveCellWidget = this._elementFinder.getCellWidget(cell);
     let liveCell = new LabCell(liveCellWidget.model as ICodeCellModel);
@@ -464,7 +462,7 @@ class OutputMarker {
   constructor(
     outputElement: HTMLElement,
     outputIndex: number,
-    cell: ICell,
+    cell: py.Cell,
     onToggle: (selected: boolean, event: MouseEvent) => void
   ) {
     this._element = outputElement;
@@ -550,7 +548,7 @@ class OutputMarker {
   }
 
   readonly outputIndex: number;
-  readonly cell: ICell;
+  readonly cell: py.Cell;
   private _element: HTMLElement;
   private _gatherButton: Widget;
   private _gatherLabel: Widget;
@@ -563,7 +561,7 @@ class OutputMarker {
  * Line handle for a definition line.
  */
 type DefLineHandle = {
-  def: Ref;
+  def: py.Ref;
   lineHandle: LineHandle;
 };
 
@@ -574,13 +572,13 @@ class DefMarker {
   constructor(
     marker: CodeMirror.TextMarker,
     editor: CodeMirror.Editor,
-    def: Ref,
-    location: ILocation,
-    statement: ISyntaxNode,
-    cell: ICell,
+    def: py.Ref,
+    location: py.Location,
+    statement: py.SyntaxNode,
+    cell: py.Cell,
     clickHandler: (
-      cell: ICell,
-      selection: ILocation,
+      cell: py.Cell,
+      selection: py.Location,
       selected: boolean,
       event: MouseEvent
     ) => void
@@ -652,13 +650,13 @@ class DefMarker {
   private _selectionMarker: CodeMirror.TextMarker = undefined;
   readonly marker: CodeMirror.TextMarker;
   readonly editor: CodeMirror.Editor;
-  readonly def: Ref;
-  readonly location: ILocation;
-  readonly statement: ISyntaxNode;
-  readonly cell: ICell;
+  readonly def: py.Ref;
+  readonly location: py.Location;
+  readonly statement: py.SyntaxNode;
+  readonly cell: py.Cell;
   readonly clickHandler: (
-    cell: ICell,
-    selection: ILocation,
+    cell: py.Cell,
+    selection: py.Location,
     selected: boolean,
     event: MouseEvent
   ) => void;

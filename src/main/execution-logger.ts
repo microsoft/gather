@@ -4,7 +4,7 @@ import {
   GatherModelEvent,
   GatherEventData,
 } from '../model';
-import { LabCell } from '../model/cell';
+import { LabCell } from '../model/labcell';
 
 export class ExecutionLogger implements IGatherObserver {
   constructor(gatherModel: GatherModel) {

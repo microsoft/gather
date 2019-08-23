@@ -12,8 +12,7 @@
   },
   "homepage": "https://microsoft.github.io/gather/",
   "scripts": {
-    "build": "npm run build:parser && tsc",
-    "build:parser": "node ./node_modules/jison/lib/cli.js --outfile src/analysis/parse/python/python3.js src/analysis/parse/python/python3.jison",
+    "build": "tsc",
     "watch": "tsc -w",
     "prepack": "npm run build",
     "test": "karma start src/test/karma.conf.js",
@@ -44,6 +43,7 @@
     "@jupyterlab/notebook": "^1.0.1",
     "@jupyterlab/outputarea": "^1.0.1",
     "@jupyterlab/rendermime": "^1.0.1",
+    "@msrvida/python-program-analysis": "^0.2.0",
     "@phosphor/widgets": "^1.6.0",
     "@types/codemirror": "^0.0.76",
     "diff-match-patch": "^1.0.1",
