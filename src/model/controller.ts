@@ -1,4 +1,4 @@
-import { DocumentManager } from '@jupyterlab/docmanager';
+import { IDocumentManager } from '@jupyterlab/docmanager';
 import { INotebookTracker } from '@jupyterlab/notebook';
 import {
   GatherEventData,
@@ -25,7 +25,7 @@ export class GatherController implements IGatherObserver {
    */
   constructor(
     model: GatherModel,
-    documentManager: DocumentManager,
+    documentManager: IDocumentManager,
     notebooks: INotebookTracker
   ) {
     model.addObserver(this);

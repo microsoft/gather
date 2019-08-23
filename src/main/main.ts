@@ -1,7 +1,7 @@
-import { JupyterLab, JupyterLabPlugin } from '@jupyterlab/application';
+import { JupyterLab, JupyterFrontEndPlugin } from '@jupyterlab/application';
 import { ICommandPalette } from '@jupyterlab/apputils';
 import { ISettingRegistry } from '@jupyterlab/coreutils';
-import { DocumentManager, IDocumentManager } from '@jupyterlab/docmanager';
+import { IDocumentManager } from '@jupyterlab/docmanager';
 import { DocumentRegistry } from '@jupyterlab/docregistry';
 import {
   INotebookModel,
@@ -34,7 +34,7 @@ import { initLogger, log } from '../util/log';
 import { ExecutionLogger } from './execution-logger';
 import { Clipboard } from './gather-actions';
 
-const extension: JupyterLabPlugin<void> = {
+const extension: JupyterFrontEndPlugin<void> = {
   activate: activateExtension,
   id: 'gather:gatherPlugin',
   requires: [
@@ -54,7 +54,7 @@ export class CodeGatheringExtension
   implements DocumentRegistry.IWidgetExtension<NotebookPanel, INotebookModel> {
   constructor(
     app: JupyterLab,
-    documentManager: DocumentManager,
+    documentManager: IDocumentManager,
     settingRegistry: ISettingRegistry,
     notebooks: INotebookTracker,
     gatherModelRegistry: GatherModelRegistry
@@ -170,13 +170,13 @@ export class CodeGatheringExtension
       this._gatherModelRegistry
     );
     let revisionBrowser = new RevisionBrowser(gatherModel);
-    this._app.shell.addToMainArea(revisionBrowser);
+    this._app.shell.add(revisionBrowser, 'main');
     this._app.shell.activateById(revisionBrowser.id);
   }
 
   private _toolbarWidgets: Widget[];
   private _app: JupyterLab;
-  private _documentManager: DocumentManager;
+  private _documentManager: IDocumentManager;
   private _notebooks: INotebookTracker;
   private _sliceConfiguration: JsonSpecs;
   private _gatherModelRegistry: GatherModelRegistry;

@@ -152,7 +152,7 @@ export class GatherToClipboardButton extends GatherButton {
   constructor(gatherModel: GatherModel, callback: () => void) {
     super('gatherToClipboard', gatherModel, {
       className: 'jp-Toolbar-gathertoclipboardbutton',
-      iconClassName: 'jp-CellsIcon jp-Icon jp-Icon-16',
+      iconClassName: 'jp-Toolbar-gatherbutton-CellsIcon jp-Icon jp-Icon-16',
       tooltip: 'Gather cells code to clipboard',
       label: 'Cells',
       onClick: () => {
@@ -184,7 +184,7 @@ export class GatherToNotebookButton extends GatherButton {
   constructor(gatherModel: GatherModel, callback: () => void) {
     super('gatherToNotebook', gatherModel, {
       className: 'jp-Toolbar-gathertonotebookbutton',
-      iconClassName: 'jp-BookIcon jp-Icon jp-Icon-16',
+      iconClassName: 'jp-Toolbar-gatherbutton-BookIcon jp-Icon jp-Icon-16',
       tooltip: 'Gather code to new notebook',
       label: 'Notebook',
       onClick: () => {
@@ -212,43 +212,11 @@ export class GatherToNotebookButton extends GatherButton {
 /**
  * A button to gather code to a new notebook.
  */
-export class GatherToScriptButton extends GatherButton {
-  constructor(gatherModel: GatherModel, callback: () => void) {
-    super('gatherToScript', gatherModel, {
-      className: 'jp-Toolbar-gathertoscriptbutton',
-      iconClassName: 'jp-TextEditorIcon jp-Icon jp-Icon-16',
-      tooltip: 'Gather code to new script',
-      label: 'Script',
-      onClick: () => {
-        this.onClick();
-      },
-    });
-    this._callback = callback;
-  }
-
-  onClick() {
-    if (this._gatherModel.selectedSlices.length >= 1) {
-      log('Button: Clicked gather to script');
-      this._callback();
-    } else {
-      log('Button: Clicked gather to script without selections');
-      window.alert(
-        'Before you gather, click on one of the blue variable names, or one of the outputs with a blue border.'
-      );
-    }
-  }
-
-  private _callback: () => void;
-}
-
-/**
- * A button to gather code to a new notebook.
- */
 export class GatherRevisionsButton extends GatherButton {
   constructor(gatherModel: GatherModel, callback: () => void) {
     super('gatherRevisions', gatherModel, {
       className: 'jp-Toolbar-gatherrevisionsbutton',
-      iconClassName: 'jp-HistoryIcon jp-Icon jp-Icon-16',
+      iconClassName: 'jp-Toolbar-gatherbutton-HistoryIcon jp-Icon jp-Icon-16',
       tooltip: 'Gather revisions of this cell',
       label: 'Version Browser',
       onClick: () => {
@@ -295,7 +263,7 @@ export class ClearButton extends GatherButton {
   constructor(gatherModel: GatherModel) {
     super('clearGatheringSelections', gatherModel, {
       className: 'jp-Toolbar-clearbutton',
-      iconClassName: 'jp-CloseIcon jp-Icon jp-Icon-16',
+      iconClassName: 'jp-Toolbar-gatherbutton-ClearIcon jp-Icon jp-Icon-16',
       tooltip: 'Clear selections',
       label: 'Clear',
       onClick: () => {
