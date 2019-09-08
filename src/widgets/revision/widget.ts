@@ -84,14 +84,14 @@ export class Revision extends Widget {
     panelLayout.addWidget(
       this.createButton(
         'Open in notebook',
-        'jp-BookIcon',
+        'jp-Toolbar-gatherbutton-BookIcon',
         GatherState.GATHER_TO_NOTEBOOK
       )
     );
     panelLayout.addWidget(
       this.createButton(
         'Copy to clipboard',
-        'jp-CellsIcon',
+        'jp-Toolbar-gatherbutton-CellsIcon',
         GatherState.GATHER_TO_CLIPBOARD
       )
     );
