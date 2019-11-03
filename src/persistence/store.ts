@@ -1,8 +1,9 @@
-import { INotebookModel } from '@jupyterlab/notebook';
-import { JSONArray, JSONObject } from '@phosphor/coreutils';
-import { ExecutionLogSlicer } from '@msrvida/python-program-analysis';
-import { EXECUTION_HISTORY_METADATA_KEY } from './load';
-import { nbformat } from '@jupyterlab/coreutils';
+import { nbformat } from "@jupyterlab/coreutils";
+import { INotebookModel } from "@jupyterlab/notebook";
+import { ExecutionLogSlicer } from "@msrvida/python-program-analysis";
+import { JSONArray, JSONObject } from "@phosphor/coreutils";
+import { LogCell } from "../model/labcell";
+import { EXECUTION_HISTORY_METADATA_KEY } from "./load";
 
 interface CellExecutionJson extends JSONObject {
   executionTime: string;
@@ -27,30 +28,29 @@ interface CellJson extends JSONObject {
  */
 export function storeHistory(
   notebookModel: INotebookModel,
-  executionLog: ExecutionLogSlicer
+  executionLog: ExecutionLogSlicer<LogCell>
 ) {
   let cellExecutionsJson: JSONArray = [];
 
   for (let cellExecution of executionLog.cellExecutions) {
     let cell = cellExecution.cell;
     let cellJson = new Object(null) as CellJson;
-    cellJson.id = cell.id;
-    cellJson.persistentId = cell.persistentId;
-    cellJson.executionEventId = cell.executionEventId;
-    cellJson.executionCount = cell.executionCount;
-    cellJson.hasError = cell.hasError;
-    cellJson.text = cell.text;
-    cellJson.outputs = cell.outputs;
+    if (cell instanceof LogCell) {
+      cellJson.id = cell.id;
+      cellJson.persistentId = cell.persistentId;
+      cellJson.executionEventId = cell.executionEventId;
+      cellJson.executionCount = cell.executionCount;
+      cellJson.hasError = cell.hasError;
+      cellJson.text = cell.text;
+      cellJson.outputs = cell.outputs;
 
-    let cellExecutionJson = new Object(null) as CellExecutionJson;
-    cellExecutionJson.cell = cellJson;
-    cellExecutionJson.executionTime = cellExecution.executionTime.toISOString();
+      let cellExecutionJson = new Object(null) as CellExecutionJson;
+      cellExecutionJson.cell = cellJson;
+      cellExecutionJson.executionTime = cellExecution.executionTime.toISOString();
 
-    cellExecutionsJson.push(cellExecutionJson);
+      cellExecutionsJson.push(cellExecutionJson);
+    }
   }
 
-  notebookModel.metadata.set(
-    EXECUTION_HISTORY_METADATA_KEY,
-    cellExecutionsJson
-  );
+  notebookModel.metadata.set(EXECUTION_HISTORY_METADATA_KEY, cellExecutionsJson);
 }

@@ -1,12 +1,12 @@
 import {
-  DefSelection,
-  SliceSelection,
-  EditorDef,
-  OutputSelection,
-  CellOutput,
-} from './selections';
-import { log } from '../util/log';
-import { SlicedExecution, ExecutionLogSlicer, Cell, CellProgram } from '@msrvida/python-program-analysis';
+  Cell,
+  CellProgram,
+  ExecutionLogSlicer,
+  SlicedExecution
+} from "@msrvida/python-program-analysis";
+import { log } from "../util/log";
+import { LogCell } from "./labcell";
+import { CellOutput, DefSelection, EditorDef, OutputSelection, SliceSelection } from "./selections";
 
 /**
  * Available states for the gathering application.
@@ -17,7 +17,7 @@ export enum GatherState {
   GATHER_TO_CLIPBOARD,
   GATHER_TO_NOTEBOOK,
   GATHER_TO_SCRIPT,
-  GATHER_HISTORY,
+  GATHER_HISTORY
 }
 
 /**
@@ -38,7 +38,7 @@ export enum GatherModelEvent {
   OUTPUT_SELECTED,
   OUTPUT_DESELECTED,
   SLICE_SELECTED,
-  SLICE_DESELECTED,
+  SLICE_DESELECTED
 }
 
 /**
@@ -57,13 +57,10 @@ export type GatherEventData =
  * Model for the state of a "gather" application.
  */
 export class GatherModel {
-  constructor(executionLog: ExecutionLogSlicer) {
+  constructor(executionLog: ExecutionLogSlicer<LogCell>) {
     this._executionLog = executionLog;
-    this._executionLog.executionLogged.connect((_, cellExecution) => {
-      this.notifyObservers(
-        GatherModelEvent.CELL_EXECUTION_LOGGED,
-        cellExecution.cell
-      );
+    executionLog.executionLogged.push(cellExecution => {
+      this.notifyObservers(GatherModelEvent.CELL_EXECUTION_LOGGED, cellExecution.cell);
     });
   }
 
@@ -86,12 +83,12 @@ export class GatherModel {
   /**
    * Get exeuction history for the notebook.
    */
-  get executionLog(): ExecutionLogSlicer {
+  get executionLog(): ExecutionLogSlicer<LogCell> {
     return this._executionLog;
   }
 
   getCellProgram(cell: Cell): CellProgram {
-    return this._executionLog.getCellProgram(cell);
+    return this._executionLog.getCellProgram(cell.executionEventId);
   }
 
   /**
@@ -107,7 +104,7 @@ export class GatherModel {
   requestStateChange(state: GatherState) {
     if (this._state != state) {
       this._state = state;
-      log('Model state change', { newState: state });
+      log("Model state change", { newState: state });
       this.notifyObservers(GatherModelEvent.STATE_CHANGED, state);
     }
   }
@@ -255,7 +252,7 @@ export class GatherModel {
    */
   selectDef(def: DefSelection) {
     this._selectedDefs.push(def);
-    log('Definition selected', { numSelected: this._selectedDefs.length });
+    log("Definition selected", { numSelected: this._selectedDefs.length });
     this.notifyObservers(GatherModelEvent.DEF_SELECTED, def);
   }
 
@@ -266,8 +263,8 @@ export class GatherModel {
     for (let i = 0; i < this._selectedDefs.length; i++) {
       if (this._selectedDefs[i] == def) {
         this._selectedDefs.splice(i, 1);
-        log('Definition deselected', {
-          numSelected: this._selectedDefs.length,
+        log("Definition deselected", {
+          numSelected: this._selectedDefs.length
         });
         this.notifyObservers(GatherModelEvent.DEF_DESELECTED, def);
         return;
@@ -300,10 +297,7 @@ export class GatherModel {
   /**
    * Store all execution slices for a def selection
    */
-  addSelectedDefSlices(
-    defSelection: DefSelection,
-    ...slices: SlicedExecution[]
-  ) {
+  addSelectedDefSlices(defSelection: DefSelection, ...slices: SlicedExecution[]) {
     this._selectedDefSlices.push([defSelection, slices]);
   }
 
@@ -342,7 +336,7 @@ export class GatherModel {
    */
   selectOutput(output: OutputSelection) {
     this._selectedOutputs.push(output);
-    log('Output selected', { numSelected: this._selectedOutputs.length });
+    log("Output selected", { numSelected: this._selectedOutputs.length });
     this.notifyObservers(GatherModelEvent.OUTPUT_SELECTED, output);
   }
 
@@ -353,7 +347,7 @@ export class GatherModel {
     for (let i = 0; i < this._selectedOutputs.length; i++) {
       if (this._selectedOutputs[i] == output) {
         this._selectedOutputs.splice(i, 1);
-        log('Output deselected', { numSelected: this._selectedOutputs.length });
+        log("Output deselected", { numSelected: this._selectedOutputs.length });
         this.notifyObservers(GatherModelEvent.OUTPUT_DESELECTED, output);
         return;
       }
@@ -394,10 +388,7 @@ export class GatherModel {
   /**
    * Store all execution slices for an output selection
    */
-  addSelectedOutputSlices(
-    outputSelection: OutputSelection,
-    ...slices: SlicedExecution[]
-  ) {
+  addSelectedOutputSlices(outputSelection: OutputSelection, ...slices: SlicedExecution[]) {
     this._selectedOutputSlices.push([outputSelection, slices]);
   }
 
@@ -453,7 +444,7 @@ export class GatherModel {
   }
 
   private _state: GatherState = GatherState.SELECTING;
-  private _executionLog: ExecutionLogSlicer;
+  private _executionLog: ExecutionLogSlicer<LogCell>;
   private _observers: IGatherObserver[] = [];
   private _lastExecutedCell: Cell;
   private _lastDeletedCell: Cell;

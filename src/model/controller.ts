@@ -1,20 +1,11 @@
-import { IDocumentManager } from '@jupyterlab/docmanager';
-import { INotebookTracker } from '@jupyterlab/notebook';
-import {
-  GatherEventData,
-  GatherModel,
-  GatherModelEvent,
-  GatherState,
-  IGatherObserver,
-} from '.';
-import { ExecutionLogSlicer, LocationSet } from '@msrvida/python-program-analysis';
-import {
-  Clipboard,
-  NotebookOpener,
-  ScriptOpener,
-} from '../main/gather-actions';
-import { log } from '../util/log';
-import { DefSelection, OutputSelection } from './selections';
+import { IDocumentManager } from "@jupyterlab/docmanager";
+import { INotebookTracker } from "@jupyterlab/notebook";
+import { ExecutionLogSlicer, LocationSet } from "@msrvida/python-program-analysis";
+import { GatherEventData, GatherModel, GatherModelEvent, GatherState, IGatherObserver } from ".";
+import { Clipboard, NotebookOpener, ScriptOpener } from "../main/gather-actions";
+import { log } from "../util/log";
+import { LogCell } from "./labcell";
+import { DefSelection, OutputSelection } from "./selections";
 
 /**
  * Controller for updating the gather model.
@@ -23,11 +14,7 @@ export class GatherController implements IGatherObserver {
   /**
    * Constructor for gather controller.
    */
-  constructor(
-    model: GatherModel,
-    documentManager: IDocumentManager,
-    notebooks: INotebookTracker
-  ) {
+  constructor(model: GatherModel, documentManager: IDocumentManager, notebooks: INotebookTracker) {
     model.addObserver(this);
     this._executionSlicer = model.executionLog;
     this._cellClipboard = Clipboard.getInstance();
@@ -38,11 +25,7 @@ export class GatherController implements IGatherObserver {
   /**
    * Handle change to the gather model.
    */
-  onModelChange(
-    eventType: GatherModelEvent,
-    eventData: GatherEventData,
-    model: GatherModel
-  ) {
+  onModelChange(eventType: GatherModelEvent, eventData: GatherEventData, model: GatherModel) {
     // If a gather action was requested, do the gather.
     if (eventType == GatherModelEvent.STATE_CHANGED) {
       let newState = eventData as GatherState;
@@ -54,18 +37,16 @@ export class GatherController implements IGatherObserver {
         let slices = model.chosenSlices;
         let mergedSlice = slices[0].merge(...slices.slice(1));
         if (newState == GatherState.GATHER_TO_CLIPBOARD) {
-          log('Gathering to clipboard', { slice: mergedSlice });
+          log("Gathering to clipboard", { slice: mergedSlice });
           this._cellClipboard.copy(mergedSlice, [...model.selectedOutputs]);
         } else if (newState == GatherState.GATHER_TO_NOTEBOOK) {
-          log('Gathering to notebook', { slice: mergedSlice });
+          log("Gathering to notebook", { slice: mergedSlice });
           if (this._notebookOpener !== undefined) {
-            this._notebookOpener.openNotebookForSlice(mergedSlice, [
-              ...model.selectedOutputs,
-            ]);
+            this._notebookOpener.openNotebookForSlice(mergedSlice, [...model.selectedOutputs]);
             model.resetChosenSlices();
           }
         } else if (newState == GatherState.GATHER_TO_SCRIPT) {
-          log('Gathering to script', { slice: mergedSlice });
+          log("Gathering to script", { slice: mergedSlice });
           if (this._scriptOpener !== undefined) {
             this._scriptOpener.openScriptForSlice(mergedSlice);
             model.resetChosenSlices();
@@ -86,12 +67,12 @@ export class GatherController implements IGatherObserver {
       let defSelection = eventData as DefSelection;
       let sliceSeeds = new LocationSet(defSelection.editorDef.def.location);
       let slices = this._executionSlicer.sliceAllExecutions(
-        defSelection.cell,
+        defSelection.cell.persistentId,
         sliceSeeds
       );
       let sliceSelection = {
         userSelection: defSelection,
-        slice: slices[slices.length - 1],
+        slice: slices[slices.length - 1]
       };
       model.selectSlice(sliceSelection);
       model.addSelectedDefSlices(defSelection, ...slices);
@@ -112,10 +93,10 @@ export class GatherController implements IGatherObserver {
     if (eventType == GatherModelEvent.OUTPUT_SELECTED) {
       let outputSelection = eventData as OutputSelection;
       let cell = outputSelection.cell;
-      let slices = this._executionSlicer.sliceAllExecutions(cell);
+      let slices = this._executionSlicer.sliceAllExecutions(cell.persistentId);
       let sliceSelection = {
         userSelection: outputSelection,
-        slice: slices[slices.length - 1],
+        slice: slices[slices.length - 1]
       };
       model.selectSlice(sliceSelection);
       model.addSelectedOutputSlices(outputSelection, ...slices);
@@ -133,7 +114,7 @@ export class GatherController implements IGatherObserver {
     }
   }
 
-  private _executionSlicer: ExecutionLogSlicer;
+  private _executionSlicer: ExecutionLogSlicer<LogCell>;
   private _cellClipboard: Clipboard;
   private _notebookOpener: NotebookOpener;
   private _scriptOpener: ScriptOpener;
