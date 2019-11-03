@@ -1,4 +1,4 @@
-import { Ref, SlicedExecution, Cell } from '@msrvida/python-program-analysis';
+import { Cell, Ref, SlicedExecution } from "@msrvida/python-program-analysis";
 
 /**
  * A user's selection.
@@ -22,7 +22,7 @@ export class DefSelection {
     return {
       defType: this.editorDef.def.type,
       defLevel: this.editorDef.def.level,
-      cell: this.cell,
+      cell: this.cell
     };
   }
 }
@@ -30,43 +30,37 @@ export class DefSelection {
 /**
  * A slice selected for a def.
  */
-export type SliceSelection = {
+export interface SliceSelection {
   userSelection: UserSelection;
   slice: SlicedExecution;
-};
+}
 
 /**
  * A def located in an editor.
  */
-export type EditorDef = {
+export interface EditorDef {
   editor: CodeMirror.Editor;
   cell: Cell;
   def: Ref;
-};
+}
 
 /**
  * An output for a cell.
  */
-export type CellOutput = {
+export interface CellOutput {
   outputIndex: number;
   element: HTMLElement;
   cell: Cell;
-};
+}
 
 /**
  * An ouput selected for a cell.
  */
-export type OutputSelection = {
+export interface OutputSelection {
   outputIndex: number;
   cell: Cell;
-};
-export function instanceOfOutputSelection(
-  object: any
-): object is OutputSelection {
-  return (
-    object &&
-    typeof object == 'object' &&
-    'outputIndex' in object &&
-    'cell' in object
-  );
+}
+
+export function instanceOfOutputSelection(object: any): object is OutputSelection {
+  return object && typeof object == "object" && "outputIndex" in object && "cell" in object;
 }

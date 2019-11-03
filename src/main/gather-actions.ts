@@ -9,7 +9,7 @@ import { SlicedExecution } from "@msrvida/python-program-analysis";
 import { JSONObject } from "@phosphor/coreutils";
 import { Signal } from "@phosphor/signaling";
 import { OutputSelection } from "../model";
-import { LogCell } from "../model/labcell";
+import { LogCell } from "../model/cell";
 
 /**
  * Listens to changes to the clipboard.

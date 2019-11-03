@@ -4,7 +4,7 @@ import { ExecutionLogSlicer, LocationSet } from "@msrvida/python-program-analysi
 import { GatherEventData, GatherModel, GatherModelEvent, GatherState, IGatherObserver } from ".";
 import { Clipboard, NotebookOpener, ScriptOpener } from "../main/gather-actions";
 import { log } from "../util/log";
-import { LogCell } from "./labcell";
+import { LogCell } from "./cell";
 import { DefSelection, OutputSelection } from "./selections";
 
 /**

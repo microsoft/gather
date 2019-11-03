@@ -1,7 +1,7 @@
 import { nbformat } from "@jupyterlab/coreutils";
 import { Cell, CellSlice, SlicedExecution } from "@msrvida/python-program-analysis";
 import { GatherModel } from "../../model";
-import { LogCell } from "../../model/labcell";
+import { LogCell } from "../../model/cell";
 import { CodeVersionModel } from "../codeversion/model";
 import { RevisionModel } from "../revision/model";
 import { SlicedCellModel } from "../slicedcell/model";

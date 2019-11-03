@@ -5,7 +5,7 @@ import {
   SlicedExecution
 } from "@msrvida/python-program-analysis";
 import { log } from "../util/log";
-import { LogCell } from "./labcell";
+import { LogCell } from "./cell";
 import { CellOutput, DefSelection, EditorDef, OutputSelection, SliceSelection } from "./selections";
 
 /**

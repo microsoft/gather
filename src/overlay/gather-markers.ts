@@ -21,7 +21,7 @@ import {
   IGatherObserver,
   OutputSelection
 } from "../model";
-import { LabCell } from "../model/labcell";
+import { LabCell } from "../model/cell";
 import { log } from "../util/log";
 import { NotebookElementFinder } from "./element-finder";
 

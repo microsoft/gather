@@ -2,7 +2,7 @@ import { nbformat } from "@jupyterlab/coreutils";
 import { INotebookModel } from "@jupyterlab/notebook";
 import { ExecutionLogSlicer } from "@msrvida/python-program-analysis";
 import { JSONArray, JSONObject } from "@phosphor/coreutils";
-import { LogCell } from "../model/labcell";
+import { LogCell } from "../model/cell";
 import { EXECUTION_HISTORY_METADATA_KEY } from "./load";
 
 interface CellExecutionJson extends JSONObject {

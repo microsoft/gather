@@ -8,7 +8,6 @@ import { UUID } from "@phosphor/coreutils";
  * Abstract class for accessing cell data.
  */
 export abstract class AbstractCell implements Cell {
-  abstract is_cell: boolean;
   abstract id: string;
   abstract executionCount: number;
   abstract executionEventId: string;
@@ -77,29 +76,30 @@ export abstract class AbstractCell implements Cell {
   }
 }
 
+export interface LogCellOptions {
+  id?: string;
+  executionCount?: number;
+  persistentId?: string;
+  executionEventId?: string;
+  hasError?: boolean;
+  text?: string;
+  outputs?: nbformat.IOutput[];
+}
+
 /**
  * Static cell data. Provides an interfaces to cell data loaded from a log.
  */
 export class LogCell extends AbstractCell {
-  constructor(data: {
-    id?: string;
-    executionCount?: number;
-    persistentId?: string;
-    executionEventId?: string;
-    hasError?: boolean;
-    text?: string;
-    outputs?: nbformat.IOutput[];
-  }) {
+  constructor(options: LogCellOptions) {
     super();
-    this.is_cell = true;
-    this.id = data.id || UUID.uuid4();
-    this.executionCount = data.executionCount || undefined;
-    this.persistentId = data.persistentId || UUID.uuid4();
-    this.executionEventId = data.executionEventId || UUID.uuid4();
-    this.hasError = data.hasError || false;
-    this.text = data.text || "";
+    this.id = options.id || UUID.uuid4();
+    this.executionCount = options.executionCount || undefined;
+    this.persistentId = options.persistentId || UUID.uuid4();
+    this.executionEventId = options.executionEventId || UUID.uuid4();
+    this.hasError = options.hasError || false;
+    this.text = options.text || "";
     this.lastExecutedText = this.text;
-    this.outputs = data.outputs || [];
+    this.outputs = options.outputs || [];
     this.gathered = false;
   }
 
@@ -107,7 +107,6 @@ export class LogCell extends AbstractCell {
     return new LogCell(this);
   }
 
-  readonly is_cell: boolean;
   readonly id: string;
   readonly executionCount: number;
   readonly persistentId: string;
@@ -215,7 +214,5 @@ export class LabCell extends AbstractCell {
     return this._model.toJSON();
   }
 
-  is_cell: boolean = true;
-  is_outputter_cell: boolean = true;
   private _model: ICodeCellModel;
 }

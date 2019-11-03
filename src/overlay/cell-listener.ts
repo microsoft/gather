@@ -1,9 +1,9 @@
-import { CodeCellModel, ICellModel, ICodeCellModel } from '@jupyterlab/cells';
-import { NotebookPanel } from '@jupyterlab/notebook';
-import { IObservableList } from '@jupyterlab/observables';
-import { GatherModel } from '../model';
-import { LabCell } from '../model/labcell';
-import { UUID } from '@phosphor/coreutils';
+import { CodeCellModel, ICellModel, ICodeCellModel } from "@jupyterlab/cells";
+import { NotebookPanel } from "@jupyterlab/notebook";
+import { IObservableList } from "@jupyterlab/observables";
+import { UUID } from "@phosphor/coreutils";
+import { GatherModel } from "../model";
+import { LabCell } from "../model/cell";
 
 /**
  * Listens to cell executions and edits.
@@ -35,7 +35,7 @@ export class CellChangeListener {
   }
 
   private _registerCell(cell: ICellModel) {
-    if (cell.type !== 'code') {
+    if (cell.type !== "code") {
       return;
     }
     /*
@@ -44,7 +44,7 @@ export class CellChangeListener {
      */
     cell.stateChanged.connect((changedCell, cellStateChange) => {
       if (
-        cellStateChange.name === 'executionCount' &&
+        cellStateChange.name === "executionCount" &&
         cellStateChange.newValue !== undefined &&
         cellStateChange.newValue !== null
       ) {
@@ -64,14 +64,12 @@ export class CellChangeListener {
     });
   }
 
-  private _registerAddedCells(
-    cellListChange: IObservableList.IChangedArgs<ICellModel>
-  ): void {
-    if (cellListChange.type === 'add' || cellListChange.type === 'remove') {
+  private _registerAddedCells(cellListChange: IObservableList.IChangedArgs<ICellModel>): void {
+    if (cellListChange.type === "add" || cellListChange.type === "remove") {
       const cellModel = cellListChange.newValues[0] as ICellModel;
-      if (cellListChange.type === 'add') {
+      if (cellListChange.type === "add") {
         this._registerCell(cellModel);
-      } else if (cellListChange.type === 'remove') {
+      } else if (cellListChange.type === "remove") {
         if (cellModel instanceof CodeCellModel) {
           this._gatherModel.lastDeletedCell = new LabCell(cellModel);
         }

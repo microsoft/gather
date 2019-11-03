@@ -4,7 +4,7 @@ import { CellExecution } from "@msrvida/python-program-analysis";
 import { JSONArray, JSONExt, JSONObject } from "@phosphor/coreutils";
 import { log } from "util";
 import { GatherModel } from "../model";
-import { LogCell } from "../model/labcell";
+import { LogCell } from "../model/cell";
 
 /**
  * Key for accessing execution history in Jupyter notebook metadata.
