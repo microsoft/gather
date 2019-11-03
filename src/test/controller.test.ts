@@ -1,7 +1,6 @@
-import { DataflowAnalyzer, ExecutionLogSlicer } from "@msrvida/python-program-analysis";
-import { GatherController, GatherModel } from "../model";
+import { DefSelection } from "../model";
 import { LogCell } from "../model/cell";
-import { MockDocumentManager, MockNotebookTracker } from "./jupyter-mocks";
+import { initGather as initGatherForTests } from "./util";
 
 /**
  * This is an appropriate test suite to add simple tests to make sure that slicing is working as
@@ -12,10 +11,7 @@ import { MockDocumentManager, MockNotebookTracker } from "./jupyter-mocks";
 
 describe("GatherController", () => {
   it("slices cells when definitions are selected", () => {
-    const dataflowAnalyzer = new DataflowAnalyzer();
-    const executionLogSlicer = new ExecutionLogSlicer<LogCell>(dataflowAnalyzer);
-    const gatherModel = new GatherModel(executionLogSlicer);
-    new GatherController(gatherModel, new MockDocumentManager(), new MockNotebookTracker());
+    const { logSlicer, model } = initGatherForTests();
 
     const cell1 = new LogCell({
       text: "x = 1\n" + "y = 2",
@@ -25,22 +21,53 @@ describe("GatherController", () => {
       text: "z = y",
       executionCount: 2
     });
-    executionLogSlicer.logExecution(cell1);
-    executionLogSlicer.logExecution(cell2);
+    logSlicer.logExecution(cell1);
+    logSlicer.logExecution(cell2);
 
-    const cell2Program = executionLogSlicer.getCellProgram(cell2.executionEventId);
+    const cell2Program = logSlicer.getCellProgram(cell2.executionEventId);
     expect(cell2Program.defs.length).toBe(1);
 
-    const zDef = cell2Program.defs[0];
-    gatherModel.selectDef({
-      cell: cell2,
-      editorDef: { cell: cell2, def: zDef, editor: null },
-      toJSON: () => {}
-    });
+    const defOfZ = cell2Program.defs[0];
+    model.selectDef(
+      new DefSelection({
+        cell: cell2,
+        editorDef: { cell: cell2, def: defOfZ, editor: null }
+      })
+    );
 
-    expect(gatherModel.selectedSlices.length).toBe(1);
-    const slice = gatherModel.selectedSlices[0];
-    slice.slice.cellSlices.some(cs => cs.textSlice === "z = y");
-    slice.slice.cellSlices.some(cs => cs.textSlice === "x = 1");
+    expect(model.selectedSlices.length).toBe(1);
+    const { slice } = model.selectedSlices[0];
+    const sliceTexts = slice.cellSlices.map(cs => cs.textSlice);
+    expect(sliceTexts).toContain("z = y");
+    expect(sliceTexts).toContain("y = 2");
+  });
+
+  it("slices cells when outputs are selected", () => {
+    const { logSlicer, model } = initGatherForTests();
+
+    const cell1 = new LogCell({
+      text: "x = 1\n" + "y = 2",
+      executionCount: 1
+    });
+    const cell2 = new LogCell({
+      text: "print(y)",
+      executionCount: 2,
+      outputs: [
+        {
+          name: "stdout",
+          output_type: "stream",
+          text: "2\n"
+        }
+      ]
+    });
+    logSlicer.logExecution(cell1);
+    logSlicer.logExecution(cell2);
+
+    model.selectOutput({ cell: cell2, outputIndex: 0 });
+    expect(model.selectedSlices.length).toBe(1);
+    const { slice } = model.selectedSlices[0];
+    const sliceTexts = slice.cellSlices.map(cs => cs.textSlice);
+    expect(sliceTexts).toContain("print(y)");
+    expect(sliceTexts).toContain("y = 2");
   });
 });

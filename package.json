@@ -18,6 +18,7 @@
     "watch": "tsc -w",
     "prepack": "npm run build",
     "test": "jest",
+    "test:watch": "jest --watch",
     "format:all": "prettier --single-quote --trailing-comma=es5 --write \"{src,style}/**/*.{css,js,ts}\"",
     "clean": "rm -rf lib/"
   },
