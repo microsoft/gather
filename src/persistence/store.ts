@@ -16,7 +16,6 @@ interface CellJson extends JSONObject {
   executionEventId: string;
   executionCount: number;
   hasError: boolean;
-  isCode: boolean;
   text: string;
   gathered: boolean;
   outputs: nbformat.IOutput[];

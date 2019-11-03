@@ -13,7 +13,6 @@ export abstract class AbstractCell implements Cell {
   abstract executionEventId: string;
   abstract persistentId: string;
   abstract hasError: boolean;
-  abstract isCode: boolean;
   abstract text: string;
   abstract gathered: boolean;
   abstract outputs: nbformat.IOutput[];
@@ -39,7 +38,6 @@ export abstract class AbstractCell implements Cell {
       executionCount: this.executionCount,
       persistentId: this.persistentId,
       lineCount: this.text.split("\n").length,
-      isCode: this.isCode,
       hasError: this.hasError,
       gathered: this.gathered
     };
@@ -112,7 +110,6 @@ export class LogCell extends AbstractCell {
   readonly persistentId: string;
   readonly executionEventId: string;
   readonly hasError: boolean;
-  readonly isCode: boolean;
   readonly text: string;
   readonly lastExecutedText: string;
   readonly outputs: nbformat.IOutput[];
@@ -178,10 +175,6 @@ export class LabCell extends AbstractCell {
 
   set executionCount(count: number) {
     this._model.executionCount = count;
-  }
-
-  get isCode(): boolean {
-    return this._model.type == "code";
   }
 
   get hasError(): boolean {

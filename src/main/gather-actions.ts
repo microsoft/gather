@@ -143,9 +143,10 @@ export class NotebookOpener {
 }
 
 /**
- * Convert program slice to list of cell JSONs
+ * Convert program slice to list of cell JSONs.
+ * Not intended to be called directly. Exported for testing purposes.
  */
-function getCellsJsonForSlice(
+export function getCellsJsonForSlice(
   slice: SlicedExecution,
   outputSelections?: OutputSelection[]
 ): nbformat.ICodeCell[] {

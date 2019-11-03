@@ -1,20 +1,24 @@
+import { nbformat } from "@jupyterlab/coreutils";
 import { DataflowAnalyzer, ExecutionLogSlicer } from "@msrvida/python-program-analysis";
 import { GatherController, GatherModel } from "../model";
 import { LogCell } from "../model/cell";
 import { MockDocumentManager, MockNotebookTracker } from "./jupyter-mocks";
 
-export function initGather() {
+export function initGatherModelForTests(createController: boolean = false) {
   const dataflowAnalyzer = new DataflowAnalyzer();
   const logSlicer = new ExecutionLogSlicer<LogCell>(dataflowAnalyzer);
   const model = new GatherModel(logSlicer);
-  const controller = new GatherController(
-    model,
-    new MockDocumentManager(),
-    new MockNotebookTracker()
-  );
+  return { model, logSlicer };
+}
+
+export function initGatherController(model: GatherModel) {
+  return new GatherController(model, new MockDocumentManager(), new MockNotebookTracker());
+}
+
+export function stdout(text: string): nbformat.IOutput {
   return {
-    model,
-    logSlicer,
-    controller
+    name: "stdout",
+    output_type: "stream",
+    text: "text"
   };
 }

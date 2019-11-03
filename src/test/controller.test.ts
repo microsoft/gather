@@ -1,6 +1,6 @@
 import { DefSelection } from "../model";
 import { LogCell } from "../model/cell";
-import { initGather as initGatherForTests } from "./util";
+import { initGatherController, initGatherModelForTests, stdout } from "./util";
 
 /**
  * This is an appropriate test suite to add simple tests to make sure that slicing is working as
@@ -11,7 +11,8 @@ import { initGather as initGatherForTests } from "./util";
 
 describe("GatherController", () => {
   it("slices cells when definitions are selected", () => {
-    const { logSlicer, model } = initGatherForTests();
+    const { logSlicer, model } = initGatherModelForTests();
+    initGatherController(model);
 
     const cell1 = new LogCell({
       text: "x = 1\n" + "y = 2",
@@ -43,7 +44,8 @@ describe("GatherController", () => {
   });
 
   it("slices cells when outputs are selected", () => {
-    const { logSlicer, model } = initGatherForTests();
+    const { logSlicer, model } = initGatherModelForTests();
+    initGatherController(model);
 
     const cell1 = new LogCell({
       text: "x = 1\n" + "y = 2",
@@ -52,13 +54,7 @@ describe("GatherController", () => {
     const cell2 = new LogCell({
       text: "print(y)",
       executionCount: 2,
-      outputs: [
-        {
-          name: "stdout",
-          output_type: "stream",
-          text: "2\n"
-        }
-      ]
+      outputs: [stdout("2\n")]
     });
     logSlicer.logExecution(cell1);
     logSlicer.logExecution(cell2);
