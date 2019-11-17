@@ -1,4 +1,4 @@
-import { CellSlice, LocationSet, SlicedExecution } from "@msrvida/python-program-analysis";
+import { CellSlice, LocationSet, SlicedExecution } from "@andrewhead/python-program-analysis";
 import { getCellsJsonForSlice } from "../main/gather-actions";
 import { LogCell } from "../model/cell";
 import { stdout } from "./util";
@@ -18,7 +18,7 @@ describe("getCellsJsonForSlice", () => {
     );
     const slicedExecution = new SlicedExecution(new Date(), [cellSlice1, cellSlice2]);
 
-    const json = getCellsJsonForSlice(slicedExecution);
+    const json = getCellsJsonForSlice(slicedExecution, []);
     expect(json.length).toBe(2);
 
     const cellJson1 = json[0];

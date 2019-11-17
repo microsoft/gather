@@ -1,8 +1,21 @@
+import {
+  ExecutionLogSlicer,
+  LocationSet
+} from "@andrewhead/python-program-analysis";
 import { IDocumentManager } from "@jupyterlab/docmanager";
 import { INotebookTracker } from "@jupyterlab/notebook";
-import { ExecutionLogSlicer, LocationSet } from "@msrvida/python-program-analysis";
-import { GatherEventData, GatherModel, GatherModelEvent, GatherState, IGatherObserver } from ".";
-import { Clipboard, NotebookOpener, ScriptOpener } from "../main/gather-actions";
+import {
+  GatherEventData,
+  GatherModel,
+  GatherModelEvent,
+  GatherState,
+  IGatherObserver
+} from ".";
+import {
+  Clipboard,
+  NotebookOpener,
+  ScriptOpener
+} from "../main/gather-actions";
 import { log } from "../util/log";
 import { LogCell } from "./cell";
 import { DefSelection, OutputSelection } from "./selections";
@@ -14,7 +27,11 @@ export class GatherController implements IGatherObserver {
   /**
    * Constructor for gather controller.
    */
-  constructor(model: GatherModel, documentManager: IDocumentManager, notebooks: INotebookTracker) {
+  constructor(
+    model: GatherModel,
+    documentManager: IDocumentManager,
+    notebooks: INotebookTracker
+  ) {
     model.addObserver(this);
     this._executionSlicer = model.executionLog;
     this._cellClipboard = Clipboard.getInstance();
@@ -25,7 +42,11 @@ export class GatherController implements IGatherObserver {
   /**
    * Handle change to the gather model.
    */
-  onModelChange(eventType: GatherModelEvent, eventData: GatherEventData, model: GatherModel) {
+  onModelChange(
+    eventType: GatherModelEvent,
+    eventData: GatherEventData,
+    model: GatherModel
+  ) {
     // If a gather action was requested, do the gather.
     if (eventType == GatherModelEvent.STATE_CHANGED) {
       let newState = eventData as GatherState;
@@ -42,7 +63,9 @@ export class GatherController implements IGatherObserver {
         } else if (newState == GatherState.GATHER_TO_NOTEBOOK) {
           log("Gathering to notebook", { slice: mergedSlice });
           if (this._notebookOpener !== undefined) {
-            this._notebookOpener.openNotebookForSlice(mergedSlice, [...model.selectedOutputs]);
+            this._notebookOpener.openNotebookForSlice(mergedSlice, [
+              ...model.selectedOutputs
+            ]);
             model.resetChosenSlices();
           }
         } else if (newState == GatherState.GATHER_TO_SCRIPT) {

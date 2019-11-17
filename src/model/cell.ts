@@ -1,13 +1,13 @@
+import { Cell } from "@andrewhead/python-program-analysis";
 import { CodeCellModel, ICodeCellModel } from "@jupyterlab/cells";
 import { nbformat } from "@jupyterlab/coreutils";
 import { IOutputModel } from "@jupyterlab/rendermime";
-import { Cell } from "@msrvida/python-program-analysis";
 import { UUID } from "@phosphor/coreutils";
 
 /**
- * Abstract class for accessing cell data.
+ * Abstract class for accessing the data that nbgather needs for a cell.
  */
-export abstract class AbstractCell implements Cell {
+export abstract class NbGatherCell implements Cell {
   abstract id: string;
   abstract executionCount: number;
   abstract executionEventId: string;
@@ -16,7 +16,7 @@ export abstract class AbstractCell implements Cell {
   abstract text: string;
   abstract gathered: boolean;
   abstract outputs: nbformat.IOutput[];
-  abstract deepCopy(): AbstractCell;
+  abstract deepCopy(): NbGatherCell;
 
   /**
    * The cell's text when it was executed, i.e., when the execution count was last changed.
@@ -41,21 +41,6 @@ export abstract class AbstractCell implements Cell {
       hasError: this.hasError,
       gathered: this.gathered
     };
-  }
-
-  copyToNewCell(): Cell {
-    let clonedOutputs = this.outputs.map(output => {
-      let clone = JSON.parse(JSON.stringify(output)) as nbformat.IOutput;
-      if (nbformat.isExecuteResult(clone)) {
-        clone.execution_count = undefined;
-      }
-      return clone;
-    });
-    return new LogCell({
-      text: this.text,
-      hasError: this.hasError,
-      outputs: clonedOutputs
-    });
   }
 
   serialize(): nbformat.ICodeCell {
@@ -85,9 +70,9 @@ export interface LogCellOptions {
 }
 
 /**
- * Static cell data. Provides an interfaces to cell data loaded from a log.
+ * An interface to cell data loaded in the execution log.
  */
-export class LogCell extends AbstractCell {
+export class LogCell extends NbGatherCell {
   constructor(options: LogCellOptions) {
     super();
     this.id = options.id || UUID.uuid4();
@@ -101,7 +86,7 @@ export class LogCell extends AbstractCell {
     this.gathered = false;
   }
 
-  deepCopy(): AbstractCell {
+  deepCopy(): NbGatherCell {
     return new LogCell(this);
   }
 
@@ -117,10 +102,10 @@ export class LogCell extends AbstractCell {
 }
 
 /**
- * Wrapper around a code cell model created by Jupyter Lab. Provides a consistent interface to
- * lab data to other cells that have been loaded from a log.
+ * Wrapper around a code cell model created by Jupyter Lab, with a consistent interface for
+ * accessing key data for gathering code.
  */
-export class LabCell extends AbstractCell {
+export class LabCell extends NbGatherCell {
   constructor(model: ICodeCellModel) {
     super();
     this._model = model;
@@ -200,7 +185,9 @@ export class LabCell extends AbstractCell {
   }
 
   deepCopy(): LabCell {
-    return new LabCell(new CodeCellModel({ id: this.id, cell: this.model.toJSON() }));
+    return new LabCell(
+      new CodeCellModel({ id: this.id, cell: this.model.toJSON() })
+    );
   }
 
   serialize(): any {

@@ -1,7 +1,7 @@
+import * as py from "@andrewhead/python-program-analysis";
 import { Cell, isCodeCellModel } from "@jupyterlab/cells";
 import { CodeMirrorEditor } from "@jupyterlab/codemirror";
 import { NotebookPanel } from "@jupyterlab/notebook";
-import * as py from "@msrvida/python-program-analysis";
 import CodeMirror from "codemirror";
 import { LabCell } from "../model/cell";
 

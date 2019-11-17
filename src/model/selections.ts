@@ -1,4 +1,4 @@
-import { Cell, Ref, SlicedExecution } from "@msrvida/python-program-analysis";
+import { Cell, Ref, SlicedExecution } from "@andrewhead/python-program-analysis";
 
 /**
  * A user's selection.

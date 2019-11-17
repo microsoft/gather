@@ -1,6 +1,6 @@
+import { ExecutionLogSlicer } from "@andrewhead/python-program-analysis";
 import { nbformat } from "@jupyterlab/coreutils";
 import { INotebookModel } from "@jupyterlab/notebook";
-import { ExecutionLogSlicer } from "@msrvida/python-program-analysis";
 import { JSONArray, JSONObject } from "@phosphor/coreutils";
 import { LogCell } from "../model/cell";
 import { EXECUTION_HISTORY_METADATA_KEY } from "./load";
@@ -34,21 +34,19 @@ export function storeHistory(
   for (let cellExecution of executionLog.cellExecutions) {
     let cell = cellExecution.cell;
     let cellJson = new Object(null) as CellJson;
-    if (cell instanceof LogCell) {
-      cellJson.id = cell.id;
-      cellJson.persistentId = cell.persistentId;
-      cellJson.executionEventId = cell.executionEventId;
-      cellJson.executionCount = cell.executionCount;
-      cellJson.hasError = cell.hasError;
-      cellJson.text = cell.text;
-      cellJson.outputs = cell.outputs;
+    cellJson.id = cell.id;
+    cellJson.persistentId = cell.persistentId;
+    cellJson.executionEventId = cell.executionEventId;
+    cellJson.executionCount = cell.executionCount;
+    cellJson.hasError = cell.hasError;
+    cellJson.text = cell.text;
+    cellJson.outputs = cell.outputs;
 
-      let cellExecutionJson = new Object(null) as CellExecutionJson;
-      cellExecutionJson.cell = cellJson;
-      cellExecutionJson.executionTime = cellExecution.executionTime.toISOString();
+    let cellExecutionJson = new Object(null) as CellExecutionJson;
+    cellExecutionJson.cell = cellJson;
+    cellExecutionJson.executionTime = cellExecution.executionTime.toISOString();
 
-      cellExecutionsJson.push(cellExecutionJson);
-    }
+    cellExecutionsJson.push(cellExecutionJson);
   }
 
   notebookModel.metadata.set(EXECUTION_HISTORY_METADATA_KEY, cellExecutionsJson);

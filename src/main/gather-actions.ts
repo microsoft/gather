@@ -1,3 +1,4 @@
+import { SlicedExecution } from "@andrewhead/python-program-analysis";
 import { Clipboard as JupyterClipboard } from "@jupyterlab/apputils";
 import { nbformat, PathExt } from "@jupyterlab/coreutils";
 import { IDocumentManager } from "@jupyterlab/docmanager";
@@ -5,11 +6,10 @@ import { IDocumentWidget } from "@jupyterlab/docregistry";
 import { FileEditor } from "@jupyterlab/fileeditor";
 import { INotebookTracker, NotebookPanel } from "@jupyterlab/notebook";
 import { Kernel } from "@jupyterlab/services";
-import { SlicedExecution } from "@msrvida/python-program-analysis";
 import { JSONObject } from "@phosphor/coreutils";
 import { Signal } from "@phosphor/signaling";
 import { OutputSelection } from "../model";
-import { LogCell } from "../model/cell";
+import { NbGatherCell } from "../model/cell";
 
 /**
  * Listens to changes to the clipboard.
@@ -161,7 +161,7 @@ export function getCellsJsonForSlice(
         slicedCell = slicedCell.deepCopy();
         slicedCell.text = cellSlice.textSliceLines;
       }
-      if (!(slicedCell instanceof LogCell)) {
+      if (!(slicedCell instanceof NbGatherCell)) {
         return undefined;
       }
       let cellJson = slicedCell.serialize();

@@ -1,5 +1,5 @@
+import { DataflowAnalyzer, ExecutionLogSlicer } from "@andrewhead/python-program-analysis";
 import { nbformat } from "@jupyterlab/coreutils";
-import { DataflowAnalyzer, ExecutionLogSlicer } from "@msrvida/python-program-analysis";
 import { GatherController, GatherModel } from "../model";
 import { LogCell } from "../model/cell";
 import { MockDocumentManager, MockNotebookTracker } from "./jupyter-mocks";

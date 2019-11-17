@@ -1,17 +1,33 @@
+import {
+  DataflowAnalyzer,
+  DataflowAnalyzerOptions,
+  ExecutionLogSlicer
+} from "@andrewhead/python-program-analysis";
 import { JupyterFrontEndPlugin, JupyterLab } from "@jupyterlab/application";
 import { ICommandPalette } from "@jupyterlab/apputils";
 import { ISettingRegistry } from "@jupyterlab/coreutils";
 import { IDocumentManager } from "@jupyterlab/docmanager";
 import { DocumentRegistry } from "@jupyterlab/docregistry";
-import { INotebookModel, INotebookTracker, NotebookPanel } from "@jupyterlab/notebook";
-import { DataflowAnalyzer, ExecutionLogSlicer, JsonSpecs } from "@msrvida/python-program-analysis";
+import {
+  INotebookModel,
+  INotebookTracker,
+  NotebookPanel
+} from "@jupyterlab/notebook";
 import { JSONExt, JSONObject } from "@phosphor/coreutils";
 import { DisposableDelegate, IDisposable } from "@phosphor/disposable";
 import { Widget } from "@phosphor/widgets";
 import "../../style/index.css";
-import { GatherController, GatherModel, GatherState, SliceSelection } from "../model";
+import {
+  GatherController,
+  GatherModel,
+  GatherState,
+  SliceSelection
+} from "../model";
 import { LogCell } from "../model/cell";
-import { GatherModelRegistry, getGatherModelForActiveNotebook } from "../model/gather-registry";
+import {
+  GatherModelRegistry,
+  getGatherModelForActiveNotebook
+} from "../model/gather-registry";
 import { CellChangeListener } from "../overlay/cell-listener";
 import { MarkerManager } from "../overlay/gather-markers";
 import { NotifactionExtension as NotificationExtension } from "../overlay/notification";
@@ -26,7 +42,12 @@ import { Clipboard } from "./gather-actions";
 const extension: JupyterFrontEndPlugin<void> = {
   activate: activateExtension,
   id: "gather:gatherPlugin",
-  requires: [ICommandPalette, INotebookTracker, IDocumentManager, ISettingRegistry],
+  requires: [
+    ICommandPalette,
+    INotebookTracker,
+    IDocumentManager,
+    ISettingRegistry
+  ],
   autoStart: true
 };
 
@@ -47,10 +68,10 @@ export class CodeGatheringExtension
     this._documentManager = documentManager;
     this._notebooks = notebooks;
     this._gatherModelRegistry = gatherModelRegistry;
-    settingRegistry.get("nbgather:plugin", "rules").then(data => {
+    settingRegistry.get("nbgather:plugin", "analysis").then(data => {
       if (JSONExt.isObject(data.composite)) {
-        let dataCompositeObject = data.composite as JSONObject;
-        this._sliceConfiguration = dataCompositeObject as JsonSpecs;
+        let dataCompositeObject = data.composite as unknown;
+        this._analysisOptions = dataCompositeObject as DataflowAnalyzerOptions;
       }
     });
   }
@@ -69,7 +90,7 @@ export class CodeGatheringExtension
        */
       let notebookModel = notebookContext.model;
       let executionLog = new ExecutionLogSlicer<LogCell>(
-        new DataflowAnalyzer(this._sliceConfiguration)
+        new DataflowAnalyzer(this._analysisOptions)
       );
       let gatherModel = new GatherModel(executionLog);
       new ExecutionLogger(gatherModel);
@@ -97,7 +118,10 @@ export class CodeGatheringExtension
   }
 
   gatherToClipboard() {
-    let gatherModel = getGatherModelForActiveNotebook(this._notebooks, this._gatherModelRegistry);
+    let gatherModel = getGatherModelForActiveNotebook(
+      this._notebooks,
+      this._gatherModelRegistry
+    );
     if (gatherModel == null) return;
     log("Button: Clicked gather to notebook with selections", {
       selectedDefs: gatherModel.selectedDefs,
@@ -110,7 +134,10 @@ export class CodeGatheringExtension
   }
 
   gatherToNotebook() {
-    let gatherModel = getGatherModelForActiveNotebook(this._notebooks, this._gatherModelRegistry);
+    let gatherModel = getGatherModelForActiveNotebook(
+      this._notebooks,
+      this._gatherModelRegistry
+    );
     if (gatherModel == null) return;
     if (gatherModel.selectedSlices.length >= 1) {
       log("Button: Clicked gather to notebook with selections", {
@@ -125,7 +152,10 @@ export class CodeGatheringExtension
   }
 
   gatherToScript() {
-    let gatherModel = getGatherModelForActiveNotebook(this._notebooks, this._gatherModelRegistry);
+    let gatherModel = getGatherModelForActiveNotebook(
+      this._notebooks,
+      this._gatherModelRegistry
+    );
     if (gatherModel == null) return;
     if (gatherModel.selectedSlices.length >= 1) {
       log("Button: Clicked gather to script with selections", {
@@ -140,7 +170,10 @@ export class CodeGatheringExtension
   }
 
   gatherRevisions() {
-    let gatherModel = getGatherModelForActiveNotebook(this._notebooks, this._gatherModelRegistry);
+    let gatherModel = getGatherModelForActiveNotebook(
+      this._notebooks,
+      this._gatherModelRegistry
+    );
     let revisionBrowser = new RevisionBrowser(gatherModel);
     this._app.shell.add(revisionBrowser, "main");
     this._app.shell.activateById(revisionBrowser.id);
@@ -150,11 +183,14 @@ export class CodeGatheringExtension
   private _app: JupyterLab;
   private _documentManager: IDocumentManager;
   private _notebooks: INotebookTracker;
-  private _sliceConfiguration: JsonSpecs;
+  private _analysisOptions: DataflowAnalyzerOptions;
   private _gatherModelRegistry: GatherModelRegistry;
 }
 
-function saveHistoryOnNotebookSave(notebook: NotebookPanel, gatherModel: GatherModel) {
+function saveHistoryOnNotebookSave(
+  notebook: NotebookPanel,
+  gatherModel: GatherModel
+) {
   notebook.context.saveState.connect((_, message) => {
     if (message == "started") {
       storeHistory(notebook.model, gatherModel.executionLog);
@@ -174,7 +210,9 @@ function activateExtension(
   const notificationExtension = new NotificationExtension();
   app.docRegistry.addWidgetExtension("Notebook", notificationExtension);
   Clipboard.getInstance().copied.connect(() => {
-    notificationExtension.showMessage("Copied cells to clipboard. Type 'V' to paste.");
+    notificationExtension.showMessage(
+      "Copied cells to clipboard. Type 'V' to paste."
+    );
   });
 
   let gatherModelRegistry = new GatherModelRegistry();
@@ -187,26 +225,46 @@ function activateExtension(
   );
   app.docRegistry.addWidgetExtension("Notebook", codeGatheringExtension);
 
-  function addCommand(command: string, label: string, execute: (options?: JSONObject) => void) {
+  function addCommand(
+    command: string,
+    label: string,
+    execute: (options?: JSONObject) => void
+  ) {
     app.commands.addCommand(command, { label, execute });
     palette.addItem({ command, category: "Clean Up" });
   }
 
-  addCommand("gather:gatherToClipboard", "Gather this result to the clipboard", () => {
-    codeGatheringExtension.gatherToClipboard();
-  });
+  addCommand(
+    "gather:gatherToClipboard",
+    "Gather this result to the clipboard",
+    () => {
+      codeGatheringExtension.gatherToClipboard();
+    }
+  );
 
-  addCommand("gather:gatherToNotebook", "Gather this result into a new notebook", () => {
-    codeGatheringExtension.gatherToNotebook();
-  });
+  addCommand(
+    "gather:gatherToNotebook",
+    "Gather this result into a new notebook",
+    () => {
+      codeGatheringExtension.gatherToNotebook();
+    }
+  );
 
-  addCommand("gather:gatherToScript", "Gather this result into a new script", () => {
-    codeGatheringExtension.gatherToScript();
-  });
+  addCommand(
+    "gather:gatherToScript",
+    "Gather this result into a new script",
+    () => {
+      codeGatheringExtension.gatherToScript();
+    }
+  );
 
-  addCommand("gather:gatherFromHistory", "Compare previous versions of this result", () => {
-    codeGatheringExtension.gatherRevisions();
-  });
+  addCommand(
+    "gather:gatherFromHistory",
+    "Compare previous versions of this result",
+    () => {
+      codeGatheringExtension.gatherRevisions();
+    }
+  );
 
   initLogger(settingRegistry);
   console.log("Gathering tools have been activated.");

@@ -1,6 +1,6 @@
+import { CellExecution } from "@andrewhead/python-program-analysis";
 import { nbformat } from "@jupyterlab/coreutils";
 import { INotebookModel } from "@jupyterlab/notebook";
-import { CellExecution } from "@msrvida/python-program-analysis";
 import { JSONArray, JSONExt, JSONObject } from "@phosphor/coreutils";
 import { log } from "util";
 import { GatherModel } from "../model";

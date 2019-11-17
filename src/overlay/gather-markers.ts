@@ -1,9 +1,9 @@
 /**
  * Helpers for marking up CodeMirror editors.
  */
+import * as py from "@andrewhead/python-program-analysis";
 import { ICodeCellModel } from "@jupyterlab/cells";
 import { NotebookPanel } from "@jupyterlab/notebook";
-import * as py from "@msrvida/python-program-analysis";
 import { PanelLayout, Widget } from "@phosphor/widgets";
 import { LineHandle } from "codemirror";
 /*
@@ -11,16 +11,7 @@ import { LineHandle } from "codemirror";
  * preferred user interface toolkit.
  */
 import * as $ from "jquery";
-import {
-  CellOutput,
-  DefSelection,
-  EditorDef,
-  GatherEventData,
-  GatherModel,
-  GatherModelEvent,
-  IGatherObserver,
-  OutputSelection
-} from "../model";
+import { CellOutput, DefSelection, EditorDef, GatherEventData, GatherModel, GatherModelEvent, IGatherObserver, OutputSelection } from "../model";
 import { LabCell } from "../model/cell";
 import { log } from "../util/log";
 import { NotebookElementFinder } from "./element-finder";

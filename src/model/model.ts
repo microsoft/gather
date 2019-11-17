@@ -1,9 +1,4 @@
-import {
-  Cell,
-  CellProgram,
-  ExecutionLogSlicer,
-  SlicedExecution
-} from "@msrvida/python-program-analysis";
+import { Cell, CellProgram, ExecutionLogSlicer, SlicedExecution } from "@andrewhead/python-program-analysis";
 import { log } from "../util/log";
 import { LogCell } from "./cell";
 import { CellOutput, DefSelection, EditorDef, OutputSelection, SliceSelection } from "./selections";
