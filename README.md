@@ -54,9 +54,9 @@ To run the development version of nbgather, run:
 
 ```bash
 git clone <this-repository-url>  # clone the repository
-jlpm install                     # download dependencies
+npm install                      # download dependencies
 jupyter labextension link .      # install this package in Jupyter Lab
-jlpm run watch                   # automatically recompile source code
+npm run watch                    # automatically recompile source code
 jupyter lab --watch              # launch Jupyter Lab, automatically re-load extension
 ```
 
@@ -74,46 +74,22 @@ a pull request, as described below:
 ### Formatting the code
 
 Before submitting a pull request with changed code, format the code
-files by running `jlpm run format:all`.
+files by running `npm run format:all`.
 
 ### Testing the code
-
-The tests assume you have Google Chrome installed on your
-computer. Because this plugin depends on Jupyter Lab and in
-turn on browser functionality, some of these tests need a
-browser to run in.
 
 To run the tests from the command line, call:
 
 ```bash
-jlpm run test
+npm run test
 ```
 
-Wait a few seconds while the code compiles, and then you
-should see the results of running the tests. The process
-will continue to live after the tests finish running---it
-will recompile and re-run the tests whenever the test code
-changes. Type Ctrl+C to abort the command at any time.
-
-Note that running tests with this command may interfere with
-you opening Chrome browsers. If that happens, cancel the
-command, open Chrome, and then restart the command.
-
-To debug the tests, call:
-
-```bash
-jlpm run test:debug
-```
-
-This will launch a Chrome window. Click the **DEBUG**
-button in the page that opens. Launch the Chrome developer
-tools (View -> Developer -> Developer Tools). The "Console"
-will show the test results, with one line for each test. In
-the "Sources" tab, you can open scripts using the file prompt
-(Cmd + P on Mac, Ctrl + P on Windows) and set breakpoints in
-the code. When you refresh the page, the tests will be run
-again, and the debugger will trigger when the first
-breakpoint is reached.
+The first time you run tests, they will take about a minute
+to finish. The second time, and all subsequent times, the
+tests will take only a few seconds. The first test run takes
+longer because the Jest test runner transpiles dependencies
+like the '@jupyterlab' libraries into a dialect of
+JavaScript it expects before running the tests.
 
 ### Troubleshooting
 

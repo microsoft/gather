@@ -6,7 +6,6 @@ module.exports = {
   setupFiles: ["./src/test/setup.js"],
 
   // Execute scripts within a DOM to allow JupyterLab code to run.
-  // The test environment that will be used for testing
   testEnvironment: "jsdom",
 
   testMatch: ["<rootDir>/src/test/**/*.test.ts"],
