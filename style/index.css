@@ -1,3 +1,6 @@
+/**
+ * STYLE VARIABLES
+ */
 :root {
   --brand-color4: #e3f2fd;
   --brand-color3: #bbdefb;
@@ -7,7 +10,29 @@
 }
 
 /**
- * Gather button
+ * ICONS
+ */
+/* From https://github.com/jupyterlab/jupyterlab/blob/master/packages/theme-light-extension/style/icons/jupyter/notebook.svg */
+.jp-Toolbar-gatherbutton-BookIcon {
+  background-image: url("icons/notebook.svg");
+}
+
+/* From https://github.com/jupyterlab/jupyterlab/blob/master/packages/theme-light-extension/style/icons/md/close.svg */
+.jp-Toolbar-gatherbutton-ClearIcon {
+  background-image: url("icons/clear.svg");
+}
+
+/* The following icons were generated from style/icons/icons.afdesign */
+.jp-Toolbar-gatherbutton-HistoryIcon {
+  background-image: url("icons/history.svg");
+}
+
+.jp-Toolbar-gatherbutton-CellsIcon {
+  background-image: url("icons/cells.svg");
+}
+
+/**
+ * TOOLBAR BUTTONS
  */
 .jp-Toolbar-gatherlabel {
   float: left;
@@ -51,29 +76,7 @@ span.jp-GatherLabel {
 }
 
 /**
- * Button icons.
- */
- /* From https://github.com/jupyterlab/jupyterlab/blob/master/packages/theme-light-extension/style/icons/jupyter/notebook.svg */
-.jp-Toolbar-gatherbutton-BookIcon {
-  background-image: url('icons/notebook.svg');
-}
-
-/* From https://github.com/jupyterlab/jupyterlab/blob/master/packages/theme-light-extension/style/icons/md/close.svg */
-.jp-Toolbar-gatherbutton-ClearIcon {
-  background-image: url('icons/clear.svg');
-}
-
-/* The following icons were generated from style/icons/icons.afdesign */
-.jp-Toolbar-gatherbutton-HistoryIcon {
-  background-image: url('icons/history.svg');
-}
-
-.jp-Toolbar-gatherbutton-CellsIcon {
-  background-image: url('icons/cells.svg');
-}
-
-/**
- * Clues for gatherable text.
+ * VARIABLE HIGHLIGHTS
  */
 .jp-InputArea-editor-nametext {
   font-weight: bold;
@@ -93,7 +96,7 @@ span.jp-GatherLabel {
 }
 
 .jp-InputArea-editor-nameline-selected:after {
-  content: '★';
+  content: "★";
   position: absolute;
   right: 14px;
   font-weight: bold;
@@ -108,7 +111,7 @@ div.CodeMirror-linebackground.jp-InputArea-editor-dependencyline {
 }
 
 /**
- * Clues for gatherable results.
+ * OUTPUT HIGHLIGHTS
  */
 .jp-OutputArea-highlighted {
   border: 1px solid var(--brand-color3);
@@ -126,6 +129,9 @@ div.CodeMirror-linebackground.jp-InputArea-editor-dependencyline {
   position: static;
 }
 
+/**
+ * WITHIN-CELL GATHER BUTTON
+ */
 .jp-OutputArea-highlighted:not(.jp-OutputArea-selected)
   .jp-OutputArea-gatherbutton {
   opacity: 0;
@@ -190,34 +196,16 @@ div.CodeMirror-linebackground.jp-InputArea-editor-dependencyline {
   font-weight: bold;
 }
 
-/* Gather tool buttons */
-.jp-OutputArea-child {
-  overflow: visible;
-}
-
-.jp-Notebook :not(.jp-mod-active).jp-Cell .jp-OutputPrompt {
-  /* XXX: Don't make the prompt translucent; make just its text translucent, so the gather buttons
-     can be opaque. */
-  color: rgba(0, 0, 0, 0.32);
-  opacity: 1;
-}
-
-/* Notifications */
+/**
+ * NOTIFICATIONS
+ */
 .jp-Toolbar-notification {
   margin-top: -2px;
 }
 
-/* General PhosphorJS rules */
-.p-mod-hidden {
-  display: none;
-}
-
-.jp-HistoryViewerIcon {
-  background-image: var(--jp-icon-history-viewer);
-  background-size: 100%;
-}
-
-/* Revision browser */
+/**
+ * VERSION BROWSER
+ */
 .jp-HistoryViewer {
   width: 100%;
   height: 100%;
@@ -318,12 +306,6 @@ div.CodeMirror-linebackground.jp-InputArea-editor-dependencyline {
   font-style: italic;
 }
 
-/*
-.jp-DiffedCell-editor-aftertext {
-  background-color: #fff1c6;
-}
-*/
-
 .jp-DiffedCell-editor-aftertext.jp-DiffedCell-editor-changedtext {
   font-weight: bold;
 }
@@ -339,7 +321,6 @@ div.CodeMirror-linebackground.jp-InputArea-editor-dependencyline {
 
 .jp-DiffedCell-editor-beforetext.jp-DiffedCell-editor-changedtext {
   font-weight: bold;
-  /* background-color: #99eaff; */
   background-color: #cbcbcb;
 }
 
@@ -388,7 +369,7 @@ div.CodeMirror-linebackground.jp-InputArea-editor-dependencyline {
 
 .jp-Revision-button span.jp-Revision-button-label {
   margin-left: 6px;
-  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
   white-space: nowrap;
 }
 
@@ -398,12 +379,9 @@ div.CodeMirror-linebackground.jp-InputArea-editor-dependencyline {
   overflow-x: hidden;
 }
 
-/* Output prompt (so we can show tool buttons) */
-.jp-OutputArea {
-  overflow-y: visible;
-  overflow: visible;
-}
-
-.jp-OutputPrompt {
-  overflow: visible;
+/**
+ * MISCELLANEOUS
+ */
+.p-mod-hidden {
+  display: none;
 }

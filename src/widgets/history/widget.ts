@@ -7,7 +7,7 @@ import { IHistoryModel } from "./model";
  */
 const HISTORY_VIEWER_CLASS = "jp-HistoryViewer";
 
-export const HISTORY_VIEWER_ICON_CLASS = "jp-HistoryViewerIcon";
+export const HISTORY_VIEWER_ICON_CLASS = "jp-Toolbar-gatherbutton-HistoryIcon";
 
 const REFERENCE_VERSION_CLASS = "jp-HistoryViewer-referenceversion";
 
