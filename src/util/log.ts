@@ -1,5 +1,5 @@
-import { ISettingRegistry } from '@jupyterlab/coreutils';
-import * as $ from 'jquery';
+import { ISettingRegistry } from "@jupyterlab/coreutils";
+// import * as $ from "jquery";
 
 let _settingRegistry: ISettingRegistry;
 
@@ -38,56 +38,57 @@ export function registerPollers(...pollers: IStatePoller[]) {
 export function log(eventName: string, data?: any) {
   data = data || {};
 
-  let LOG_ENDPOINT = 'https://clarence.eecs.berkeley.edu';
+  // let LOG_ENDPOINT = "https://clarence.eecs.berkeley.edu";
 
   // Prepare log data.
   let postData: any = {
     timestamp: new Date().toISOString(),
     event: eventName,
     data: data,
-    loggingId: undefined,
+    tag: undefined
   };
 
   if (_settingRegistry != undefined || _settingRegistry != null) {
     _settingRegistry
-      .get('nbgather:plugin', 'loggingEnabled')
+      .get("nbgather:plugin", "enableLogging")
       .then(loggingEnabled => {
         if (
-          typeof loggingEnabled.composite === 'boolean' &&
+          typeof loggingEnabled.composite === "boolean" &&
           loggingEnabled.composite
         ) {
-          _settingRegistry
-            .get('nbgather:plugin', 'loggingId')
-            .then(loggingId => {
-              if (typeof loggingId.composite === 'string') {
-                postData.loggingId = loggingId.composite as string;
+          _settingRegistry.get("nbgather:plugin", "loggingTag").then(tag => {
+            if (typeof tag.composite === "string") {
+              postData.tag = tag.composite as string;
 
-                // Poll for additional data from each state poller.
-                for (let poller of _statePollers) {
-                  let pollData = poller.poll();
-                  for (let k in pollData) {
-                    if (pollData.hasOwnProperty(k)) {
-                      postData[k] = pollData[k];
-                    }
+              // Poll for additional data from each state poller.
+              for (let poller of _statePollers) {
+                let pollData = poller.poll();
+                for (let k in pollData) {
+                  if (pollData.hasOwnProperty(k)) {
+                    postData[k] = pollData[k];
                   }
                 }
-
-                // If there is any sensitive data to be logged, it should first be cleaned through a
-                // `toJSON` method defined on a class, or manually before passing it into this method.
-                // Earlier, we used the replacer argument to JSON.stringify, but it takes too much time
-                // to apply replacers to every value in the resulting JSON.
-                postData.data = JSON.stringify(postData.data);
-
-                // Submit data to logger endpoint.
-                $.ajax(LOG_ENDPOINT + '/log', {
-                  data: postData,
-                  method: 'POST',
-                  error: (_: any, textStatus: string, errorThrown: string) => {
-                    console.error('Failed to log', textStatus, errorThrown);
-                  },
-                });
               }
-            });
+
+              // If there is any sensitive data to be logged, it should first be cleaned through a
+              // `toJSON` method defined on a class, or manually before passing it into this method.
+              // Earlier, we used the replacer argument to JSON.stringify, but it takes too much time
+              // to apply replacers to every value in the resulting JSON.
+              postData.data = JSON.stringify(postData.data);
+
+              // Submit data to logger endpoint.
+              // Disabled in the near term, until a new server is launched.
+              /*
+              $.ajax(LOG_ENDPOINT + "/log", {
+                data: postData,
+                method: "POST",
+                error: (_: any, textStatus: string, errorThrown: string) => {
+                  console.error("Failed to log", textStatus, errorThrown);
+                }
+              });
+              */
+            }
+          });
         }
       });
   }

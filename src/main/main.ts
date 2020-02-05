@@ -1,7 +1,8 @@
 import {
   DataflowAnalyzer,
   DataflowAnalyzerOptions,
-  ExecutionLogSlicer
+  ExecutionLogSlicer,
+  JsonSpecs
 } from "@andrewhead/python-program-analysis";
 import { JupyterFrontEndPlugin, JupyterLab } from "@jupyterlab/application";
 import { ICommandPalette } from "@jupyterlab/apputils";
@@ -68,12 +69,23 @@ export class CodeGatheringExtension
     this._documentManager = documentManager;
     this._notebooks = notebooks;
     this._gatherModelRegistry = gatherModelRegistry;
-    settingRegistry.get("nbgather:plugin", "analysis").then(data => {
-      if (JSONExt.isObject(data.composite)) {
-        let dataCompositeObject = data.composite as unknown;
-        this._analysisOptions = dataCompositeObject as DataflowAnalyzerOptions;
-      }
-    });
+    settingRegistry
+      .get("nbgather:plugin", "loadDefaultModuleMap")
+      .then(data => {
+        if (JSONExt.isPrimitive(data.composite)) {
+          let loadDefaultModuleMap = data.composite as boolean;
+          settingRegistry.get("nbgather:plugin", "moduleMap").then(data => {
+            if (JSONExt.isObject(data)) {
+              this._analysisOptions = {
+                symbolTable: {
+                  loadDefaultModuleMap,
+                  moduleMap: data.composite as JsonSpecs
+                }
+              };
+            }
+          });
+        }
+      });
   }
 
   createNew(

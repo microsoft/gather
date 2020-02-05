@@ -1,47 +1,32 @@
 {
-  "jupyter.lab.setting-icon-label": "Code Gathering Tools",
-  "title": "Gather",
-  "description": "Settings for \"nbgather\" plugin.",
+  "jupyter.lab.setting-icon-label": "nbgather",
+  "title": "ngbather",
+  "description": "Settings for nbgather.",
   "properties": {
-    "loggingEnabled": {
-      "title": "Share Interaction Logging Data",
-      "description": "Whether to report interaction logging data. If this is set to true, interaction telemetry data from your notebook will be uploaded to a research server. Log data does not include any of your code or data, though it does include summary data about your notebook (e.g., the number of cells and their execution counts). Should be off by default.",
+    "enableLogging": {
+      "title": "Logging: Enable Optional Logging (OFF by default, opt-in only)",
+      "description": "Whether this plugin should log your interactions. Logs include only anonymized notebook interaction events, and do not include code or data.",
       "type": ["boolean"],
       "default": false
     },
-    "loggingId": {
-      "title": "Unique Logging ID",
-      "description": "Only used if you set 'Share Interaction Logging Data' to true. Then this ID is associated with all events logged from your notebook, so that all of events from the same user can be associated together.",
+    "loggingTag": {
+      "title": "Logging: Tag (NULL by default)",
+      "description": "If logging is enabled, all log events will be uploaded with this tag.",
       "type": ["string", "null"],
       "default": null
     },
-    "analysis": {
-      "title": "Analysis options",
-      "description": "Rules for fine-tuning data-flow analysis. This is most useful for making gather more precise for external APIs. To define specs for how analyze external APIs, define the \"analysis.symbolTable.moduleMap\" property, following instructions at https://github.com/andrewhead/python-program-analysis#api-specs",
-      "type": "object",
-      "properties": {
-        "symbolTable": {
-          "description": "Options for initializing the symbol table.",
-          "properties": {
-            "loadDefaultModuleMap": {
-              "description": "Whether to load the default module map for the dataflow analyzer. Includes functions from\ncommon data analysis modules like 'matplotlib' and 'pandas'.",
-              "type": "boolean"
-            },
-            "moduleMap": {
-              "$ref": "#/definitions/JsonSpecs",
-              "description": "Extend the module map with this variable if you want to specify rules for the how functions\nfrom certain modules affect their arguments, to help the slicer be more precise. If\n'loadDefaultModuleMap' is true, then this module map will be merged with the default module\nmap using the lodash 'merge' function."
-            }
-          },
-          "type": "object"
-        }
-      },
-      "additionalProperties": false,
-      "default": {
-        "symbolTable": {
-          "loadDefaultModuleMap": true,
-          "moduleMap": {}
-        }
-      }
+    "loadDefaultModuleMap": {
+      "title": "Load Default Module Map",
+      "description": "If a 'moduleMap' is defined, merge the 'moduleMap' from user settings with the default module map from the 'python-program-analysis' npm module. If 'false', overwrite defaults.",
+      "type": "boolean",
+      "default": true
+    },
+    "moduleMap": {
+      "title": "Module Map for Program Slicing",
+      "description": "Define rules to help nbgather decide how to gather code in cases where it can't infer whether lines should be gathered or not. Valid values for this property are described at https://github.com/andrewhead/python-program-analysis#api-specs. If you change this option, you will need to refresh this browser tab before nbgather loads the new settings.",
+      "$ref": "#/definitions/JsonSpecs",
+      "default": {},
+      "additionalProperties": false
     }
   },
   "additionalProperties": false,

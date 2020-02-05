@@ -1,7 +1,11 @@
 import { PanelLayout, Widget } from "@phosphor/widgets";
 import { GatherModel, GatherState } from "../model";
 import { log } from "../util/log";
-import { buildHistoryModel, HistoryViewer } from "../widgets/history";
+import {
+  buildHistoryModel,
+  HistoryViewer,
+  HISTORY_VIEWER_ICON_CLASS
+} from "../widgets/history";
 
 /**
  * Class for the revision browser widget.
@@ -18,8 +22,8 @@ export class RevisionBrowser extends Widget {
   constructor(gatherModel: GatherModel) {
     super();
     this.id = "revision-browser";
-    this.title.label = "Revision browser";
-    this.title.icon = "jp-HistoryIcon";
+    this.title.label = "Version Browser";
+    this.title.icon = HISTORY_VIEWER_ICON_CLASS;
     this.title.closable = true;
     this.addClass(REVISION_BROWSER_CLASS);
 
@@ -38,7 +42,9 @@ export class RevisionBrowser extends Widget {
     } else if (outputSelections.length > 0) {
       selectedCell = outputSelections[0].cell;
     }
-    let slices = model.executionLog.sliceAllExecutions(selectedCell.persistentId);
+    let slices = model.executionLog.sliceAllExecutions(
+      selectedCell.persistentId
+    );
     log("Bringing up the revision browser for selection", {
       cellExecutionEventId: selectedCell.executionEventId,
       slices,
@@ -50,7 +56,12 @@ export class RevisionBrowser extends Widget {
        * Only show output if the selection was output.
        */
       let includeOutput = model.selectedOutputs.length >= 1;
-      let historyModel = buildHistoryModel(model, selectedCell.persistentId, slices, includeOutput);
+      let historyModel = buildHistoryModel(
+        model,
+        selectedCell.persistentId,
+        slices,
+        includeOutput
+      );
       let historyViewer = new HistoryViewer({
         model: historyModel
       });
