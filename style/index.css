@@ -196,6 +196,26 @@ div.CodeMirror-linebackground.jp-InputArea-editor-dependencyline {
   font-weight: bold;
 }
 
+.jp-OutputArea-child {
+  overflow: visible;
+}
+
+.jp-Notebook :not(.jp-mod-active).jp-Cell .jp-OutputPrompt {
+  /* XXX: Don't make the prompt translucent; make just its text translucent, so the gather buttons	
+     can be opaque. */
+  color: rgba(0, 0, 0, 0.32);
+  opacity: 1;
+}
+
+.jp-OutputArea {
+  overflow-y: visible;
+  overflow: visible;
+}
+
+.jp-OutputPrompt {
+  overflow: visible;
+}
+
 /**
  * NOTIFICATIONS
  */
