@@ -1,1 +1,1 @@
-jupyter labextension install --debug nbgather@beta
+jupyter labextension install nbgather
