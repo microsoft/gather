@@ -1,11 +1,16 @@
-import { nbformat } from '@jupyterlab/coreutils';
-import { CellSlice, Cell, SlicedExecution } from '@msrvida/python-program-analysis';
-import { GatherModel } from '../../model';
-import { CodeVersionModel } from '../codeversion/model';
-import { RevisionModel } from '../revision/model';
-import { SlicedCellModel } from '../slicedcell/model';
-import { computeTextDiff } from './diff';
-import { HistoryModel } from './model';
+import {
+  Cell,
+  CellSlice,
+  SlicedExecution
+} from "@andrewhead/python-program-analysis";
+import { nbformat } from "@jupyterlab/coreutils";
+import { GatherModel } from "../../model";
+import { NbGatherCell } from "../../model/cell";
+import { CodeVersionModel } from "../codeversion/model";
+import { RevisionModel } from "../revision/model";
+import { SlicedCellModel } from "../slicedcell/model";
+import { computeTextDiff } from "./diff";
+import { HistoryModel } from "./model";
 
 /**
  * Build a history model of how a cell was computed across notebook snapshots.
@@ -35,7 +40,7 @@ export function buildHistoryModel(
     executionVersion.cellSlices.forEach(function(cellSlice) {
       let cell = cellSlice.cell;
       let recentCellVersion = latestCellVersions[cell.persistentId];
-      let latestText: string = '';
+      let latestText: string = "";
       if (recentCellVersion) {
         latestText = recentCellVersion.textSliceLines;
       }
@@ -47,7 +52,7 @@ export function buildHistoryModel(
         executionEventId: cell.executionEventId,
         executionCount: cell.executionCount,
         sourceCode: diff.text,
-        diff: diff,
+        diff: diff
       });
       slicedCellModels.push(slicedCell);
     });
@@ -62,7 +67,11 @@ export function buildHistoryModel(
             selectedCell = cellModel;
           }
         });
-      if (selectedCell && selectedCell.outputs) {
+      if (
+        selectedCell &&
+        selectedCell instanceof NbGatherCell &&
+        selectedCell.outputs
+      ) {
         output = selectedCell.outputs;
       }
     }
@@ -70,7 +79,7 @@ export function buildHistoryModel(
     let isLatestVersion = versionIndex == executionVersions.length - 1;
     let codeVersionModel: CodeVersionModel = new CodeVersionModel({
       cells: slicedCellModels,
-      isLatest: isLatestVersion,
+      isLatest: isLatestVersion
     });
     let revisionModel = new RevisionModel({
       versionIndex: versionIndex + 1, // Version index should start at 1
@@ -79,7 +88,7 @@ export function buildHistoryModel(
       gatherModel: gatherModel,
       output: output,
       isLatest: isLatestVersion,
-      timeCreated: executionVersion.executionTime,
+      timeCreated: executionVersion.executionTime
     });
     revisions.push(revisionModel);
   });

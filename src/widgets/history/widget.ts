@@ -1,15 +1,15 @@
-import { PanelLayout, Widget } from '@phosphor/widgets';
-import { Revision } from '../revision';
-import { IHistoryModel } from './model';
+import { PanelLayout, Widget } from "@phosphor/widgets";
+import { Revision } from "../revision";
+import { IHistoryModel } from "./model";
 
 /**
  * The class name added to history viewer widgets
  */
-const HISTORY_VIEWER_CLASS = 'jp-HistoryViewer';
+const HISTORY_VIEWER_CLASS = "jp-HistoryViewer";
 
-const HISTORY_VIEWER_ICON_CLASS = 'jp-HistoryViewerIcon';
+export const HISTORY_VIEWER_ICON_CLASS = "jp-Toolbar-gatherbutton-HistoryIcon";
 
-const REFERENCE_VERSION_CLASS = 'jp-HistoryViewer-referenceversion';
+const REFERENCE_VERSION_CLASS = "jp-HistoryViewer-referenceversion";
 
 /**
  * A widget for showing the history of a result and how it was produced.
@@ -22,8 +22,8 @@ export class HistoryViewer extends Widget {
     super();
 
     this.addClass(HISTORY_VIEWER_CLASS);
-    this.id = 'livecells-revision-browser';
-    this.title.label = 'Revision Browser';
+    this.id = "livecells-revision-browser";
+    this.title.label = "Version Browser";
     this.title.icon = HISTORY_VIEWER_ICON_CLASS;
     this.title.closable = true;
 
@@ -36,7 +36,7 @@ export class HistoryViewer extends Widget {
     const now = new Date();
     let referenceVersion = new Revision({
       model: this._model.revisions[this._model.revisions.length - 1],
-      now: now,
+      now: now
     });
     referenceVersion.addClass(REFERENCE_VERSION_CLASS);
     layout.addWidget(referenceVersion);
@@ -48,7 +48,7 @@ export class HistoryViewer extends Widget {
         layout.addWidget(
           new Revision({
             model: revisionModel,
-            now: now,
+            now: now
           })
         );
       }

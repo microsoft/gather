@@ -1,9 +1,9 @@
-import * as py from '@msrvida/python-program-analysis';
-import { Cell, isCodeCellModel } from '@jupyterlab/cells';
-import { CodeMirrorEditor } from '@jupyterlab/codemirror';
-import { NotebookPanel } from '@jupyterlab/notebook';
-import CodeMirror from 'codemirror';
-import { LabCell } from '../model/labcell';
+import * as py from "@andrewhead/python-program-analysis";
+import { Cell, isCodeCellModel } from "@jupyterlab/cells";
+import { CodeMirrorEditor } from "@jupyterlab/codemirror";
+import { NotebookPanel } from "@jupyterlab/notebook";
+import CodeMirror from "codemirror";
+import { LabCell } from "../model/cell";
 
 /**
  * Finds the HTML elements in a notebook corresponding to a cell. Useful for looking up HTML
@@ -56,7 +56,7 @@ export class NotebookElementFinder {
       return outputElements;
     }
     let cellElement = cellWidget.node;
-    var outputNodes = cellElement.querySelectorAll('.jp-OutputArea-output');
+    var outputNodes = cellElement.querySelectorAll(".jp-OutputArea-output");
     for (var i = 0; i < outputNodes.length; i++) {
       if (outputNodes[i] instanceof HTMLElement) {
         outputElements.push(outputNodes[i] as HTMLElement);

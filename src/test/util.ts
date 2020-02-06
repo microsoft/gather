@@ -1,99 +1,24 @@
-import { ICodeCellModel } from '@jupyterlab/cells';
-import { nbformat } from '@jupyterlab/coreutils';
-import { IObservableString } from '@jupyterlab/observables';
-import { IOutputAreaModel } from '@jupyterlab/outputarea';
-import { IOutputModel } from '@jupyterlab/rendermime';
+import { DataflowAnalyzer, ExecutionLogSlicer } from "@andrewhead/python-program-analysis";
+import { nbformat } from "@jupyterlab/coreutils";
+import { GatherController, GatherModel } from "../model";
+import { LogCell } from "../model/cell";
+import { MockDocumentManager, MockNotebookTracker } from "./jupyter-mocks";
 
-/**
- * IMPLEMENTATIONS OF JUPYTER INTERFACES.
- * Due to limitations of Mocha, using the actual implementations of these interfaces from the
- * Jupyter code (e.g., CodeCellModel) causes the test to crash, as it requires globals that
- * are usually only available in the browser (e.g., document, window, Element).
- * These implementations let us use Jupyter types for objects under test.
- */
-export class SimpleObservableString implements IObservableString {
-  constructor(value: string) {
-    this.text = value;
-  }
-  type: 'String';
-  changed: null;
-  text: string;
-  insert: null;
-  remove: null;
-  clear: null;
-  dispose: null;
-  isDisposed: false;
+export function initGatherModelForTests(createController: boolean = false) {
+  const dataflowAnalyzer = new DataflowAnalyzer();
+  const logSlicer = new ExecutionLogSlicer<LogCell>(dataflowAnalyzer);
+  const model = new GatherModel(logSlicer);
+  return { model, logSlicer };
 }
 
-export class SimpleOutputAreaModel implements IOutputAreaModel {
-  constructor(...outputs: IOutputModel[]) {
-    this._outputs = outputs;
-  }
-
-  get(index: number): IOutputModel {
-    return this._outputs[index];
-  }
-
-  get length(): number {
-    return this._outputs.length;
-  }
-
-  _outputs: IOutputModel[];
-  stateChanged: null;
-  changed: null;
-  trusted: true;
-  contentFactory: null;
-  add: null;
-  set: null;
-  clear: null;
-  fromJSON: null;
-  toJSON: null;
-  isDisposed: false;
-  dispose: null;
+export function initGatherController(model: GatherModel) {
+  return new GatherController(model, new MockDocumentManager(), new MockNotebookTracker());
 }
 
-export class SimpleOutputModel implements IOutputModel {
-  constructor(type: string, data?: nbformat.IOutput) {
-    this.type = type;
-    this.data = data;
-  }
-  changed: null;
-  type: string;
-  executionCount: null;
-  trusted: true;
-  dispose: null;
-  toJSON: null;
-  data: nbformat.IOutput;
-  metadata: {};
-  setData: null;
-}
-
-export class SimpleCodeCellModel implements ICodeCellModel {
-  constructor(
-    id: string,
-    executionCount: number,
-    text: string,
-    outputs?: IOutputAreaModel
-  ) {
-    this.id = id;
-    this.executionCount = executionCount;
-    this.value = new SimpleObservableString(text);
-    this.outputs = outputs;
-  }
-  type: 'code';
-  executionCount: number;
-  outputs: IOutputAreaModel;
-  id: string;
-  contentChanged: null;
-  stateChanged: null;
-  trusted: true;
-  metadata: null;
-  toJSON: null;
-  mimeTypeChanged: null;
-  value: IObservableString;
-  mimeType: null;
-  selections: null;
-  modelDB: null;
-  isDisposed: false;
-  dispose: null;
+export function stdout(text: string): nbformat.IOutput {
+  return {
+    name: "stdout",
+    output_type: "stream",
+    text: "text"
+  };
 }

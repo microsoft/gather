@@ -1,79 +1,70 @@
 /**
  * Helpers for marking up CodeMirror editors.
  */
-import { NotebookPanel } from '@jupyterlab/notebook';
-import { LineHandle } from 'codemirror';
-import * as py from '@msrvida/python-program-analysis';
-import { log } from '../util/log';
-import {
-  CellOutput,
-  DefSelection,
-  EditorDef,
-  GatherEventData,
-  GatherModel,
-  GatherModelEvent,
-  IGatherObserver,
-  OutputSelection,
-} from '../model';
-import { NotebookElementFinder } from './element-finder';
-import { ICodeCellModel } from '@jupyterlab/cells';
-import { Widget, PanelLayout } from '@phosphor/widgets';
+import * as py from "@andrewhead/python-program-analysis";
+import { ICodeCellModel } from "@jupyterlab/cells";
+import { NotebookPanel } from "@jupyterlab/notebook";
+import { PanelLayout, Widget } from "@phosphor/widgets";
+import { LineHandle } from "codemirror";
 /*
  * jQuery only used for dynamically computing element height. Use Phosphor whenever possible as the
  * preferred user interface toolkit.
  */
-import * as $ from 'jquery';
-import { LabCell } from '../model/labcell';
+import * as $ from "jquery";
+import { CellOutput, DefSelection, EditorDef, GatherEventData, GatherModel, GatherModelEvent, IGatherObserver, OutputSelection } from "../model";
+import { LabCell } from "../model/cell";
+import { log } from "../util/log";
+import { NotebookElementFinder } from "./element-finder";
 
 /**
  * Class for a highlighted, clickable output.
  */
-const OUTPUT_HIGHLIGHTED_CLASS = 'jp-OutputArea-highlighted';
+const OUTPUT_HIGHLIGHTED_CLASS = "jp-OutputArea-highlighted";
 
 /**
  * Class for parent elements of a gather button in an output area.
  */
-const GATHER_BUTTON_PARENT_CLASS = 'jp-OutputArea-gather-button-parent';
+const GATHER_BUTTON_PARENT_CLASS = "jp-OutputArea-gather-button-parent";
 
 /**
  * Class for a selected output.
  */
-const OUTPUT_SELECTED_CLASS = 'jp-OutputArea-selected';
+const OUTPUT_SELECTED_CLASS = "jp-OutputArea-selected";
 
 /**
  * Class for a button that lets you gather an output.
  */
-const OUTPUT_GATHER_BUTTON_CLASS = 'jp-OutputArea-gatherbutton';
+const OUTPUT_GATHER_BUTTON_CLASS = "jp-OutputArea-gatherbutton";
 
 /**
  * Class for a label on a gather button on an output.
  */
-const OUTPUT_GATHER_LABEL_CLASS = 'jp-OutputArea-gatherlabel';
+const OUTPUT_GATHER_LABEL_CLASS = "jp-OutputArea-gatherlabel";
 
 /**
  * Class for variable definition text.
  */
-const DEFINITION_CLASS = 'jp-InputArea-editor-nametext';
+const DEFINITION_CLASS = "jp-InputArea-editor-nametext";
 
 /**
  * Class for selected variable definition text.
  */
-const DEFINITION_SELECTED_CLASS = 'jp-InputArea-editor-nametext-selected';
+const DEFINITION_SELECTED_CLASS = "jp-InputArea-editor-nametext-selected";
 
 /**
  * Class for a line holding a variable definition.
  */
-const DEFINITION_LINE_SELECTED_CLASS = 'jp-InputArea-editor-nameline-selected';
+const DEFINITION_LINE_SELECTED_CLASS = "jp-InputArea-editor-nameline-selected";
 
 /**
  * Class for a line with a data dependency.
  */
-const DEPENDENCY_CLASS = 'jp-InputArea-editor-dependencyline';
+const DEPENDENCY_CLASS = "jp-InputArea-editor-dependencyline";
 
 /**
  * Class for a line with a data dependency in a dirty cell.
  */
-const DIRTY_DEPENDENCY_CLASS = 'jp-InputArea-editor-dirtydependencyline';
+const DIRTY_DEPENDENCY_CLASS = "jp-InputArea-editor-dirtydependencyline";
 
 /**
  * Clear existing selections in the window.
@@ -81,7 +72,7 @@ const DIRTY_DEPENDENCY_CLASS = 'jp-InputArea-editor-dirtydependencyline';
 function clearSelectionsInWindow() {
   if (window && window.getSelection) {
     window.getSelection().removeAllRanges();
-  } else if (document.hasOwnProperty('selection')) {
+  } else if (document.hasOwnProperty("selection")) {
     (document as any).selection.empty();
   }
 }
@@ -109,7 +100,7 @@ export class MarkerManager implements IGatherObserver {
      * XXX(andrewhead): Sometimes in Chrome or Edge, "click" events get dropped when the click
      * occurs on the cell. Mouseup doesn't, so we use that here.
      */
-    notebook.content.node.addEventListener('mouseup', (event: MouseEvent) => {
+    notebook.content.node.addEventListener("mouseup", (event: MouseEvent) => {
       this.handleClick(event);
     });
   }
@@ -126,11 +117,7 @@ export class MarkerManager implements IGatherObserver {
   /**
    * Listen for changes to the gather model.
    */
-  onModelChange(
-    eventType: GatherModelEvent,
-    eventData: GatherEventData,
-    model: GatherModel
-  ) {
+  onModelChange(eventType: GatherModelEvent, eventData: GatherEventData, model: GatherModel) {
     // When a cell is executed, search for definitions and output.
     if (eventType == GatherModelEvent.CELL_EXECUTION_LOGGED) {
       let cell = eventData as py.Cell;
@@ -144,10 +131,7 @@ export class MarkerManager implements IGatherObserver {
     }
 
     // When a cell is deleted or edited, delete all of its def markers.
-    if (
-      eventType == GatherModelEvent.CELL_DELETED ||
-      eventType == GatherModelEvent.CELL_EDITED
-    ) {
+    if (eventType == GatherModelEvent.CELL_DELETED || eventType == GatherModelEvent.CELL_EDITED) {
       let cell = eventData as py.Cell;
       this._updateDependenceHighlightsForCell(cell);
       this.clearSelectablesForCell(cell);
@@ -165,9 +149,7 @@ export class MarkerManager implements IGatherObserver {
       for (let i = this._defMarkers.length - 1; i >= 0; i--) {
         let defMarker = this._defMarkers[i];
         if (defMarker.def == editorDef.def) {
-          let defsToDeselect = this._model.selectedDefs.filter(
-            d => d.editorDef == editorDef
-          );
+          let defsToDeselect = this._model.selectedDefs.filter(d => d.editorDef == editorDef);
           for (let defToDeselect of defsToDeselect) {
             this._model.deselectDef(defToDeselect);
           }
@@ -188,13 +170,10 @@ export class MarkerManager implements IGatherObserver {
       let output = eventData as CellOutput;
       for (let i = this._outputMarkers.length - 1; i >= 0; i--) {
         let outputMarker = this._outputMarkers[i];
-        if (
-          outputMarker.cell == output.cell &&
-          outputMarker.outputIndex == output.outputIndex
-        ) {
+        if (outputMarker.cell == output.cell && outputMarker.outputIndex == output.outputIndex) {
           this._model.deselectOutput({
             cell: output.cell,
-            outputIndex: output.outputIndex,
+            outputIndex: output.outputIndex
           });
           outputMarker.destroy();
           this._outputMarkers.splice(i, 1);
@@ -209,7 +188,7 @@ export class MarkerManager implements IGatherObserver {
       let def = defSelection.editorDef.def;
       let lineHandle = editor.addLineClass(
         def.location.first_line - 1,
-        'background',
+        "background",
         DEFINITION_LINE_SELECTED_CLASS
       );
       this._defLineHandles.push({ def: def, lineHandle: lineHandle });
@@ -233,7 +212,7 @@ export class MarkerManager implements IGatherObserver {
         if (defLineHandle.def == editorDef.def) {
           editorDef.editor.removeLineClass(
             defLineHandle.lineHandle,
-            'background',
+            "background",
             DEFINITION_LINE_SELECTED_CLASS
           );
         }
@@ -247,8 +226,7 @@ export class MarkerManager implements IGatherObserver {
         .filter(marker => {
           return (
             marker.outputIndex == outputSelection.outputIndex &&
-            marker.cell.executionEventId ==
-              outputSelection.cell.executionEventId
+            marker.cell.executionEventId == outputSelection.cell.executionEventId
           );
         })
         .forEach(marker => marker.deselect());
@@ -279,14 +257,9 @@ export class MarkerManager implements IGatherObserver {
     );
     let defSelection = new DefSelection({
       editorDef: editorDef,
-      cell: editorDef.cell,
+      cell: editorDef.cell
     });
-    let clickHandler = (
-      _: py.Cell,
-      __: py.Location,
-      selected: boolean,
-      event: MouseEvent
-    ) => {
+    let clickHandler = (_: py.Cell, __: py.Location, selected: boolean, event: MouseEvent) => {
       if (selected) {
         if (!event.shiftKey) {
           this._model.deselectAll();
@@ -297,15 +270,7 @@ export class MarkerManager implements IGatherObserver {
       }
     };
     this._defMarkers.push(
-      new DefMarker(
-        marker,
-        editor,
-        def,
-        def.location,
-        def.statement,
-        editorDef.cell,
-        clickHandler
-      )
+      new DefMarker(marker, editor, def, def.location, def.node, editorDef.cell, clickHandler)
     );
   }
 
@@ -359,7 +324,7 @@ export class MarkerManager implements IGatherObserver {
         }
       }
     }
-    log('Highlighted definitions', { numActive: this._defMarkers.length });
+    log("Highlighted definitions", { numActive: this._defMarkers.length });
   }
 
   /**
@@ -371,7 +336,7 @@ export class MarkerManager implements IGatherObserver {
       let output = { cell: cell, element: outputElement, outputIndex: i };
       this._model.addOutput(output);
     }
-    log('Highlighted outputs', { numActive: this._outputMarkers.length });
+    log("Highlighted outputs", { numActive: this._outputMarkers.length });
   }
 
   /**
@@ -397,17 +362,11 @@ export class MarkerManager implements IGatherObserver {
               lineNumber++
             ) {
               numLines += 1;
-              let styleClass = liveCell.dirty
-                ? DIRTY_DEPENDENCY_CLASS
-                : DEPENDENCY_CLASS;
-              let lineHandle = editor.addLineClass(
-                lineNumber,
-                'background',
-                styleClass
-              );
+              let styleClass = liveCell.dirty ? DIRTY_DEPENDENCY_CLASS : DEPENDENCY_CLASS;
+              let lineHandle = editor.addLineClass(lineNumber, "background", styleClass);
               this._dependencyLineMarkers.push({
                 editor: editor,
-                lineHandle: lineHandle,
+                lineHandle: lineHandle
               });
             }
           });
@@ -415,15 +374,15 @@ export class MarkerManager implements IGatherObserver {
         });
       }
     });
-    log('Added lines for defs (may be overlapping)', { defLines });
+    log("Added lines for defs (may be overlapping)", { defLines });
   }
 
   private _clearDependencyMarkersForLine(
     editor: CodeMirror.Editor,
     lineHandle: CodeMirror.LineHandle
   ) {
-    editor.removeLineClass(lineHandle, 'background', DEPENDENCY_CLASS);
-    editor.removeLineClass(lineHandle, 'background', DIRTY_DEPENDENCY_CLASS);
+    editor.removeLineClass(lineHandle, "background", DEPENDENCY_CLASS);
+    editor.removeLineClass(lineHandle, "background", DIRTY_DEPENDENCY_CLASS);
   }
 
   private _updateDependenceHighlightsForCell(cell: py.Cell) {
@@ -434,15 +393,13 @@ export class MarkerManager implements IGatherObserver {
       .filter(marker => marker.editor == editor)
       .forEach(marker => {
         this._clearDependencyMarkersForLine(marker.editor, marker.lineHandle);
-        let styleClass = liveCell.dirty
-          ? DIRTY_DEPENDENCY_CLASS
-          : DEPENDENCY_CLASS;
-        marker.editor.addLineClass(marker.lineHandle, 'background', styleClass);
+        let styleClass = liveCell.dirty ? DIRTY_DEPENDENCY_CLASS : DEPENDENCY_CLASS;
+        marker.editor.addLineClass(marker.lineHandle, "background", styleClass);
       });
   }
 
   private _clearDependencyLineMarkers() {
-    log('Cleared all dependency line markers');
+    log("Cleared all dependency line markers");
     this._dependencyLineMarkers.forEach(marker => {
       this._clearDependencyMarkersForLine(marker.editor, marker.lineHandle);
     });
@@ -489,20 +446,20 @@ class OutputMarker {
         this._toggleSelected();
         this._onToggle(this._selected, event);
       }
-      log('Clicked on output area', {
+      log("Clicked on output area", {
         outputIndex,
         cell,
-        toggledOn: this._selected,
+        toggledOn: this._selected
       });
     };
-    this._element.addEventListener('click', this._clickListener);
+    this._element.addEventListener("click", this._clickListener);
   }
 
   private _relaxParentOverflowVisibility() {
     let parentElement = this._element;
     while (parent != null) {
       parentElement.classList.add(GATHER_BUTTON_PARENT_CLASS);
-      if (parentElement.classList.contains('jp-OutputArea')) {
+      if (parentElement.classList.contains("jp-OutputArea")) {
         break;
       }
       parentElement = parentElement.parentElement;
@@ -510,20 +467,20 @@ class OutputMarker {
   }
 
   private _addSelectionButton() {
-    this._gatherButton = new Widget({ node: document.createElement('div') });
+    this._gatherButton = new Widget({ node: document.createElement("div") });
     this._gatherButton.addClass(OUTPUT_GATHER_BUTTON_CLASS);
     this._gatherButton.layout = new PanelLayout();
 
-    this._gatherLabel = new Widget({ node: document.createElement('p') });
+    this._gatherLabel = new Widget({ node: document.createElement("p") });
     this._gatherLabel.addClass(OUTPUT_GATHER_LABEL_CLASS);
-    this._gatherLabel.node.textContent = 'Gather';
+    this._gatherLabel.node.textContent = "Gather";
     (this._gatherButton.layout as PanelLayout).addWidget(this._gatherLabel);
 
     this._relaxParentOverflowVisibility();
     this._element.appendChild(this._gatherButton.node);
 
     var buttonHeight = -$(this._gatherButton.node).outerHeight();
-    this._gatherButton.node.style['top'] = buttonHeight + 'px';
+    this._gatherButton.node.style["top"] = buttonHeight + "px";
   }
 
   private _toggleSelected() {
@@ -544,7 +501,7 @@ class OutputMarker {
   destroy() {
     this.deselect();
     this._element.classList.remove(OUTPUT_HIGHLIGHTED_CLASS);
-    this._element.removeEventListener('click', this._clickListener);
+    this._element.removeEventListener("click", this._clickListener);
   }
 
   readonly outputIndex: number;
@@ -600,21 +557,19 @@ class DefMarker {
       // span elements filters out those spurious clicks.
       let target = event.target as HTMLElement;
       let badTarget =
-        !target.tagName ||
-        target.tagName != 'SPAN' ||
-        !target.classList.contains(DEFINITION_CLASS);
+        !target.tagName || target.tagName != "SPAN" || !target.classList.contains(DEFINITION_CLASS);
       if (badTarget) return;
       let clickPosition: CodeMirror.Position = editor.coordsChar({
         left: event.clientX,
-        top: event.clientY,
+        top: event.clientY
       });
       let editorMarkers = editor.getDoc().findMarksAt(clickPosition);
       if (editorMarkers.indexOf(this.marker) != -1) {
         if (this.clickHandler) {
           this.toggleSelected();
-          log('Clicked on definition', {
+          log("Clicked on definition", {
             toggledOn: this._selected,
-            cell: this.cell,
+            cell: this.cell
           });
           this.clickHandler(this.cell, this.location, this._selected, event);
         }
@@ -631,11 +586,9 @@ class DefMarker {
   select() {
     this._selected = true;
     let markerPos = this.marker.find();
-    this._selectionMarker = this.editor
-      .getDoc()
-      .markText(markerPos.from, markerPos.to, {
-        className: DEFINITION_SELECTED_CLASS,
-      });
+    this._selectionMarker = this.editor.getDoc().markText(markerPos.from, markerPos.to, {
+      className: DEFINITION_SELECTED_CLASS
+    });
   }
 
   deselect() {

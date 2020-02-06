@@ -1,12 +1,16 @@
-import { PanelLayout, Widget } from '@phosphor/widgets';
-import { GatherModel, GatherState } from '../model';
-import { log } from '../util/log';
-import { buildHistoryModel, HistoryViewer } from '../widgets/history';
+import { PanelLayout, Widget } from "@phosphor/widgets";
+import { GatherModel, GatherState } from "../model";
+import { log } from "../util/log";
+import {
+  buildHistoryModel,
+  HistoryViewer,
+  HISTORY_VIEWER_ICON_CLASS
+} from "../widgets/history";
 
 /**
  * Class for the revision browser widget.
  */
-const REVISION_BROWSER_CLASS = 'jp-Notebook-revisionbrowser';
+const REVISION_BROWSER_CLASS = "jp-Notebook-revisionbrowser";
 
 /**
  * Window that lets the user browse revisions of code.
@@ -17,9 +21,9 @@ export class RevisionBrowser extends Widget {
    */
   constructor(gatherModel: GatherModel) {
     super();
-    this.id = 'revision-browser';
-    this.title.label = 'Revision browser';
-    this.title.icon = 'jp-HistoryIcon';
+    this.id = "revision-browser";
+    this.title.label = "Version Browser";
+    this.title.icon = HISTORY_VIEWER_ICON_CLASS;
     this.title.closable = true;
     this.addClass(REVISION_BROWSER_CLASS);
 
@@ -38,12 +42,14 @@ export class RevisionBrowser extends Widget {
     } else if (outputSelections.length > 0) {
       selectedCell = outputSelections[0].cell;
     }
-    let slices = model.executionLog.sliceAllExecutions(selectedCell);
-    log('Bringing up the revision browser for selection', {
+    let slices = model.executionLog.sliceAllExecutions(
+      selectedCell.persistentId
+    );
+    log("Bringing up the revision browser for selection", {
       cellExecutionEventId: selectedCell.executionEventId,
       slices,
       selectedDefs: model.selectedDefs,
-      selectedOutputs: model.selectedOutputs,
+      selectedOutputs: model.selectedOutputs
     });
     if (slices) {
       /*
@@ -57,7 +63,7 @@ export class RevisionBrowser extends Widget {
         includeOutput
       );
       let historyViewer = new HistoryViewer({
-        model: historyModel,
+        model: historyModel
       });
       (this.layout as PanelLayout).addWidget(historyViewer);
     }
@@ -67,7 +73,7 @@ export class RevisionBrowser extends Widget {
    * Dismiss this widget.
    */
   dismiss() {
-    log('Dismissing revision browser');
+    log("Dismissing revision browser");
     this._gatherModel.requestStateChange(GatherState.SELECTING);
   }
 

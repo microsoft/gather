@@ -1,8 +1,9 @@
-import { INotebookModel } from '@jupyterlab/notebook';
-import { JSONArray, JSONObject } from '@phosphor/coreutils';
-import { ExecutionLogSlicer } from '@msrvida/python-program-analysis';
-import { EXECUTION_HISTORY_METADATA_KEY } from './load';
-import { nbformat } from '@jupyterlab/coreutils';
+import { ExecutionLogSlicer } from "@andrewhead/python-program-analysis";
+import { nbformat } from "@jupyterlab/coreutils";
+import { INotebookModel } from "@jupyterlab/notebook";
+import { JSONArray, JSONObject } from "@phosphor/coreutils";
+import { LogCell } from "../model/cell";
+import { EXECUTION_HISTORY_METADATA_KEY } from "./load";
 
 interface CellExecutionJson extends JSONObject {
   executionTime: string;
@@ -15,7 +16,6 @@ interface CellJson extends JSONObject {
   executionEventId: string;
   executionCount: number;
   hasError: boolean;
-  isCode: boolean;
   text: string;
   gathered: boolean;
   outputs: nbformat.IOutput[];
@@ -27,7 +27,7 @@ interface CellJson extends JSONObject {
  */
 export function storeHistory(
   notebookModel: INotebookModel,
-  executionLog: ExecutionLogSlicer
+  executionLog: ExecutionLogSlicer<LogCell>
 ) {
   let cellExecutionsJson: JSONArray = [];
 
@@ -49,8 +49,5 @@ export function storeHistory(
     cellExecutionsJson.push(cellExecutionJson);
   }
 
-  notebookModel.metadata.set(
-    EXECUTION_HISTORY_METADATA_KEY,
-    cellExecutionsJson
-  );
+  notebookModel.metadata.set(EXECUTION_HISTORY_METADATA_KEY, cellExecutionsJson);
 }

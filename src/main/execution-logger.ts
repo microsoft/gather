@@ -1,10 +1,5 @@
-import {
-  GatherModel,
-  IGatherObserver,
-  GatherModelEvent,
-  GatherEventData,
-} from '../model';
-import { LabCell } from '../model/labcell';
+import { GatherEventData, GatherModel, GatherModelEvent, IGatherObserver } from "../model";
+import { LabCell } from "../model/cell";
 
 export class ExecutionLogger implements IGatherObserver {
   constructor(gatherModel: GatherModel) {

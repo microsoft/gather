@@ -1,7 +1,7 @@
-import { nbformat } from '@jupyterlab/coreutils';
-import { SlicedExecution } from '@msrvida/python-program-analysis';
-import { ICodeVersionModel } from '../codeversion/model';
-import { GatherModel } from '../../model';
+import { SlicedExecution } from "@andrewhead/python-program-analysis";
+import { nbformat } from "@jupyterlab/coreutils";
+import { GatherModel } from "../../model";
+import { ICodeVersionModel } from "../codeversion/model";
 
 /**
  * The definition of a model object for a code version.

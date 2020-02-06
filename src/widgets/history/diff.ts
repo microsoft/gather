@@ -1,6 +1,6 @@
-import { CharacterRange } from '../codeversion';
-import { Location } from '@msrvida/python-program-analysis';
-import { diff_match_patch } from 'diff-match-patch';
+import { Location } from "@andrewhead/python-program-analysis";
+import { diff_match_patch } from "diff-match-patch";
+import { CharacterRange } from "../codeversion";
 
 /**
  * Object instance for text diffing library.
@@ -16,7 +16,7 @@ export type Diff = {
 
 type DiffLine = {
   text: string;
-  version: 'before' | 'after' | 'both';
+  version: "before" | "after" | "both";
   changeRanges: CharacterRange[];
   index: number;
 };
@@ -24,7 +24,7 @@ type DiffLine = {
 enum EditKind {
   Deletion = -1,
   Same = 0,
-  Insertion = 1,
+  Insertion = 1
 }
 
 /**
@@ -39,8 +39,8 @@ export function computeTextDiff(before: string, after: string): Diff {
   diffMatchPatch.diff_cleanupSemantic(diff);
 
   // Plaintext for the diff representation.
-  let beforeLine = '';
-  let afterLine = '';
+  let beforeLine = "";
+  let afterLine = "";
   let diffLines: DiffLine[] = [];
   let beforeLineChanges: CharacterRange[] = [];
   let afterLineChanges: CharacterRange[] = [];
@@ -56,26 +56,26 @@ export function computeTextDiff(before: string, after: string): Diff {
     if (beforeLine === afterLine) {
       diffLines.push({
         text: beforeLine,
-        version: 'both',
+        version: "both",
         changeRanges: [],
-        index: diffLines.length,
+        index: diffLines.length
       });
     } else {
       if (beforeLine != null) {
         diffLines.push({
           text: beforeLine,
-          version: 'before',
+          version: "before",
           changeRanges: beforeLineChanges.concat(),
-          index: diffLines.length,
+          index: diffLines.length
         });
         beforeLineChanges = [];
       }
       if (afterLine != null) {
         diffLines.push({
           text: afterLine,
-          version: 'after',
+          version: "after",
           changeRanges: afterLineChanges.concat(),
-          index: diffLines.length,
+          index: diffLines.length
         });
         afterLineChanges = [];
       }
@@ -92,12 +92,12 @@ export function computeTextDiff(before: string, after: string): Diff {
   for (let segment of diff) {
     let action: EditKind = segment[0];
     let substring = segment[1];
-    let substringLines = substring.split('\n');
+    let substringLines = substring.split("\n");
 
     for (let l = 0; l < substringLines.length; l++) {
       let substringLine = substringLines[l];
       let isLastLine = l === substringLines.length - 1;
-      let isInitialNewline = l === 0 && substringLine === '';
+      let isInitialNewline = l === 0 && substringLine === "";
       switch (action) {
         case EditKind.Same: // same in both versions
           beforeLine += substringLine;
@@ -109,32 +109,32 @@ export function computeTextDiff(before: string, after: string): Diff {
               beforeLineChanges,
               afterLineChanges
             );
-            beforeLine = '';
-            afterLine = '';
+            beforeLine = "";
+            afterLine = "";
           }
           break;
         case EditKind.Deletion: // in before, not after
-          if (isInitialNewline) substringLine = '⏎';
+          if (isInitialNewline) substringLine = "⏎";
           beforeLineChanges.push({
             start: beforeLine.length,
-            end: beforeLine.length + substringLine.length,
+            end: beforeLine.length + substringLine.length
           });
           beforeLine += substringLine;
           if (!isLastLine) {
             addLines(beforeLine, null, beforeLineChanges);
-            beforeLine = '';
+            beforeLine = "";
           }
           break;
         case EditKind.Insertion: // in after, not before
-          if (isInitialNewline) substringLine = '⏎';
+          if (isInitialNewline) substringLine = "⏎";
           afterLineChanges.push({
             start: afterLine.length,
-            end: afterLine.length + substringLine.length,
+            end: afterLine.length + substringLine.length
           });
           afterLine += substringLine;
           if (!isLastLine) {
             addLines(null, afterLine, null, afterLineChanges);
-            afterLine = '';
+            afterLine = "";
           }
           break;
       }
@@ -154,12 +154,12 @@ export function computeTextDiff(before: string, after: string): Diff {
   // All other lines should preserve their original order.
   diffLines.sort((diffLine1, diffLine2) => {
     if (
-      diffLine1.version === 'both' ||
-      diffLine2.version === 'both' ||
+      diffLine1.version === "both" ||
+      diffLine2.version === "both" ||
       diffLine1.version === diffLine2.version
     ) {
       return diffLine1.index - diffLine2.index;
-    } else return diffLine1.version === 'before' ? -1 : 1;
+    } else return diffLine1.version === "before" ? -1 : 1;
   });
 
   let diffTextLines = [];
@@ -167,10 +167,10 @@ export function computeTextDiff(before: string, after: string): Diff {
     let diffLine = diffLines[i];
     let lineNumber = i + 1;
     diffTextLines.push(diffLine.text);
-    if (diffLine.version === 'before') {
+    if (diffLine.version === "before") {
       beforeLineNumbers.push(lineNumber);
     }
-    if (diffLine.version === 'after') {
+    if (diffLine.version === "after") {
       afterLineNumbers.push(lineNumber);
     }
     for (let range of diffLine.changeRanges) {
@@ -178,15 +178,15 @@ export function computeTextDiff(before: string, after: string): Diff {
         first_line: lineNumber,
         first_column: range.start,
         last_line: lineNumber,
-        last_column: range.end,
+        last_column: range.end
       });
     }
   }
 
   return {
-    text: diffTextLines.join('\n'),
+    text: diffTextLines.join("\n"),
     beforeLines: beforeLineNumbers,
     afterLines: afterLineNumbers,
-    changeLocations: changeLocations,
+    changeLocations: changeLocations
   };
 }

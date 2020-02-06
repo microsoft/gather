@@ -9,7 +9,11 @@
     "lib": ["es6", "dom"],
     "allowJs": true,
     "allowSyntheticDefaultImports": true,
-    "typeRoots": ["./node_modules/@types"]
-   },
+    "typeRoots": ["./node_modules/@types"],
+    /*
+     * For debugging code with Karma.
+     */
+    "sourceMap": true
+  },
   "include": ["src"]
 }

@@ -1,79 +1,121 @@
 {
-  "jupyter.lab.setting-icon-label": "Code Gathering Tools",
-  "title": "Code Gathering Tools",
-  "description": "Settings for code gathering tools.",
-  "definitions": {
-    "loggingEnabled": {
-      "type": ["boolean"]
-    },
-    "loggingId": {
-      "type": ["string", "null"]
-    },
-    "rules": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "properties": {
-          "objectName": {
-            "type": "string"
-          },
-          "functionName": {
-            "type": "string"
-          },
-          "doesNotModify": {
-            "type": "array",
-            "items": {
-              "type": ["string", "number"]
-            }
-          }
-        },
-	"required": ["functionName", "doesNotModify"]
-      }
-    }
-  },
+  "jupyter.lab.setting-icon-label": "nbgather",
+  "title": "ngbather",
+  "description": "Settings for nbgather.",
   "properties": {
-    "loggingEnabled": {
-      "title": "Share Interaction Logging Data",
-      "description": "Whether to report interaction logging data. If this is set to true, interaction telemetry data from your notebook will be uploaded to a research server. Log data does not include any of your code or data, though it does include summary data about your notebook (e.g., the number of cells and their execution counts). Should be off by default.",
+    "enableLogging": {
+      "title": "Logging: Enable Optional Logging (OFF by default, opt-in only)",
+      "description": "Whether this plugin should log your interactions. Logs include only anonymized notebook interaction events, and do not include code or data.",
+      "type": ["boolean"],
       "default": false
     },
-    "loggingId": {
-      "title": "Unique Logging ID",
-      "description": "Only used if you set 'Share Interaction Logging Data' to true. Then this ID is associated with all events logged from your notebook, so that all of events from the same user can be associated together.",
-      "default": "null"
+    "loggingTag": {
+      "title": "Logging: Tag (NULL by default)",
+      "description": "If logging is enabled, all log events will be uploaded with this tag.",
+      "type": ["string", "null"],
+      "default": null
     },
-    "rules": {
-      "title": "Slicing Rules",
-      "description": "Rules for tailoring the output of the program slicing algorithm, by giving hints of what the slicer need *not* include in a slice.\n\nIf you override this property, make sure to borrow all of rules you need from the defaults, as they don't get merged. You will need to refresh the notebook each time you change these rules to see an update in the slicer's behavior.",
-      "default": [{
-        "objectName": "df",
-        "functionName": "head",
-	"doesNotModify": ["OBJECT"]
-      }, {
-	"objectName": "df",
-	"functionName": "describe",
-	"doesNotModify": ["OBJECT"]
-      }, {
-	"functionName": "print",
-	"doesNotModify": ["ARGUMENTS"]
-      }, {
-        "functionName": "KMeans",
-        "doesNotModify": ["ARGUMENTS"]
-      }, {
-        "functionName": "scatter",
-        "doesNotModify": ["ARGUMENTS"]
-      }, {
-        "functionName": "fit",
-        "doesNotModify": ["ARGUMENTS"]
-      }, {
-        "functionName": "sum",
-        "doesNotModify": ["ARGUMENTS"]
-      }, {
-        "functionName": "len",
-        "doesNotModify": ["ARGUMENTS"]
-      }]
+    "loadDefaultModuleMap": {
+      "title": "Load Default Module Map",
+      "description": "If a 'moduleMap' is defined, merge the 'moduleMap' from user settings with the default module map from the 'python-program-analysis' npm module. If 'false', overwrite defaults.",
+      "type": "boolean",
+      "default": true
+    },
+    "moduleMap": {
+      "title": "Module Map for Program Slicing",
+      "description": "Define rules to help nbgather decide how to gather code in cases where it can't infer whether lines should be gathered or not. Valid values for this property are described at https://github.com/andrewhead/python-program-analysis#api-specs. If you change this option, you will need to refresh this browser tab before nbgather loads the new settings.",
+      "$ref": "#/definitions/JsonSpecs",
+      "default": {},
+      "additionalProperties": false
     }
   },
   "additionalProperties": false,
+  "definitions": {
+    "JsonSpecs": {
+      "additionalProperties": {
+        "$ref": "#/definitions/ModuleSpec"
+      },
+      "type": "object"
+    },
+    "ModuleMap": {
+      "additionalProperties": {
+        "$ref": "#/definitions/ModuleSpec"
+      },
+      "type": "object"
+    },
+    "ModuleSpec": {
+      "properties": {
+        "functions": {
+          "items": {
+            "$ref": "#/definitions/FunctionDescriptor"
+          },
+          "type": "array"
+        },
+        "methods": {
+          "items": {
+            "$ref": "#/definitions/FunctionDescriptor"
+          },
+          "type": "array"
+        },
+        "modules": {
+          "$ref": "#/definitions/ModuleMap"
+        },
+        "types": {
+          "additionalProperties": {
+            "$ref": "#/definitions/TypeSpec"
+          },
+          "type": "object"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "FunctionDescriptor": {
+      "anyOf": [{ "type": "string" }, { "$ref": "#/definitions/FunctionSpec" }]
+    },
+    "FunctionSpec": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "updates": {
+          "items": {
+            "$ref": "#/definitions/UpdateArgument"
+          },
+          "type": "array"
+        },
+        "reads": {
+          "items": {
+            "type": "string"
+          }
+        },
+        "returns": {
+          "type": "string"
+        },
+        "returnsType": {
+          "$ref": "#/definitions/TypeSpec"
+        },
+        "higherorder": {
+          "type": "integer"
+        }
+      },
+      "required": ["name"],
+      "additionalProperties": false
+    },
+    "UpdateArgument": {
+      "type": ["string", "number"]
+    },
+    "TypeSpec": {
+      "properties": {
+        "methods": {
+          "items": {
+            "$ref": "#/definitions/FunctionDescriptor"
+          },
+          "type": "array"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    }
+  },
   "type": "object"
 }
