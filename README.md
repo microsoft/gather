@@ -37,11 +37,12 @@ can incorporate this behavior into the tool.
 Meanwhile, you can help the backend make more precise slices by
 telling the tool which functions don't modify their
 arguments. By default, the tool assumes that functions change all
-arguments they're called with, and the objects they're called on.
+arguments they're called with, and the objects they're called on,
+with [exceptions for some common APIs](https://github.com/andrewhead/python-program-analysis/tree/master/src/specs).
 To edit the slicing rules, open the *Advanced Settings Editor* in the Jupyter Lab
-Settings menu and choose the "Code Gathering Tools" tab. In your
-user-defined settings, override `rules`, following
-[this format](https://github.com/microsoft/gather/blob/9582165ca7af009343a96625d49f5b52a2e115cb/schema/plugin.json#L48-L74)
+Settings menu and choose the "nbgather" tab. In your
+user-defined settings, override `moduleMap`, following
+[this format](https://github.com/andrewhead/python-program-analysis#api-specs)
 to specify which functions don't modify their arguments.
 
 **How do I clear the notebook's history?** Open up your `.ipynb`
