@@ -1,4 +1,4 @@
-import { PanelLayout, Widget } from "@phosphor/widgets";
+import { PanelLayout, Widget } from "@lumino/widgets";
 import { Revision } from "../revision";
 import { IHistoryModel } from "./model";
 

@@ -6,7 +6,7 @@ import {
 } from "@andrewhead/python-program-analysis";
 import { JupyterFrontEndPlugin, JupyterLab } from "@jupyterlab/application";
 import { ICommandPalette } from "@jupyterlab/apputils";
-import { ISettingRegistry } from "@jupyterlab/coreutils";
+import { ISettingRegistry } from '@jupyterlab/settingregistry';
 import { IDocumentManager } from "@jupyterlab/docmanager";
 import { DocumentRegistry } from "@jupyterlab/docregistry";
 import {
@@ -14,9 +14,9 @@ import {
   INotebookTracker,
   NotebookPanel
 } from "@jupyterlab/notebook";
-import { JSONExt, JSONObject } from "@phosphor/coreutils";
-import { DisposableDelegate, IDisposable } from "@phosphor/disposable";
-import { Widget } from "@phosphor/widgets";
+import { JSONExt, JSONObject } from "@lumino/coreutils";
+import { DisposableDelegate, IDisposable } from "@lumino/disposable";
+import { Widget } from "@lumino/widgets";
 import "../../style/index.css";
 import {
   GatherController,

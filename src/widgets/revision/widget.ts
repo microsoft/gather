@@ -1,5 +1,5 @@
-import { nbformat } from '@jupyterlab/coreutils';
-import { PanelLayout, Widget } from '@phosphor/widgets';
+import * as nbformat from '@jupyterlab/nbformat';
+import { PanelLayout, Widget } from '@lumino/widgets';
 import { getRelativeTime } from '../../util/date';
 import { log } from '../../util/log';
 import { CodeVersion } from '../codeversion';

@@ -1,4 +1,4 @@
-import { PanelLayout, Widget } from "@phosphor/widgets";
+import { PanelLayout, Widget } from "@lumino/widgets";
 import { GatherModel, GatherState } from "../model";
 import { log } from "../util/log";
 import {

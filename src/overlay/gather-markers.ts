@@ -4,7 +4,7 @@
 import * as py from "@andrewhead/python-program-analysis";
 import { ICodeCellModel } from "@jupyterlab/cells";
 import { NotebookPanel } from "@jupyterlab/notebook";
-import { PanelLayout, Widget } from "@phosphor/widgets";
+import { PanelLayout, Widget } from "@lumino/widgets";
 import { LineHandle } from "codemirror";
 /*
  * jQuery only used for dynamically computing element height. Use Phosphor whenever possible as the

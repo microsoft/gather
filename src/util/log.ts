@@ -1,4 +1,4 @@
-import { ISettingRegistry } from "@jupyterlab/coreutils";
+import { ISettingRegistry } from '@jupyterlab/settingregistry';
 // import * as $ from "jquery";
 
 let _settingRegistry: ISettingRegistry;
