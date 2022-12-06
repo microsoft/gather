@@ -1,8 +1,8 @@
 import { Cell } from "@andrewhead/python-program-analysis";
 import { CodeCellModel, ICodeCellModel } from "@jupyterlab/cells";
-import { nbformat } from "@jupyterlab/coreutils";
+import * as nbformat from '@jupyterlab/nbformat';
 import { IOutputModel } from "@jupyterlab/rendermime";
-import { UUID } from "@phosphor/coreutils";
+import { UUID } from "@lumino/coreutils";
 
 /**
  * Abstract class for accessing the data that nbgather needs for a cell.

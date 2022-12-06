@@ -1,5 +1,5 @@
-import { PanelLayout } from '@phosphor/widgets';
-import { Widget } from '@phosphor/widgets';
+import { PanelLayout } from '@lumino/widgets';
+import { Widget } from '@lumino/widgets';
 import { ISlicedCellModel } from './model';
 import CodeMirror = require('codemirror');
 import 'codemirror/addon/scroll/simplescrollbars';

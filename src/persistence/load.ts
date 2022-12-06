@@ -1,7 +1,7 @@
 import { CellExecution } from "@andrewhead/python-program-analysis";
-import { nbformat } from "@jupyterlab/coreutils";
+import * as nbformat from '@jupyterlab/nbformat';
 import { INotebookModel } from "@jupyterlab/notebook";
-import { JSONArray, JSONExt, JSONObject } from "@phosphor/coreutils";
+import { JSONArray, JSONExt, JSONObject } from "@lumino/coreutils";
 import { log } from "util";
 import { GatherModel } from "../model";
 import { LogCell } from "../model/cell";

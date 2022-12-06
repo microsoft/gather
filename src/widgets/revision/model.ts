@@ -1,5 +1,5 @@
 import { SlicedExecution } from "@andrewhead/python-program-analysis";
-import { nbformat } from "@jupyterlab/coreutils";
+import * as nbformat from '@jupyterlab/nbformat';
 import { GatherModel } from "../../model";
 import { ICodeVersionModel } from "../codeversion/model";
 

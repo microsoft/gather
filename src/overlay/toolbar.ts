@@ -1,6 +1,6 @@
 import { ToolbarButton, ToolbarButtonComponent } from '@jupyterlab/apputils';
 import { NotebookPanel } from '@jupyterlab/notebook';
-import { PanelLayout, Widget } from '@phosphor/widgets';
+import { PanelLayout, Widget } from '@lumino/widgets';
 import { log } from '../util/log';
 import {
   GatherEventData,
@@ -152,7 +152,7 @@ export class GatherToClipboardButton extends GatherButton {
   constructor(gatherModel: GatherModel, callback: () => void) {
     super('gatherToClipboard', gatherModel, {
       className: 'jp-Toolbar-gathertoclipboardbutton',
-      iconClassName: 'jp-Toolbar-gatherbutton-CellsIcon jp-Icon jp-Icon-16',
+      iconClass: 'jp-Toolbar-gatherbutton-CellsIcon jp-Icon jp-Icon-16',
       tooltip: 'Gather cells code to clipboard',
       label: 'Cells',
       onClick: () => {
@@ -184,7 +184,7 @@ export class GatherToNotebookButton extends GatherButton {
   constructor(gatherModel: GatherModel, callback: () => void) {
     super('gatherToNotebook', gatherModel, {
       className: 'jp-Toolbar-gathertonotebookbutton',
-      iconClassName: 'jp-Toolbar-gatherbutton-BookIcon jp-Icon jp-Icon-16',
+      iconClass: 'jp-Toolbar-gatherbutton-BookIcon jp-Icon jp-Icon-16',
       tooltip: 'Gather code to new notebook',
       label: 'Notebook',
       onClick: () => {
@@ -216,7 +216,7 @@ export class GatherRevisionsButton extends GatherButton {
   constructor(gatherModel: GatherModel, callback: () => void) {
     super('gatherRevisions', gatherModel, {
       className: 'jp-Toolbar-gatherrevisionsbutton',
-      iconClassName: 'jp-Toolbar-gatherbutton-HistoryIcon jp-Icon jp-Icon-16',
+      iconClass: 'jp-Toolbar-gatherbutton-HistoryIcon jp-Icon jp-Icon-16',
       tooltip: 'Gather revisions of this cell',
       label: 'Version Browser',
       onClick: () => {
@@ -263,7 +263,7 @@ export class ClearButton extends GatherButton {
   constructor(gatherModel: GatherModel) {
     super('clearGatheringSelections', gatherModel, {
       className: 'jp-Toolbar-clearbutton',
-      iconClassName: 'jp-Toolbar-gatherbutton-ClearIcon jp-Icon jp-Icon-16',
+      iconClass: 'jp-Toolbar-gatherbutton-ClearIcon jp-Icon jp-Icon-16',
       tooltip: 'Clear selections',
       label: 'Clear',
       onClick: () => {

@@ -33,20 +33,12 @@
     "style/**/*.{css,eot,gif,html,jpg,json,png,svg,woff2,ttf}"
   ],
   "dependencies": {
-    "@jupyterlab/application": "^1.2.0",
-    "@jupyterlab/apputils": "^1.2.0",
-    "@jupyterlab/cells": "^1.2.1",
-    "@jupyterlab/codeeditor": "^1.2.0",
-    "@jupyterlab/codemirror": "^1.2.0",
-    "@jupyterlab/coreutils": "^3.2.0",
-    "@jupyterlab/docmanager": "^1.2.0",
-    "@jupyterlab/docregistry": "^1.2.0",
-    "@jupyterlab/fileeditor": "^1.2.0",
-    "@jupyterlab/notebook": "^1.2.1",
-    "@jupyterlab/outputarea": "^1.2.1",
-    "@jupyterlab/rendermime": "^1.2.0",
     "@andrewhead/python-program-analysis": "^0.4.8",
-    "@phosphor/widgets": "^1.9.3",
+    "@jupyterlab/application": "^2.0.2",
+    "@jupyterlab/apputils": "^2.0.2",
+    "@jupyterlab/docmanager": "^2.0.2",
+    "@jupyterlab/fileeditor": "^2.0.2",
+    "@jupyterlab/notebook": "^2.0.2",
     "@types/codemirror": "^0.0.76",
     "diff-match-patch": "^1.0.1",
     "jquery": "^3.3.1"
@@ -72,7 +64,7 @@
     "style-loader": "^0.21.0",
     "ts-jest": "^24.1.0",
     "ts-loader": "^5.3.3",
-    "typescript": "3.3.1",
+    "typescript": "3.7.2",
     "webpack": "^4.41.2",
     "webpack-cli": "^3.3.10"
   }

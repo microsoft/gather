@@ -10,8 +10,8 @@ import {
 } from "@jupyterlab/notebook";
 import { IModelDB, IObservableJSON, IObservableUndoableList } from "@jupyterlab/observables";
 import { Contents, Kernel, ServiceManager } from "@jupyterlab/services";
-import { ISignal } from "@phosphor/signaling";
-import { Widget } from "@phosphor/widgets";
+import { ISignal } from "@lumino/signaling";
+import { Widget } from "@lumino/widgets";
 
 /**
  * IMPLEMENTATIONS OF JUPYTER INTERFACES.
@@ -38,7 +38,7 @@ export class MockNotebook implements INotebookModel {
   fromString(value: string): void {
     throw new Error("Method not implemented.");
   }
-  toJSON(): import("@phosphor/coreutils").JSONValue {
+  toJSON(): import("@lumino/coreutils").JSONValue {
     throw new Error("Method not implemented.");
   }
   fromJSON(value: any): void {

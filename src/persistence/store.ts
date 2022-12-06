@@ -1,7 +1,7 @@
 import { ExecutionLogSlicer } from "@andrewhead/python-program-analysis";
-import { nbformat } from "@jupyterlab/coreutils";
+import * as nbformat from '@jupyterlab/nbformat';
 import { INotebookModel } from "@jupyterlab/notebook";
-import { JSONArray, JSONObject } from "@phosphor/coreutils";
+import { JSONArray, JSONObject } from "@lumino/coreutils";
 import { LogCell } from "../model/cell";
 import { EXECUTION_HISTORY_METADATA_KEY } from "./load";
 

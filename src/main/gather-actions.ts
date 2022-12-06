@@ -1,13 +1,14 @@
 import { SlicedExecution } from "@andrewhead/python-program-analysis";
 import { Clipboard as JupyterClipboard } from "@jupyterlab/apputils";
-import { nbformat, PathExt } from "@jupyterlab/coreutils";
+import * as nbformat from '@jupyterlab/nbformat';
+import { PathExt } from "@jupyterlab/coreutils";
 import { IDocumentManager } from "@jupyterlab/docmanager";
 import { IDocumentWidget } from "@jupyterlab/docregistry";
 import { FileEditor } from "@jupyterlab/fileeditor";
 import { INotebookTracker, NotebookPanel } from "@jupyterlab/notebook";
 import { Kernel } from "@jupyterlab/services";
-import { JSONObject } from "@phosphor/coreutils";
-import { Signal } from "@phosphor/signaling";
+import { JSONObject } from "@lumino/coreutils";
+import { Signal } from "@lumino/signaling";
 import { OutputSelection } from "../model";
 import { NbGatherCell } from "../model/cell";
 
@@ -54,8 +55,8 @@ export class Clipboard {
  */
 function _createKernelSpecForCurrentNotebook(notebooks: INotebookTracker): Partial<Kernel.IModel> {
   let spec = new Object(null) as JSONObject;
-  if (notebooks.currentWidget && notebooks.currentWidget.session.kernel) {
-    spec.name = notebooks.currentWidget.session.kernel.model.name;
+  if (notebooks.currentWidget && notebooks.currentWidget.sessionContext.session.kernel) {
+    spec.name = notebooks.currentWidget.sessionContext.session.kernel.model.name;
   }
   return spec;
 }

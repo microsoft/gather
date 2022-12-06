@@ -1,5 +1,5 @@
 import { INotebookModel, INotebookTracker } from '@jupyterlab/notebook';
-import { UUID } from '@phosphor/coreutils';
+import { UUID } from '@lumino/coreutils';
 import { log } from 'util';
 import { GatherModel } from '.';
 
