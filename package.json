@@ -62,7 +62,7 @@
     "@types/node": "^8.10.58",
     "babel-jest": "^24.9.0",
     "babel-plugin-inline-react-svg": "^1.1.0",
-    "css-loader": "^1.0.0",
+    "css-loader": "^6.8.1",
     "file-loader": "^1.1.11",
     "jest": "^24.9.0",
     "jest-fetch-mock": "^2.1.2",
